@@ -15,9 +15,9 @@ body {
 }
 
 body:has(.navbar) .theme-toggle {
-    position: absolute;
-    top: 0.6rem;
-    right: max(1rem, calc((100vw - 1140px) / 2 + 5rem));
+    position: static;
+    top: auto;
+    right: auto;
 }
 
 [data-bs-theme="dark"] body {

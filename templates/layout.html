@@ -20,7 +20,7 @@
     {% if current_user.is_authenticated %}
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-4">
         <div class="container">
-            <a class="navbar-brand fw-bold" href="{{ url_for('dashboard') }}">
+            <a class="navbar-brand fw-bold" href="{{ url_for('index') }}">
                 <i class="bi bi-box-seam"></i> Resale Desk
             </a>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navMenu">
@@ -28,26 +28,31 @@
             </button>
             <div class="collapse navbar-collapse" id="navMenu">
                 <ul class="navbar-nav me-auto">
-                    <li class="nav-item"><a class="nav-link" href="{{ url_for('dashboard') }}">Dashboard</a></li>
-                    <li class="nav-item"><a class="nav-link" href="{{ url_for('items') }}">Inventory</a></li>
+                    <li class="nav-item"><a class="nav-link" href="{{ url_for('index') }}">Dashboard</a></li>
+                    <li class="nav-item"><a class="nav-link" href="{{ url_for('inventory') }}">Inventory</a></li>
                     <li class="nav-item"><a class="nav-link" href="{{ url_for('purchases') }}">Purchases</a></li>
                     <li class="nav-item"><a class="nav-link" href="{{ url_for('shelves') }}">Shelves</a></li>
                 </ul>
-                <form class="d-flex me-3" role="search" action="{{ url_for('items') }}" method="get">
+                <form class="d-flex me-3" role="search" action="{{ url_for('inventory') }}" method="get">
                     <input class="form-control form-control-sm" type="search" name="q" placeholder="Search inventory or listing ID" value="{{ request.args.get('q', '') }}">
                 </form>
+                <button class="btn btn-outline-secondary me-2 theme-toggle" type="button" id="themeToggle"
+                        aria-label="Switch to dark mode" aria-pressed="false" title="Switch to dark mode">
+                    <i class="bi bi-moon-stars-fill" aria-hidden="true"></i>
+                    <span class="visually-hidden">Toggle dark mode</span>
+                </button>
                 <span class="navbar-text me-3 small">{{ current_user.username }}</span>
                 <a class="btn btn-outline-light btn-sm" href="{{ url_for('logout') }}">Logout</a>
             </div>
         </div>
     </nav>
-    {% endif %}
-
+    {% else %}
     <button class="btn btn-outline-secondary theme-toggle" type="button" id="themeToggle"
             aria-label="Switch to dark mode" aria-pressed="false" title="Switch to dark mode">
         <i class="bi bi-moon-stars-fill" aria-hidden="true"></i>
         <span class="visually-hidden">Toggle dark mode</span>
     </button>
+    {% endif %}
 
 <div class="container mb-5">
     {% with messages = get_flashed_messages(with_categories=true) %}
