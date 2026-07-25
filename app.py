@@ -1,5 +1,5 @@
 import os
-from models import db, User
+from models import db, User, Shelf
 
 from flask import Flask, render_template, request, redirect, url_for, flash
 # from sqlalchemy import create_engine
@@ -44,9 +44,17 @@ os.makedirs(os.path.join(BASE_DIR, 'instance'), exist_ok=True)
 # Bind db object to this app instance
 db.init_app(app)
 
+# Create test account for debugging
+def create_admin_account():
+    if not User.query.filter_by(username='admin').first():
+        user = User(username='admin', password_hash=generate_password_hash('123'))
+        db.session.add(user)
+        db.session.commit()
+
 # Create the physical database files
 with app.app_context():
     db.create_all()
+    create_admin_account()
 
 # Routes
 # ------
@@ -55,7 +63,6 @@ with app.app_context():
 def index():
     return render_template('index.html')
 
-# Placeholder routes
 @app.route('/inventory')
 @login_required
 def inventory():
@@ -66,10 +73,37 @@ def inventory():
 def purchases():
     return render_template('index.html')
 
-@app.route('/shelves')
+@app.route('/shelves', methods=['GET', 'POST'])
 @login_required
 def shelves():
-    return render_template('index.html')
+    if request.method == 'POST':
+        name = request.form.get('name', '').strip()
+        description = request.form.get('description', '').strip()
+
+        if not name:
+            flash('Please write a shelf name', 'danger')
+        elif Shelf.query.filter_by(user_id=current_user.id, name=name).first() is not None:
+            flash('A box with this name already exists.', 'danger')
+        else:
+            db.session.add(Shelf(user_id=current_user.id, name=name, description=description))
+            db.session.commit()
+            flash("Shelf added.", "success")
+        return redirect(url_for("shelves"))
+
+    all_shelves = Shelf.query.filter_by(user_id=current_user.id).order_by(Shelf.name).all()
+    return render_template('shelves.html', shelves=all_shelves)
+
+@app.route("/shelves/<int:shelf_id>/delete", methods=["POST"])
+@login_required
+def delete_shelf(shelf_id):
+    shelf = Shelf.query.filter_by(id=shelf_id, user_id=current_user.id).first_or_404()
+    if shelf.items:
+        flash("Cannot delete a shelf that still has items on it.", "danger")
+    else:
+        db.session.delete(shelf)
+        db.session.commit()
+        flash("Shelf deleted.", "success")
+    return redirect(url_for("shelves"))
 
 
 # Authentication
