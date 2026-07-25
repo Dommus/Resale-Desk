@@ -1,0 +1,81 @@
+body {
+    background-color: #f7f7f9;
+    transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.theme-toggle {
+    position: fixed;
+    top: 0.75rem;
+    right: 1rem;
+    z-index: 1031;
+    width: 2.35rem;
+    height: 2.35rem;
+    padding: 0;
+    border-radius: 50%;
+}
+
+body:has(.navbar) .theme-toggle {
+    position: absolute;
+    top: 0.6rem;
+    right: max(1rem, calc((100vw - 1140px) / 2 + 5rem));
+}
+
+[data-bs-theme="dark"] body {
+    background-color: #12161c;
+}
+
+[data-bs-theme="dark"] .card,
+[data-bs-theme="dark"] .chart-card,
+[data-bs-theme="dark"] .card-kpi {
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
+}
+
+[data-bs-theme="dark"] code.inv-code {
+    background: #252c35;
+}
+
+.card-kpi {
+    border: none;
+    border-radius: 0.75rem;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+.card-kpi .kpi-value {
+    font-size: 1.6rem;
+    font-weight: 700;
+}
+
+.card-kpi .kpi-label {
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: #6c757d;
+}
+
+.chart-card {
+    border: none;
+    border-radius: 0.75rem;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+.status-badge-In-Storage { background-color: #6c757d; }
+.status-badge-Listed { background-color: #0d6efd; }
+.status-badge-Reserved { background-color: #fd7e14; }
+.status-badge-Sold { background-color: #198754; }
+
+code.inv-code {
+    background: #eef1f5;
+    padding: 0.15rem 0.4rem;
+    border-radius: 0.35rem;
+}
+
+.auth-card {
+    max-width: 420px;
+    margin: 4rem auto;
+}
+
+@media (max-width: 991.98px) {
+    body:has(.navbar) .theme-toggle {
+        right: 4.5rem;
+    }
+}
