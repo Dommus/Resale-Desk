@@ -10,8 +10,11 @@ from werkzeug.security import generate_password_hash, check_password_hash
 
 # Configure App and Database (https://www.geeksforgeeks.org/python/declaring-models-in-flask/)
 app = Flask(__name__)
+
+# https://flask-sqlalchemy.readthedocs.io/en/stable/config/
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///database.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+app.config['SQLALCHEMY_ECHO'] = True
 app.secret_key = '4815_THISisCS50_162342'
 
 # Login Manager
@@ -28,6 +31,7 @@ def load_user(user_id):
         return db.session.get(User, int(user_id))
     except (TypeError, ValueError):
         return db.session.get(User, user_id)
+
 
 
 # #################
@@ -96,9 +100,15 @@ def shelves():
 @app.route("/shelves/<int:shelf_id>/delete", methods=["POST"])
 @login_required
 def delete_shelf(shelf_id):
+    # Also make sure the user id matches for security
     shelf = Shelf.query.filter_by(id=shelf_id, user_id=current_user.id).first_or_404()
     if shelf.items:
         flash("Cannot delete a shelf that still has items on it.", "danger")
+
+    ##############
+    # ADD option for it to automatically delete all items on the shelf?
+    ##############
+    
     else:
         db.session.delete(shelf)
         db.session.commit()
