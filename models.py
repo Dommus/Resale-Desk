@@ -17,9 +17,6 @@ class Base(DeclarativeBase):
 db = SQLAlchemy(model_class=Base)
 
 
-
-
-
 # Models
 class ItemStatus(Enum):
     ON_SALE = 'on sale'
@@ -74,11 +71,15 @@ class Item(db.Model):
     id: Mapped[int] = mapped_column(primary_key=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
 
+    name: Mapped[str] = mapped_column(String(64), nullable=False)
+    category: Mapped[Optional[str]] = mapped_column(String(32))
+    condition: Mapped[Optional[str]] = mapped_column(String(32))
     code: Mapped[Optional[str]] = mapped_column(String(10), unique=True) # NEED TO IMPLEMENT THIS, MAYBE EVEN WITH A QR CODE
     brand: Mapped[Optional[str]] = mapped_column(String(32))
     status: Mapped[ItemStatus] = mapped_column(SQLEnum(ItemStatus), default=ItemStatus.ON_SALE)
+    created_at: Mapped[str] = mapped_column (datetime, default = datetime.now())
  
-    purchase_id: Mapped[int] = mapped_column(ForeignKey("purchases.id"))
+    purchase_id: Mapped[int] = mapped_column(ForeignKey("purchases.id"), nullable=False)
 
     shelf_id: Mapped[Optional[int]] = mapped_column(ForeignKey("shelves.id"))
     shelf: Mapped[Optional["Shelf"]] = relationship("Shelf", back_populates="items")
