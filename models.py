@@ -2,7 +2,7 @@
 # https://docs.sqlalchemy.org/en/20/orm/quickstart.html
 from flask_login import UserMixin
 from flask_sqlalchemy import SQLAlchemy
-from sqlalchemy import String, Text, ForeignKey, Enum as SQLEnum
+from sqlalchemy import String, Text, ForeignKey, Enum as SQLEnum, func
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 from datetime import date as datetime_date, datetime
 from enum import Enum
@@ -15,7 +15,6 @@ class Base(DeclarativeBase):
     pass
 
 db = SQLAlchemy(model_class=Base)
-
 
 # Models
 class ItemStatus(Enum):
@@ -77,7 +76,7 @@ class Item(db.Model):
     code: Mapped[Optional[str]] = mapped_column(String(10), unique=True) # NEED TO IMPLEMENT THIS, MAYBE EVEN WITH A QR CODE
     brand: Mapped[Optional[str]] = mapped_column(String(32))
     status: Mapped[ItemStatus] = mapped_column(SQLEnum(ItemStatus), default=ItemStatus.ON_SALE)
-    created_at: Mapped[str] = mapped_column (datetime, default = datetime.now())
+    created_at: Mapped[datetime] = mapped_column(server_default=func.now())
  
     purchase_id: Mapped[int] = mapped_column(ForeignKey("purchases.id"), nullable=False)
 
