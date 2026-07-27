@@ -1,0 +1,60 @@
+{% extends "layout.html" %}
+{% block title %}Shelves{% endblock %}
+{% block content %}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h3 class="mb-0">Shelves & Storage</h3>
+</div>
+
+<div class="row g-4">
+    <div class="col-md-5">
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <h6 class="card-title">Add a Shelf / Storage Location</h6>
+                <form method="post">
+                    <div class="mb-2">
+                        <label class="form-label">Name</label>
+                        <input type="text" class="form-control" name="name" placeholder="e.g. Shelf A1, Garage Box" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Description (optional)</label>
+                        <input type="text" class="form-control" name="description">
+                    </div>
+                    <button type="submit" class="btn btn-primary">Add Shelf</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-7">
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <h6 class="card-title">All Shelves</h6>
+                <table class="table table-sm align-middle">
+                    <thead>
+                        <tr><th>Name</th><th>Description</th><th># Items</th><th></th></tr>
+                    </thead>
+                    <tbody>
+                        {% for shelf in shelves %}
+                        <tr>
+                            <td><a href="{{ url_for('inventory', shelf_id=shelf.id) }}">{{ shelf.name }}</a></td>
+                            <td class="text-muted">{{ shelf.description or "" }}</td>
+                            <td>{{ shelf.items|length }}</td>
+                            <td class="text-end">
+                                <form method="post" action="{{ url_for('delete_shelf', shelf_id=shelf.id) }}"
+                                      onsubmit="return confirm('Delete this shelf?');">
+                                    <button class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr><td colspan="4" class="text-muted text-center py-3">No shelves yet.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
