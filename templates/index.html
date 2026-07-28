@@ -2,9 +2,93 @@
 {% block title %}Dashboard{% endblock %}
 {% block content %}
 
-<div class="row justify-content-center">
-  <div class="col-md-8 text-center">
-    <h1 class="mb-3">Welcome, {{ current_user.username }}!</h1>
+<div class="row justify-content-center mb-4">
+  <div class="col-lg-10 text-center">
+    <h1 class="mb-2">Welcome, {{ current_user.username }}!</h1>
+    <p class="text-muted">A simple overview of your resale workflow.</p>
+  </div>
+</div>
+
+<div class="row g-3 mb-4">
+  <div class="col-md-3">
+    <div class="card card-kpi h-100">
+      <div class="card-body">
+        <div class="kpi-label">Inventory items</div>
+        <div class="kpi-value">{{ item_count }}</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card card-kpi h-100">
+      <div class="card-body">
+        <div class="kpi-label">On sale</div>
+        <div class="kpi-value">{{ on_sale_count }}</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card card-kpi h-100">
+      <div class="card-body">
+        <div class="kpi-label">Sold</div>
+        <div class="kpi-value">{{ sold_count }}</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card card-kpi h-100">
+      <div class="card-body">
+        <div class="kpi-label">Total spend</div>
+        <div class="kpi-value">${{ '%.2f'|format(total_spend) }}</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-4">
+  <div class="col-lg-6">
+    <div class="card shadow-sm h-100">
+      <div class="card-body">
+        <h6 class="card-title">Recent inventory</h6>
+        <ul class="list-group list-group-flush">
+          {% for item in recent_items %}
+          <li class="list-group-item px-0">
+            <div class="d-flex justify-content-between align-items-center">
+              <div>
+                <strong>{{ item.name }}</strong><br>
+                <small class="text-muted">{{ item.category or 'Uncategorized' }}</small>
+              </div>
+              <span class="badge rounded-pill bg-light text-dark">{{ item.status.value }}</span>
+            </div>
+          </li>
+          {% else %}
+          <li class="list-group-item px-0 text-muted">No inventory items yet.</li>
+          {% endfor %}
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-6">
+    <div class="card shadow-sm h-100">
+      <div class="card-body">
+        <h6 class="card-title">Recent purchases</h6>
+        <ul class="list-group list-group-flush">
+          {% for purchase in recent_purchases %}
+          <li class="list-group-item px-0">
+            <div class="d-flex justify-content-between align-items-center">
+              <div>
+                <strong>{{ purchase.seller or 'Unknown seller' }}</strong><br>
+                <small class="text-muted">{{ purchase.platform or 'No platform' }}</small>
+              </div>
+              <span>${{ '%.2f'|format(purchase.purchase_price + purchase.shipping_cost) }}</span>
+            </div>
+          </li>
+          {% else %}
+          <li class="list-group-item px-0 text-muted">No purchases yet.</li>
+          {% endfor %}
+        </ul>
+      </div>
+    </div>
   </div>
 </div>
 

@@ -1,10 +1,12 @@
 import os
-from models import db, User, Shelf
+from datetime import date as datetime_date
+from models import db, User, Shelf, Item, Purchase, ItemStatus
 
 from flask import Flask, render_template, request, redirect, url_for, flash
 # from sqlalchemy import create_engine
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
+from sqlalchemy import func, or_
 from werkzeug.security import generate_password_hash, check_password_hash
 
 
@@ -65,17 +67,114 @@ with app.app_context():
 @app.route('/')
 @login_required
 def index():
-    return render_template('index.html')
+    item_count = Item.query.filter_by(user_id=current_user.id).count()
+    on_sale_count = Item.query.filter_by(user_id=current_user.id, status=ItemStatus.ON_SALE).count()
+    sold_count = Item.query.filter_by(user_id=current_user.id, status=ItemStatus.SOLD).count()
+    purchase_count = Purchase.query.filter_by(user_id=current_user.id).count()
+    total_spend = (
+        db.session.query(func.coalesce(func.sum(Purchase.purchase_price + Purchase.shipping_cost), 0.0))
+        .filter(Purchase.user_id == current_user.id)
+        .scalar() or 0.0
+    )
+    recent_items = Item.query.filter_by(user_id=current_user.id).order_by(Item.created_at.desc()).limit(5).all()
+    recent_purchases = Purchase.query.filter_by(user_id=current_user.id).order_by(Purchase.date.desc()).limit(5).all()
 
-@app.route('/inventory')
+    return render_template(
+        'index.html',
+        item_count=item_count,
+        on_sale_count=on_sale_count,
+        sold_count=sold_count,
+        purchase_count=purchase_count,
+        total_spend=round(total_spend, 2),
+        recent_items=recent_items,
+        recent_purchases=recent_purchases,
+    )
+
+@app.route('/inventory', methods=['GET', 'POST'])
 @login_required
 def inventory():
-    return render_template('index.html')
+    if request.method == 'POST':
+        name = request.form.get('name', '').strip()
+        purchase_id = request.form.get('purchase_id', type=int)
+        if not name:
+            flash('Please provide an item name.', 'danger')
+        elif not purchase_id:
+            flash('Choose a purchase before adding an item.', 'danger')
+        else:
+            status_name = request.form.get('status', 'ON_SALE')
+            status = ItemStatus[status_name] if status_name in ItemStatus.__members__ else ItemStatus.ON_SALE
+            item = Item(
+                user_id=current_user.id,
+                name=name,
+                category=request.form.get('category', '').strip() or None,
+                condition=request.form.get('condition', '').strip() or None,
+                code=request.form.get('code', '').strip() or None,
+                brand=request.form.get('brand', '').strip() or None,
+                status=status,
+                purchase_id=purchase_id,
+                shelf_id=request.form.get('shelf_id', type=int) or None,
+            )
+            db.session.add(item)
+            db.session.commit()
+            flash('Item added to inventory.', 'success')
+        return redirect(url_for('inventory'))
 
-@app.route('/purchases')
+    query = request.args.get('q', '').strip()
+    shelf_id = request.args.get('shelf_id', type=int)
+
+    inventory_query = Item.query.filter_by(user_id=current_user.id)
+    if shelf_id:
+        inventory_query = inventory_query.filter_by(shelf_id=shelf_id)
+    if query:
+        search_pattern = f'%{query}%'
+        inventory_query = inventory_query.filter(
+            or_(
+                Item.name.ilike(search_pattern),
+                Item.category.ilike(search_pattern),
+                Item.brand.ilike(search_pattern),
+                Item.code.ilike(search_pattern),
+            )
+        )
+
+    items = inventory_query.order_by(Item.created_at.desc()).all()
+    shelves = Shelf.query.filter_by(user_id=current_user.id).order_by(Shelf.name).all()
+    purchases = Purchase.query.filter_by(user_id=current_user.id).order_by(Purchase.date.desc()).all()
+    return render_template(
+        'inventory.html',
+        items=items,
+        shelves=shelves,
+        purchases=purchases,
+        selected_shelf_id=shelf_id,
+        search_query=query,
+    )
+
+@app.route('/purchases', methods=['GET', 'POST'])
 @login_required
 def purchases():
-    return render_template('index.html')
+    if request.method == 'POST':
+        try:
+            purchase_date = datetime_date.fromisoformat(request.form.get('date', '').strip() or datetime_date.today().isoformat())
+        except ValueError:
+            purchase_date = datetime_date.today()
+
+        purchase = Purchase(
+            user_id=current_user.id,
+            date=purchase_date,
+            seller=request.form.get('seller', '').strip() or None,
+            platform=request.form.get('platform', '').strip() or None,
+            purchase_type=request.form.get('purchase_type', 'single').strip() or 'single',
+            purchase_price=float(request.form.get('purchase_price', 0) or 0),
+            shipping_cost=float(request.form.get('shipping_cost', 0) or 0),
+            notes=request.form.get('notes', '').strip() or None,
+        )
+        db.session.add(purchase)
+        db.session.commit()
+        flash('Purchase recorded.', 'success')
+        return redirect(url_for('purchases'))
+
+    all_purchases = Purchase.query.filter_by(user_id=current_user.id).order_by(Purchase.date.desc(), Purchase.id.desc()).all()
+    today = datetime_date.today().isoformat()
+    return render_template('purchases.html', purchases=all_purchases, today=today)
 
 @app.route('/shelves', methods=['GET', 'POST'])
 @login_required
