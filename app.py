@@ -51,27 +51,6 @@ def load_user(user_id):
 # Bind db object to this app instance
 db.init_app(app)
 
-# Delete and recreate the database
-def reset_database():
-    db.session.remove()
-
-    if hasattr(db, 'engine'):
-        db.engine.dispose()
-
-    for candidate in (DB_PATH, os.path.join(BASE_DIR, 'database.db')):
-        if os.path.exists(candidate):
-            try:
-                os.chmod(candidate, 0o666)
-            except OSError:
-                pass
-            os.remove(candidate)
-
-    with app.app_context():
-        db.create_all()
-        create_admin_account()
-
-    print(f"Database reset at {DB_PATH}")
-
 # Create test account for debugging
 def create_admin_account():
     if not User.query.filter_by(username='admin').first():
@@ -80,10 +59,36 @@ def create_admin_account():
         db.session.commit()
 
 # Create the physical database files
+def create_database():
+    with app.app_context():
+        db.create_all()
+        create_admin_account()
 
-with app.app_context():
-    db.create_all()
-    create_admin_account()
+create_database()
+
+# Delete and recreate the database
+def reset_database():
+    db.session.remove()
+
+    # Fixes file being locked, preventing deletion
+    if hasattr(db, 'engine'):
+        db.engine.dispose()
+
+    for file in (DB_PATH, os.path.join(BASE_DIR, 'database.db')):
+        if os.path.exists(file):
+            try:
+                # Try to grant read/write permission
+                os.chmod(file, 0o666)
+            except OSError:
+                pass
+            try:
+                os.remove(file)
+            except OSError:
+                pass
+
+    create_database()
+
+    print(f"Database reset at {DB_PATH}")
 
 # Routes
 # ------
