@@ -18,7 +18,12 @@ from werkzeug.security import generate_password_hash, check_password_hash
 app = Flask(__name__)
 
 # https://flask-sqlalchemy.readthedocs.io/en/stable/config/
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///database.db'
+BASE_DIR = os.path.abspath(os.path.dirname(__file__))
+DB_PATH = os.path.join(BASE_DIR, 'instance', 'database.db')
+os.makedirs(os.path.join(BASE_DIR, 'instance'), exist_ok=True)
+
+# App configs
+app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{DB_PATH}'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SQLALCHEMY_ECHO'] = False # 'True' for debugging SQL queries
 app.secret_key = '4815_THISisCS50_162342'
@@ -43,13 +48,29 @@ def load_user(user_id):
 # ########################
 
 
-# Find the absolute path to the directory with the current Python script
-BASE_DIR = os.path.abspath(os.path.dirname(__file__))
-# Create instance directory
-os.makedirs(os.path.join(BASE_DIR, 'instance'), exist_ok=True)
-
 # Bind db object to this app instance
 db.init_app(app)
+
+# Delete and recreate the database
+def reset_database():
+    db.session.remove()
+
+    if hasattr(db, 'engine'):
+        db.engine.dispose()
+
+    for candidate in (DB_PATH, os.path.join(BASE_DIR, 'database.db')):
+        if os.path.exists(candidate):
+            try:
+                os.chmod(candidate, 0o666)
+            except OSError:
+                pass
+            os.remove(candidate)
+
+    with app.app_context():
+        db.create_all()
+        create_admin_account()
+
+    print(f"Database reset at {DB_PATH}")
 
 # Create test account for debugging
 def create_admin_account():
@@ -59,6 +80,7 @@ def create_admin_account():
         db.session.commit()
 
 # Create the physical database files
+
 with app.app_context():
     db.create_all()
     create_admin_account()
@@ -323,3 +345,21 @@ def register():
             
     
     return render_template('register.html')
+
+# User
+
+@app.route('/user', methods=['GET', 'POST'])
+@login_required
+def user():
+    return render_template('user.html')
+
+@app.route('/user/delete-database', methods=['POST'])
+@login_required
+def delete_database():
+    try:
+        reset_database()
+        flash('Database deleted.', 'success')
+    except Exception as exc:
+        flash(f'Could not delete database: {exc}', 'danger')
+
+    return redirect(url_for('user'))
