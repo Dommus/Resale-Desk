@@ -1,0 +1,89 @@
+{% extends "layout.html" %}
+{% block title %}Purchases{% endblock %}
+{% block content %}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h3 class="mb-0">Purchases</h3>
+</div>
+
+<div class="row g-4">
+    <div class="col-lg-4">
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <h6 class="card-title">Record a purchase</h6>
+                <form method="post">
+                    <div class="mb-2">
+                        <label class="form-label">Date</label>
+                        <input type="date" class="form-control" name="date" value="{{ today }}">
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label">Seller</label>
+                        <input type="text" class="form-control" name="seller" placeholder="e.g. Seller123">
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label">Platform</label>
+                        <input type="text" class="form-control" name="platform" placeholder="eBay, Mercari...">
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label">Type</label>
+                        <select class="form-select" name="purchase_type">
+                            <option value="single">Single</option>
+                            <option value="bulk">Bulk</option>
+                        </select>
+                    </div>
+                    <div class="row g-2">
+                        <div class="col-md-6 mb-2">
+                            <label class="form-label">Purchase price</label>
+                            <input type="number" step="0.01" class="form-control" name="purchase_price" value="0">
+                        </div>
+                        <div class="col-md-6 mb-2">
+                            <label class="form-label">Shipping</label>
+                            <input type="number" step="0.01" class="form-control" name="shipping_cost" value="0">
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Notes</label>
+                        <textarea class="form-control" name="notes" rows="3"></textarea>
+                    </div>
+                    <button class="btn btn-primary" type="submit">Save purchase</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-8">
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <h6 class="card-title">Recent purchases</h6>
+                <div class="table-responsive">
+                    <table class="table table-sm align-middle">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Seller</th>
+                                <th>Platform</th>
+                                <th>Type</th>
+                                <th>Total</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for purchase in purchases %}
+                            <tr>
+                                <td>{{ purchase.date }}</td>
+                                <td>{{ purchase.seller or '—' }}</td>
+                                <td>{{ purchase.platform or '—' }}</td>
+                                <td>{{ purchase.purchase_type }}</td>
+                                <td>${{ '%.2f'|format(purchase.purchase_price + purchase.shipping_cost) }}</td>
+                            </tr>
+                            {% else %}
+                            <tr><td colspan="5" class="text-muted text-center py-3">No purchases recorded yet.</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
