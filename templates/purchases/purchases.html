@@ -1,0 +1,41 @@
+{% extends "layout.html" %}
+{% block title %}Purchases{% endblock %}
+{% block content %}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h3 class="mb-0">Purchases</h3>
+    <a href="{{ url_for('new_purchase') }}" class="btn btn-primary"><i class="bi bi-plus-lg"></i> New Purchase</a>
+</div>
+
+<div class="card shadow-sm">
+    <div class="card-body">
+        <table class="table table-hover align-middle">
+            <thead>
+                <tr>
+                    <th>Date</th><th>Seller</th><th>Platform</th><th>Type</th>
+                    <th>Total Cost</th><th># Items</th><th></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for p in purchases %}
+                <!-- <tr onclick="window.location='{{ url_for('view_purchase', purchase_id=p.id) }}'" style="cursor:pointer;"> -->
+                <tr class="clickable-row" data-href="{{ url_for('view_purchase', purchase_id=p.id) }}"></tr>
+                    <td>{{ p.date }}</td>
+                    <td>{{ p.seller or "-" }}</td>
+                    <td>{{ p.platform or "-" }}</td>
+                    <td><span class="badge bg-secondary">{{ p.purchase_type|capitalize }}</span></td>
+                    <td>€{{ "%.2f"|format(p.total_cost) }}</td>
+                    <td>{{ p.items|length }}</td>
+                    <td class="text-end">
+                        <a href="{{ url_for('view_purchase', purchase_id=p.id) }}" class="btn btn-sm btn-outline-primary">View</a>
+                    </td>
+                </tr>
+                {% else %}
+                <tr><td colspan="7" class="text-center text-muted py-4">No purchases recorded yet. <a href="{{ url_for('new_purchase') }}">Add your first purchase</a>.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+{% endblock %}

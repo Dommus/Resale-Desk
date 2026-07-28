@@ -2,7 +2,7 @@
 # https://docs.sqlalchemy.org/en/20/orm/quickstart.html
 from flask_login import UserMixin
 from flask_sqlalchemy import SQLAlchemy
-from sqlalchemy import String, Text, ForeignKey, Enum as SQLEnum, func
+from sqlalchemy import String, ForeignKey, Enum as SQLEnum, func
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 from datetime import date as datetime_date, datetime
 from enum import Enum
@@ -18,23 +18,25 @@ db = SQLAlchemy(model_class=Base)
 
 # Models
 class ItemStatus(Enum):
-    ON_SALE = 'on sale'
-    SOLD = 'sold'
-    NOT_SOLD = 'not sold'
-    WAITING = 'waiting'
-    REFUNDED = 'refunded'
+    ON_SALE = 'On Sale'
+    SOLD = 'Sold'
+    NOT_SOLD = 'Not Sold'
+    WAITING = 'Waiting'
+    REFUNDED = 'Refunded'
+    IN_STORAGE = 'In Storage'
 
 
 class User(UserMixin, db.Model):
     __tablename__ = 'users'
 
     id: Mapped[int] = mapped_column(primary_key=True)
+
     username: Mapped[str] = mapped_column(String(64), unique=True, nullable=False)
     password_hash: Mapped[str] = mapped_column(String(128), nullable=False)
 
-    shelves: Mapped[List["Shelf"]] = relationship("Shelf", back_populates="user", cascade="all, delete-orphan", lazy=True)
-    purchases: Mapped[List["Purchase"]] = relationship("Purchase", back_populates="user", cascade="all, delete-orphan", lazy=True)
-    items: Mapped[List["Item"]] = relationship("Item", back_populates="user", cascade="all, delete-orphan", lazy=True)
+    shelves: Mapped[List["Shelf"]] = relationship("Shelf", back_populates="owner", cascade="all, delete-orphan", lazy=True)
+    purchases: Mapped[List["Purchase"]] = relationship("Purchase", back_populates="owner", cascade="all, delete-orphan", lazy=True)
+    items: Mapped[List["Item"]] = relationship("Item", back_populates="owner", cascade="all, delete-orphan", lazy=True)
 
 class Inventory(db.Model):
     __tablename__ = 'inventory'
@@ -46,11 +48,11 @@ class Shelf(db.Model):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     user_id: Mapped[int] = mapped_column(ForeignKey('users.id'), nullable=False)
-    name: Mapped[str] = mapped_column(String(64), nullable=False)
 
+    name: Mapped[str] = mapped_column(String(128), nullable=False)
     description: Mapped[Optional[str]] = mapped_column(String(256))
 
-    user: Mapped["User"] = relationship("User", back_populates="shelves")
+    owner: Mapped["User"] = relationship("User", back_populates="shelves")
     items: Mapped[List["Item"]] = relationship("Item", back_populates="shelf", lazy=True)
 
 
@@ -63,32 +65,49 @@ class Purchase(db.Model):
     date: Mapped[datetime_date] = mapped_column(nullable=False, default=datetime_date.today)
     seller: Mapped[Optional[str]] = mapped_column(String(128))
     platform: Mapped[Optional[str]] = mapped_column(String(64))
-    purchase_type: Mapped[str] = mapped_column(String(10), nullable=False, default="single")
+    purchase_type: Mapped[str] = mapped_column(String(32), nullable=False, default="single")
     purchase_price: Mapped[float] = mapped_column(nullable=False, default=0.0)
     shipping_cost: Mapped[float] = mapped_column(nullable=False, default=0.0)
-    notes: Mapped[Optional[str]] = mapped_column(Text)
+    notes: Mapped[Optional[str]] = mapped_column(String(5120))
 
-    user: Mapped["User"] = relationship("User", back_populates="purchases")
     items: Mapped[List["Item"]] = relationship("Item", back_populates="purchase", cascade="all, delete-orphan", lazy=True)
+    owner: Mapped["User"] = relationship("User", back_populates="purchases")
 
+    @property
+    def total_cost(self):
+        return round((self.purchase_price or 0) + (self.shipping_cost or 0), 2)
+
+    @property
+    def allocated_total(self):
+        return round(sum(i.allocated_cost or 0 for i in self.items), 2)
 
 class Item(db.Model):
     __tablename__ = "items"
 
     id: Mapped[int] = mapped_column(primary_key=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
+    purchase_id: Mapped[int] = mapped_column(ForeignKey("purchases.id"), nullable=False)
+    shelf_id: Mapped[Optional[int]] = mapped_column(ForeignKey("shelves.id"))
 
     name: Mapped[str] = mapped_column(String(64), nullable=False)
-    category: Mapped[Optional[str]] = mapped_column(String(32))
+    category: Mapped[Optional[str]] = mapped_column(String(64))
     condition: Mapped[Optional[str]] = mapped_column(String(32))
-    code: Mapped[Optional[str]] = mapped_column(String(10), unique=True)  # NEED TO IMPLEMENT THIS, MAYBE EVEN WITH A QR CODE
-    brand: Mapped[Optional[str]] = mapped_column(String(32))
+    # code: Mapped[Optional[str]] = mapped_column(String(10), unique=True)  # NEED TO IMPLEMENT THIS, MAYBE EVEN WITH A QR CODE
+    brand: Mapped[Optional[str]] = mapped_column(String(64))
     status: Mapped[ItemStatus] = mapped_column(SQLEnum(ItemStatus), default=ItemStatus.ON_SALE)
+    notes: Mapped[Optional[str]] = mapped_column(String(5120))
     created_at: Mapped[datetime] = mapped_column(server_default=func.now())
+    allocated_cost: Mapped[float] = mapped_column(nullable=False, default=0)
 
-    purchase_id: Mapped[int] = mapped_column(ForeignKey("purchases.id"), nullable=False)
-
-    shelf_id: Mapped[Optional[int]] = mapped_column(ForeignKey("shelves.id"))
-    user: Mapped["User"] = relationship("User", back_populates="items")
+    owner: Mapped["User"] = relationship("User", back_populates="items")
     purchase: Mapped["Purchase"] = relationship("Purchase", back_populates="items")
     shelf: Mapped[Optional["Shelf"]] = relationship("Shelf", back_populates="items")
+
+    def generate_code(self):
+        self.inventory_code = f"INV-{self.id:06d}"
+
+    @property
+    def days_in_inventory(self):
+        end = self.sale.sale_date if self.sale else datetime_date.today
+        start = self.created_at.date() if self.created_at else end
+        return (end - start).days

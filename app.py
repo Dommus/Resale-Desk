@@ -1,11 +1,15 @@
 import os
-from datetime import date as datetime_date
+from datetime import datetime, date
+
+# Imports from local python files
 from models import db, User, Shelf, Item, Purchase, ItemStatus
+from utilities import login_manager, parse_date, parse_float
+
 
 from flask import Flask, render_template, request, redirect, url_for, flash
 # from sqlalchemy import create_engine
 from flask_sqlalchemy import SQLAlchemy
-from flask_login import LoginManager, login_user, logout_user, login_required, current_user
+from flask_login import login_user, logout_user, login_required, current_user
 from sqlalchemy import func, or_
 from werkzeug.security import generate_password_hash, check_password_hash
 
@@ -21,11 +25,7 @@ app.secret_key = '4815_THISisCS50_162342'
 
 # Login Manager
 # https://flask-login.readthedocs.io/en/latest/
-login_manager = LoginManager()
 login_manager.init_app(app)
-login_manager.login_view = 'login'
-login_manager.login_message = 'Please log in to continue.'
-login_manager.login_message_category = 'warning'
 
 @login_manager.user_loader
 def load_user(user_id):
@@ -90,6 +90,7 @@ def index():
         recent_purchases=recent_purchases,
     )
 
+# INVENTORY
 @app.route('/inventory', methods=['GET', 'POST'])
 @login_required
 def inventory():
@@ -140,7 +141,7 @@ def inventory():
     shelves = Shelf.query.filter_by(user_id=current_user.id).order_by(Shelf.name).all()
     purchases = Purchase.query.filter_by(user_id=current_user.id).order_by(Purchase.date.desc()).all()
     return render_template(
-        'inventory.html',
+        'inventory/inventory.html',
         items=items,
         shelves=shelves,
         purchases=purchases,
@@ -148,34 +149,42 @@ def inventory():
         search_query=query,
     )
 
+# @app.route("/inventory/<int:item_id>")
+
+
+# PURCHASES
 @app.route('/purchases', methods=['GET', 'POST'])
 @login_required
 def purchases():
+    purchases = (
+        Purchase.query.filter_by(user_id=current_user.id).order_by(Purchase.date.desc()).all()
+    )
+    return render_template("purchases/purchases.html", purchases=purchases)
+
+@app.route("/purchases/new", methods=["GET", "POST"])
+@login_required
+def new_purchase():
+
     if request.method == 'POST':
-        try:
-            purchase_date = datetime_date.fromisoformat(request.form.get('date', '').strip() or datetime_date.today().isoformat())
-        except ValueError:
-            purchase_date = datetime_date.today()
+        return
 
-        purchase = Purchase(
-            user_id=current_user.id,
-            date=purchase_date,
-            seller=request.form.get('seller', '').strip() or None,
-            platform=request.form.get('platform', '').strip() or None,
-            purchase_type=request.form.get('purchase_type', 'single').strip() or 'single',
-            purchase_price=float(request.form.get('purchase_price', 0) or 0),
-            shipping_cost=float(request.form.get('shipping_cost', 0) or 0),
-            notes=request.form.get('notes', '').strip() or None,
-        )
-        db.session.add(purchase)
-        db.session.commit()
-        flash('Purchase recorded.', 'success')
-        return redirect(url_for('purchases'))
+    # Exported variables
+    shelves = (
+        Shelf.query.filter_by(user_id=current_user.id).order_by(Shelf.name.desc()).all()
+    )
+    today = date.today().isoformat()
+    return render_template ("purchases/purchases_new.html", today=today, shelves=shelves)
 
-    all_purchases = Purchase.query.filter_by(user_id=current_user.id).order_by(Purchase.date.desc(), Purchase.id.desc()).all()
-    today = datetime_date.today().isoformat()
-    return render_template('purchases.html', purchases=all_purchases, today=today)
 
+@app.route("/purchases/<int:purchase_id>")
+@login_required
+def view_purchase(purchase_id):
+    purchase = Purchase.query.filter_by(id=purchase_id, user_id=current_user.id).first_or_404()
+    return render_template("purchases/purchases_view.html", purchase=purchase)
+
+
+
+# SHELVES
 @app.route('/shelves', methods=['GET', 'POST'])
 @login_required
 def shelves():
@@ -213,6 +222,11 @@ def delete_shelf(shelf_id):
         db.session.commit()
         flash("Shelf deleted.", "success")
     return redirect(url_for("shelves"))
+
+
+# SALES
+
+
 
 
 # Authentication

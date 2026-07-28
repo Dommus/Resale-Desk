@@ -1,0 +1,72 @@
+{% extends "layout.html" %}
+{% block title %}Purchase #{{ purchase.id }}{% endblock %}
+{% block content %}
+
+<div class="d-flex justify-content-between align-items-start mb-3">
+    <div>
+        <h3 class="mb-1">Purchase #{{ purchase.id }}</h3>
+        <p class="text-muted mb-0">
+            {{ purchase.date }} &middot; {{ purchase.seller or "Unknown seller" }} &middot; {{ purchase.platform or "-" }}
+            &middot; <span class="badge bg-secondary">{{ purchase.purchase_type|capitalize }}</span>
+        </p>
+    </div>
+    <a href="{{ url_for('add_items', purchase_id=purchase.id) }}" class="btn btn-outline-primary btn-sm">
+        <i class="bi bi-plus-lg"></i> Add more items
+    </a>
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-md-3">
+        <div class="card card-kpi"><div class="card-body">
+            <div class="kpi-label">Purchase Price</div>
+            <div class="kpi-value">€{{ "%.2f"|format(purchase.purchase_price) }}</div>
+        </div></div>
+    </div>
+    <div class="col-md-3">
+        <div class="card card-kpi"><div class="card-body">
+            <div class="kpi-label">Shipping</div>
+            <div class="kpi-value">€{{ "%.2f"|format(purchase.shipping_cost) }}</div>
+        </div></div>
+    </div>
+    <div class="col-md-3">
+        <div class="card card-kpi"><div class="card-body">
+            <div class="kpi-label">Total Cost</div>
+            <div class="kpi-value">€{{ "%.2f"|format(purchase.total_cost) }}</div>
+        </div></div>
+    </div>
+    <div class="col-md-3">
+        <div class="card card-kpi"><div class="card-body">
+            <div class="kpi-label">Allocated</div>
+            <div class="kpi-value">€{{ "%.2f"|format(purchase.allocated_total) }}</div>
+        </div></div>
+    </div>
+</div>
+
+{% if purchase.notes %}
+<p><strong>Notes:</strong> {{ purchase.notes }}</p>
+{% endif %}
+
+<div class="card shadow-sm">
+    <div class="card-body">
+        <h6 class="card-title">Items from this Purchase</h6>
+        <table class="table align-middle">
+            <thead><tr><th>Inventory ID</th><th>Name</th><th>Category</th><th>Allocated Cost</th><th>Status</th><th></th></tr></thead>
+            <tbody>
+                {% for item in purchase.items %}
+                <tr>
+                    <td><code class="inv-code">{{ item.inventory_code }}</code></td>
+                    <td>{{ item.name }}</td>
+                    <td>{{ item.category or "-" }}</td>
+                    <td>€{{ "%.2f"|format(item.allocated_cost) }}</td>
+                    <td><span class="badge status-badge-{{ item.status|replace(' ', '-') }}">{{ item.status }}</span></td>
+                    <td class="text-end"><a href="{{ url_for('view_item', item_id=item.id) }}" class="btn btn-sm btn-outline-primary">View</a></td>
+                </tr>
+                {% else %}
+                <tr><td colspan="6" class="text-center text-muted py-3">No items added yet.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+{% endblock %}
