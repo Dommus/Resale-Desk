@@ -14,11 +14,11 @@
                 </div>
                 <div class="col-md-4">
                     <label class="form-label">Seller</label>
-                    <input type="text" class="form-control" name="seller" placeholder="e.g. car boot sale, Vinted user...">
+                    <input type="text" class="form-control" name="seller" placeholder="e.g. livestream, Vinted user...">
                 </div>
                 <div class="col-md-4">
                     <label class="form-label">Platform / Source</label>
-                    <input type="text" class="form-control" name="platform" placeholder="e.g. Facebook Marketplace">
+                    <input type="text" class="form-control" name="platform" placeholder="e.g. Vinted...">
                 </div>
 
                 <div class="col-md-4">
@@ -40,6 +40,15 @@
                 <div class="col-12">
                     <label class="form-label">Purchase Notes</label>
                     <textarea class="form-control" name="notes" rows="2"></textarea>
+                </div>
+
+                <div class="col-12">
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="addItemsToggle" checked>
+                        <label class="form-check-label" for="addItemsToggle">
+                            Add Items
+                        </label>
+                    </div>
                 </div>
             </div>
 
@@ -77,7 +86,7 @@
                 </div>
             </div>
 
-            <button type="submit" class="btn btn-primary mt-4" id="submitBtn">Save Item</button>
+            <button type="submit" class="btn btn-primary mt-4" id="submitBtn">Save Purchase with Items</button>
         </form>
     </div>
 </div>
@@ -87,17 +96,20 @@
 {% block scripts %}
 <script>
 const typeSelect = document.querySelector('select[name="purchase_type"]');
+const addItemsToggle = document.getElementById('addItemsToggle');
 const singleFields = document.getElementById('singleItemFields');
 const nameInput = document.getElementById('itemNameInput');
 const submitBtn = document.getElementById('submitBtn');
 
 function toggleSingleFields() {
-    const isSingle = typeSelect.value === 'single';
-    singleFields.classList.toggle('d-none', !isSingle);
-    nameInput.required = isSingle;
-    submitBtn.textContent = isSingle ? 'Save Item' : 'Continue to Add Items';
+    const shouldShowDetails = addItemsToggle.checked && typeSelect.value === 'single';
+    singleFields.classList.toggle('d-none', !shouldShowDetails);
+    nameInput.required = shouldShowDetails;
+    submitBtn.textContent = shouldShowDetails ? 'Save Purchase with Items' : 'Save Purchase';
 }
+
 typeSelect.addEventListener('change', toggleSingleFields);
+addItemsToggle.addEventListener('change', toggleSingleFields);
 toggleSingleFields();
 </script>
 {% endblock %}

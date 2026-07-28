@@ -20,7 +20,7 @@ app = Flask(__name__)
 # https://flask-sqlalchemy.readthedocs.io/en/stable/config/
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///database.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-app.config['SQLALCHEMY_ECHO'] = True
+app.config['SQLALCHEMY_ECHO'] = False # 'True' for debugging SQL queries
 app.secret_key = '4815_THISisCS50_162342'
 
 # Login Manager
@@ -39,6 +39,7 @@ def load_user(user_id):
 # #################
 # FUTURE FEATURES:
 # CSV import feature
+# Change currency symbol all throughout the app
 # ########################
 
 
@@ -166,7 +167,37 @@ def purchases():
 def new_purchase():
 
     if request.method == 'POST':
-        return
+
+        # Get data from request
+        purchase_type = request.form.get('purchase_type')
+        print('Purchase type is '+ purchase_type)
+
+        purchase = Purchase(
+            user_id = current_user.id,
+            date = parse_date(request.form.get('date')),
+            seller = request.form.get('seller', '').strip(),
+            platform = request.form.get('platform', '').strip(),
+            purchase_type = purchase_type,
+            purchase_price = parse_float(request.form.get('purchase_price')),
+            shipping_cost = parse_float(request.form.get('shipping_cost')),
+            notes = request.form.get("notes", "").strip(),
+        )
+
+        db.session.add(purchase)
+        db.session.flush()
+
+        # Begin proccessing purchase
+        if purchase_type == 'single':
+            db.session.commit()
+            print('BEGIN SINGLE PURCHASE')
+
+        elif purchase_type == 'bundle':
+            print('BEGIN BUNDLE PURCHASE')
+            db.session.commit()
+        else:
+            print('ERROR: NO PURCHASE TYPE SELECTED')
+            flash('Select a purchase type', 'danger')
+    
 
     # Exported variables
     shelves = (
