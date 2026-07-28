@@ -1,0 +1,40 @@
+{% extends "layout.html" %}
+{% block title %}Settings{% endblock %}
+{% block content %}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h3 class="mb-0">User Settings</h3>
+</div>
+
+<div class="row g-4">
+    <div class="col-lg-6">
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <h6 class="card-title">Display preferences</h6>
+                <label class="form-label" for="currencySelect">Currency</label>
+                <select class="form-select" id="currencySelect">
+                    <option value="EUR">Euro (€)</option>
+                    <option value="USD">US Dollar ($)</option>
+                    <option value="GBP">British Pound (£)</option>
+                </select>
+                <p class="text-muted small mt-2 mb-0">This is purely cosmetic and won't do currency conversion.</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-6">
+        <div class="card shadow-sm border-danger">
+            <div class="card-body">
+                <h6 class="card-title text-danger">Danger zone</h6>
+                <p class="text-muted mb-3">
+                    This will permanently remove your saved data, including purchases, shelves, and inventory items.
+                </p>
+                <form method="post" action="{{ url_for('delete_database') }}" onsubmit="return confirm('Are you sure you want to delete the database? This cannot be undone.');">
+                    <button type="submit" class="btn btn-outline-danger">Delete database</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
