@@ -5,10 +5,7 @@ from datetime import datetime, date
 from models import db, User, Shelf, Item, Purchase, ItemStatus
 from utilities import login_manager, parse_date, parse_float
 
-
 from flask import Flask, render_template, request, redirect, url_for, flash
-# from sqlalchemy import create_engine
-from flask_sqlalchemy import SQLAlchemy
 from flask_login import login_user, logout_user, login_required, current_user
 from sqlalchemy import func, or_
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -43,7 +40,7 @@ def load_user(user_id):
 
 # #################
 # FUTURE FEATURES:
-# CSV import feature
+# CSV import & export feature
 # Change currency symbol all throughout the app
 # ########################
 
@@ -193,6 +190,12 @@ def purchases():
 @login_required
 def new_purchase():
 
+    # Exported variables
+    shelves = (
+        Shelf.query.filter_by(user_id=current_user.id).order_by(Shelf.name.desc()).all()
+    )
+    today = date.today().isoformat()
+
     if request.method == 'POST':
 
         # Get data from request
@@ -207,30 +210,58 @@ def new_purchase():
             purchase_type = purchase_type,
             purchase_price = parse_float(request.form.get('purchase_price')),
             shipping_cost = parse_float(request.form.get('shipping_cost')),
-            notes = request.form.get("notes", "").strip(),
+            notes = request.form.get("purchaseNotes", "").strip(),
         )
 
         db.session.add(purchase)
         db.session.flush()
 
+        # Get item data
+        checked_add_items = request.form.get('addItemsToggle') is not None
+        def process_items():
+            name = request.form.get('itemName','')
+            if not name:
+                db.session.rollback()
+                flash('Item name is required.', 'danger')
+                return render_template ("purchases/purchases_new.html", today=today, shelves=shelves)
+            
+            item = Item(
+                user_id = current_user.id,
+                purchase_id = purchase.id,
+                shelf_id = request.form.get('shelf_id', '') or None,
+                name = name,
+                category = request.form.get('category', '').strip() or None,
+                condition = request.form.get('condition', '').strip() or None, # !!!Check if leaving it blank will actually return None
+                brand = request.form.get('brand', '').strip() or None,
+                status = 'IN_STORAGE',
+                notes = request.form.get('itemNotes', '').strip() or None,
+                allocated_cost = purchase.total_cost,
+
+            )
+
+            db.session.add(item)
+            db.session.flush()
+
         # Begin proccessing purchase
         if purchase_type == 'single':
-            db.session.commit()
-            print('BEGIN SINGLE PURCHASE')
+            if checked_add_items:
+                process_items()
+                db.session.commit()
+            else:
+                db.session.commit()
 
-        elif purchase_type == 'bundle':
-            print('BEGIN BUNDLE PURCHASE')
+        elif purchase_type == 'bundle': #FINISH IMPLEMENTING THIS LATER, CURRENTLY WORKS THE SAME AS SINGLE ITEM
+            if checked_add_items:
+                process_items()
+                db.session.commit()
             db.session.commit()
         else:
             print('ERROR: NO PURCHASE TYPE SELECTED')
             flash('Select a purchase type', 'danger')
-    
 
-    # Exported variables
-    shelves = (
-        Shelf.query.filter_by(user_id=current_user.id).order_by(Shelf.name.desc()).all()
-    )
-    today = date.today().isoformat()
+        render_template ("purchases/purchases_new.html", today=today, shelves=shelves)
+
+    
     return render_template ("purchases/purchases_new.html", today=today, shelves=shelves)
 
 
