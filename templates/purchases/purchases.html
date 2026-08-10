@@ -23,7 +23,7 @@
                     <td>{{ p.date }}</td>
                     <td>{{ p.seller or "-" }}</td>
                     <td>{{ p.platform or "-" }}</td>
-                    <td><span class="badge bg-secondary">{{ p.purchase_type|capitalize }}</span></td>
+                    <td><span class="badge bg-secondary">{{ p.purchase_type.value|capitalize }}</span></td>
                     <td>€{{ "%.2f"|format(p.total_cost) }}</td>
                     <td>{{ p.items|length }}</td>
                     <td class="text-end">

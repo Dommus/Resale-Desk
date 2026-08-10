@@ -24,6 +24,11 @@ class ItemStatus(Enum):
     WAITING = 'Waiting'
     REFUNDED = 'Refunded'
     IN_STORAGE = 'In Storage'
+    RESERVED = 'Reserved'
+
+class PurchaseType(Enum):
+    SINGLE = 'Single'
+    BUNDLE = 'Bundle'
 
 
 class User(UserMixin, db.Model):
@@ -65,7 +70,7 @@ class Purchase(db.Model):
     date: Mapped[datetime_date] = mapped_column(nullable=False, default=datetime_date.today)
     seller: Mapped[Optional[str]] = mapped_column(String(128))
     platform: Mapped[Optional[str]] = mapped_column(String(64))
-    purchase_type: Mapped[str] = mapped_column(String(32), nullable=False, default="single")
+    purchase_type: Mapped[PurchaseType] = mapped_column(SQLEnum(PurchaseType), nullable=False, default=PurchaseType.SINGLE)
     purchase_price: Mapped[float] = mapped_column(nullable=False, default=0.0)
     shipping_cost: Mapped[float] = mapped_column(nullable=False, default=0.0)
     notes: Mapped[Optional[str]] = mapped_column(String(5120))
@@ -102,6 +107,7 @@ class Item(db.Model):
     owner: Mapped["User"] = relationship("User", back_populates="items")
     purchase: Mapped["Purchase"] = relationship("Purchase", back_populates="items")
     shelf: Mapped[Optional["Shelf"]] = relationship("Shelf", back_populates="items")
+    listings = db.relationship("Listing", backref="item", lazy=True, cascade="all, delete-orphan")
 
     def generate_code(self):
         self.inventory_code = f"INV-{self.id:06d}"
@@ -111,3 +117,16 @@ class Item(db.Model):
         end = self.sale.sale_date if self.sale else datetime_date.today
         start = self.created_at.date() if self.created_at else end
         return (end - start).days
+
+class Listing(db.Model):
+    __tablename__ = "listings"
+
+    id = db.Column(db.Integer, primary_key=True)
+    item_id = db.Column(db.Integer, db.ForeignKey("items.id"), nullable=False)
+
+    platform = db.Column(db.String(80), nullable=False)
+    listing_id = db.Column(db.String(120), nullable=False)
+    listing_url = db.Column(db.String(500))
+    listing_price = db.Column(db.Float)
+    date_listed = db.Column(db.Date, default=datetime.utcnow)
+    status = db.Column(db.String(20), nullable=False, default="Active")  # Active/Sold/Removed/Expired

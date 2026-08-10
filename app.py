@@ -2,7 +2,7 @@ import os
 from datetime import datetime, date
 
 # Imports from local python files
-from models import db, User, Shelf, Item, Purchase, ItemStatus
+from models import db, User, Shelf, Item, Purchase, ItemStatus, PurchaseType, Listing
 from utilities import login_manager, parse_date, parse_float
 
 from flask import Flask, render_template, request, redirect, url_for, flash
@@ -119,62 +119,73 @@ def index():
 @app.route('/inventory', methods=['GET', 'POST'])
 @login_required
 def inventory():
-    if request.method == 'POST':
-        name = request.form.get('name', '').strip()
-        purchase_id = request.form.get('purchase_id', type=int)
-        if not name:
-            flash('Please provide an item name.', 'danger')
-        elif not purchase_id:
-            flash('Choose a purchase before adding an item.', 'danger')
-        else:
-            status_name = request.form.get('status', 'ON_SALE')
-            status = ItemStatus[status_name] if status_name in ItemStatus.__members__ else ItemStatus.ON_SALE
-            item = Item(
-                user_id=current_user.id,
-                name=name,
-                category=request.form.get('category', '').strip() or None,
-                condition=request.form.get('condition', '').strip() or None,
-                code=request.form.get('code', '').strip() or None,
-                brand=request.form.get('brand', '').strip() or None,
-                status=status,
-                purchase_id=purchase_id,
-                shelf_id=request.form.get('shelf_id', type=int) or None,
-            )
-            db.session.add(item)
-            db.session.commit()
-            flash('Item added to inventory.', 'success')
-        return redirect(url_for('inventory'))
+    query = Item.query.filter_by(user_id=current_user.id)
 
-    query = request.args.get('q', '').strip()
-    shelf_id = request.args.get('shelf_id', type=int)
-
-    inventory_query = Item.query.filter_by(user_id=current_user.id)
-    if shelf_id:
-        inventory_query = inventory_query.filter_by(shelf_id=shelf_id)
-    if query:
-        search_pattern = f'%{query}%'
-        inventory_query = inventory_query.filter(
+    q = request.args.get("q", "").strip()
+    if q:
+        query = query.outerjoin(Listing).filter(
             or_(
-                Item.name.ilike(search_pattern),
-                Item.category.ilike(search_pattern),
-                Item.brand.ilike(search_pattern),
-                Item.code.ilike(search_pattern),
+                Item.inventory_code.ilike(f"%{q}%"),
+                Item.name.ilike(f"%{q}%"),
+                Listing.listing_id.ilike(f"%{q}%"),
             )
-        )
+        ).distinct()
 
-    items = inventory_query.order_by(Item.created_at.desc()).all()
-    shelves = Shelf.query.filter_by(user_id=current_user.id).order_by(Shelf.name).all()
-    purchases = Purchase.query.filter_by(user_id=current_user.id).order_by(Purchase.date.desc()).all()
+    status = request.args.get("status")
+    if status:
+        try:
+            status_enum = ItemStatus(status)
+        except ValueError:
+            status_enum = None
+            flash('Status returned None', 'danger')
+
+        print(f'status_enum is {status_enum}')
+        if status_enum is not None:
+            query = query.filter(Item.status == status_enum)
+            print(f'QUERY: {query}')
+
+    shelf_id = request.args.get("shelf_id")
+    if shelf_id:
+        query = query.filter(Item.shelf_id == int(shelf_id))
+
+    category = request.args.get("category")
+    if category:
+        query = query.filter(Item.category == category)
+
+    sort = request.args.get("sort", "newest")
+    if sort == "oldest":
+        query = query.order_by(Item.created_at.asc())
+    else:
+        query = query.order_by(Item.created_at.desc())
+
+    results = query.all()
+
+    if sort == "highest_profit":
+        results.sort(key=lambda i: (i.sale.profit if i.sale else float("-inf")), reverse=True)
+    elif sort == "lowest_profit":
+        results.sort(key=lambda i: (i.sale.profit if i.sale else float("inf")))
+
+    shelves_list = Shelf.query.filter_by(user_id=current_user.id).order_by(Shelf.name).all()
+    categories = sorted({i.category for i in Item.query.filter_by(user_id=current_user.id) if i.category})
+
     return render_template(
-        'inventory/inventory.html',
-        items=items,
-        shelves=shelves,
-        purchases=purchases,
-        selected_shelf_id=shelf_id,
-        search_query=query,
+        "inventory/inventory.html",
+        items=results,
+        shelves=shelves_list,
+        categories=categories,
+        q=q,
+        status=status,
+        shelf_id=shelf_id,
+        category=category,
+        sort=sort,
     )
 
-# @app.route("/inventory/<int:item_id>")
+@app.route("/items/<int:item_id>")
+@login_required
+def view_item(item_id):
+    item = Item.query.filter_by(id=item_id, user_id=current_user.id).first_or_404()
+    shelves_list = Shelf.query.filter_by(user_id=current_user.id).order_by(Shelf.name).all()
+    return render_template("inventory/inventory_view.html", item=item, shelves=shelves_list)
 
 
 # PURCHASES
@@ -198,9 +209,22 @@ def new_purchase():
 
     if request.method == 'POST':
 
-        # Get data from request
-        purchase_type = request.form.get('purchase_type')
-        print('Purchase type is '+ purchase_type)
+        # Validate the purchase type
+        purchase_type_raw = request.form.get('purchase_type', '').strip()
+        purchase_type = None
+        # Loop through values to validate each
+        for enum_value in PurchaseType:
+            print(f'checking enum_value {enum_value}')
+            if enum_value.value.lower() == purchase_type_raw.lower():
+                purchase_type = enum_value
+                print(f'purchase_type is {purchase_type}')
+                break
+
+        if purchase_type is None:
+            flash('Invalid purchase type', 'danger')
+            return "Invalid purchase type submitted", 400
+
+        print(f'Purchase type is {purchase_type.value}')
 
         purchase = Purchase(
             user_id = current_user.id,
@@ -219,7 +243,8 @@ def new_purchase():
         # Get item data
         checked_add_items = request.form.get('addItemsToggle') is not None
         def process_items():
-            name = request.form.get('itemName','')
+            name = request.form.get('itemName','').strip()
+            shelf_id = request.form.get('shelf_id')
             if not name:
                 db.session.rollback()
                 flash('Item name is required.', 'danger')
@@ -228,29 +253,28 @@ def new_purchase():
             item = Item(
                 user_id = current_user.id,
                 purchase_id = purchase.id,
-                shelf_id = request.form.get('shelf_id', '') or None,
+                shelf_id = int(shelf_id) if shelf_id else None,
                 name = name,
                 category = request.form.get('category', '').strip() or None,
                 condition = request.form.get('condition', '').strip() or None, # !!!Check if leaving it blank will actually return None
                 brand = request.form.get('brand', '').strip() or None,
-                status = 'IN_STORAGE',
+                status = ItemStatus.IN_STORAGE,
                 notes = request.form.get('itemNotes', '').strip() or None,
                 allocated_cost = purchase.total_cost,
-
             )
 
             db.session.add(item)
             db.session.flush()
 
         # Begin proccessing purchase
-        if purchase_type == 'single':
+        if purchase_type == PurchaseType.SINGLE:
             if checked_add_items:
                 process_items()
                 db.session.commit()
             else:
                 db.session.commit()
 
-        elif purchase_type == 'bundle': #FINISH IMPLEMENTING THIS LATER, CURRENTLY WORKS THE SAME AS SINGLE ITEM
+        elif purchase_type == PurchaseType.BUNDLE: #FINISH IMPLEMENTING THIS LATER, CURRENTLY WORKS THE SAME AS SINGLE ITEM
             if checked_add_items:
                 process_items()
                 db.session.commit()

@@ -2,128 +2,91 @@
 {% block title %}Inventory{% endblock %}
 {% block content %}
 
-<div class="d-flex justify-content-between align-items-center mb-3">
-    <h3 class="mb-0">Inventory</h3>
-    <a class="btn btn-outline-primary btn-sm" href="{{ url_for('inventory') }}">Reset filters</a>
+<h3 class="mb-3">Inventory</h3>
+
+<div class="card shadow-sm mb-3">
+    <div class="card-body">
+        <form method="get" class="row g-2 align-items-end">
+            <div class="col-md-3">
+                <label class="form-label small mb-1">Search</label>
+                <input type="text" class="form-control form-control-sm" name="q" value="{{ q }}" placeholder="Name, Inventory ID, Listing ID">
+            </div>
+            <div class="col-md-2">
+                <label class="form-label small mb-1">Status</label>
+                <select class="form-select form-select-sm" name="status">
+                    <option value="">All</option>
+                    {% for s in ["On Sale", "In Storage", "Reserved", "Sold"] %}
+                    <option value="{{ s }}" {% if status == s %}selected{% endif %}>{{ s }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label small mb-1">Shelf</label>
+                <select class="form-select form-select-sm" name="shelf_id">
+                    <option value="">All</option>
+                    {% for shelf in shelves %}
+                    <option value="{{ shelf.id }}" {% if shelf_id == shelf.id|string %}selected{% endif %}>{{ shelf.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label small mb-1">Category</label>
+                <select class="form-select form-select-sm" name="category">
+                    <option value="">All</option>
+                    {% for c in categories %}
+                    <option value="{{ c }}" {% if category == c %}selected{% endif %}>{{ c }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label small mb-1">Sort</label>
+                <select class="form-select form-select-sm" name="sort">
+                    <option value="newest" {% if sort == "newest" %}selected{% endif %}>Newest</option>
+                    <option value="oldest" {% if sort == "oldest" %}selected{% endif %}>Oldest</option>
+                    <option value="highest_profit" {% if sort == "highest_profit" %}selected{% endif %}>Highest Profit</option>
+                    <option value="lowest_profit" {% if sort == "lowest_profit" %}selected{% endif %}>Lowest Profit</option>
+                </select>
+            </div>
+            <div class="col-md-1">
+                <button class="btn btn-primary btn-sm w-100" type="submit">Go</button>
+            </div>
+        </form>
+    </div>
 </div>
 
-<div class="row g-4">
-    <div class="col-lg-4">
-        <div class="card shadow-sm">
-            <div class="card-body">
-                <h6 class="card-title">Add an item</h6>
-                <form method="post">
-                    <div class="mb-2">
-                        <label class="form-label">Name</label>
-                        <input type="text" class="form-control" name="name" required>
-                    </div>
-                    <div class="row g-2">
-                        <div class="col-md-6 mb-2">
-                            <label class="form-label">Category</label>
-                            <input type="text" class="form-control" name="category">
-                        </div>
-                        <div class="col-md-6 mb-2">
-                            <label class="form-label">Brand</label>
-                            <input type="text" class="form-control" name="brand">
-                        </div>
-                    </div>
-                    <div class="row g-2">
-                        <div class="col-md-6 mb-2">
-                            <label class="form-label">Condition</label>
-                            <input type="text" class="form-control" name="condition">
-                        </div>
-                        <div class="col-md-6 mb-2">
-                            <label class="form-label">Code</label>
-                            <input type="text" class="form-control" name="code">
-                        </div>
-                    </div>
-                    <div class="mb-2">
-                        <label class="form-label">Status</label>
-                        <select class="form-select" name="status">
-                            <option value="ON_SALE">On Sale</option>
-                            <option value="SOLD">Sold</option>
-                            <option value="NOT_SOLD">Not Sold</option>
-                            <option value="WAITING">Waiting</option>
-                            <option value="REFUNDED">Refunded</option>
-                        </select>
-                    </div>
-                    <div class="mb-2">
-                        <label class="form-label">Purchase</label>
-                        <select class="form-select" name="purchase_id" required>
-                            <option value="">Select a purchase</option>
-                            {% for purchase in purchases %}
-                            <option value="{{ purchase.id }}">{{ purchase.date }} · {{ purchase.seller or 'Unknown seller' }}</option>
-                            {% endfor %}
-                        </select>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Shelf</label>
-                        <select class="form-select" name="shelf_id">
-                            <option value="">No shelf</option>
-                            {% for shelf in shelves %}
-                            <option value="{{ shelf.id }}">{{ shelf.name }}</option>
-                            {% endfor %}
-                        </select>
-                    </div>
-                    <button class="btn btn-primary" type="submit">Add item</button>
-                </form>
-            </div>
-        </div>
-    </div>
-
-    <div class="col-lg-8">
-        <div class="card shadow-sm">
-            <div class="card-body">
-                <form class="row g-2 align-items-end" method="get">
-                    <div class="col-md-7">
-                        <label class="form-label">Search</label>
-                        <input type="text" class="form-control" name="q" value="{{ search_query }}" placeholder="Find by name, brand, code, or category">
-                    </div>
-                    <div class="col-md-3">
-                        <label class="form-label">Shelf</label>
-                        <select class="form-select" name="shelf_id">
-                            <option value="">All shelves</option>
-                            {% for shelf in shelves %}
-                            <option value="{{ shelf.id }}" {% if selected_shelf_id == shelf.id %}selected{% endif %}>{{ shelf.name }}</option>
-                            {% endfor %}
-                        </select>
-                    </div>
-                    <div class="col-md-2">
-                        <button class="btn btn-outline-secondary w-100" type="submit">Filter</button>
-                    </div>
-                </form>
-
-                <div class="table-responsive mt-3">
-                    <table class="table table-sm align-middle">
-                        <thead>
-                            <tr>
-                                <th>Name</th>
-                                <th>Brand</th>
-                                <th>Status</th>
-                                <th>Shelf</th>
-                                <th>Code</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for item in items %}
-                            <tr>
-                                <td>
-                                    <strong>{{ item.name }}</strong><br>
-                                    <small class="text-muted">{{ item.category or 'Uncategorized' }}</small>
-                                </td>
-                                <td>{{ item.brand or '—' }}</td>
-                                <td><span class="badge rounded-pill bg-light text-dark">{{ item.status.value }}</span></td>
-                                <td>{{ item.shelf.name if item.shelf else '—' }}</td>
-                                <td>{{ item.code or '—' }}</td>
-                            </tr>
-                            {% else %}
-                            <tr><td colspan="5" class="text-muted text-center py-3">No inventory items yet.</td></tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
+<div class="card shadow-sm">
+    <div class="card-body">
+        <table class="table table-hover align-middle">
+            <thead>
+                <tr><th>ID</th><th>Item Code</th><th>Name</th><th>Category</th><th>Shelf</th><th>Status</th><th>Cost</th><th>Profit</th><th>Date Added</th></tr>
+            </thead>
+            <tbody>
+                {% for item in items %}
+                <tr>
+                    <td><code class="inv-code">{{ item.id }}</code></td>
+                    <td><code class="inv-code">{{ item.code or 'No Code Assigned' }}</code></td>
+                    <td>{{ item.name }}</td>
+                    <td>{{ item.category or "-" }}</td>
+                    <td>{{ item.shelf.name if item.shelf else "-" }}</td>
+                    <td><span class="badge status-badge-{{ item.status|replace(' ', '-') }}">{{ item.status.value }}</span></td>
+                    <td>€{{ "%.2f"|format(item.allocated_cost) }}</td>
+                    <td>
+                        {% if item.sale %}
+                            <span class="{{ 'text-success' if item.sale.profit >= 0 else 'text-danger' }}">
+                                €{{ "%.2f"|format(item.sale.profit) }}
+                            </span>
+                        {% else %}
+                            <span class="text-muted">-</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ item.created_at.strftime('%Y-%m-%d') }}</td>
+                    <td class="text-end"><a href="{{ url_for('view_item', item_id=item.id) }}" class="btn btn-sm btn-outline-primary">View</a></td>
+                </tr>
+                {% else %}
+                <tr><td colspan="8" class="text-center text-muted py-4">No items match your filters.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
     </div>
 </div>
 
