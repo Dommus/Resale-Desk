@@ -7,7 +7,7 @@ from utilities import login_manager, parse_date, parse_float
 
 from flask import Flask, render_template, request, redirect, url_for, flash
 from flask_login import login_user, logout_user, login_required, current_user
-from sqlalchemy import func, or_
+from sqlalchemy import func, or_, cast, String
 from werkzeug.security import generate_password_hash, check_password_hash
 
 
@@ -125,8 +125,9 @@ def inventory():
     if q:
         query = query.outerjoin(Listing).filter(
             or_(
-                Item.inventory_code.ilike(f"%{q}%"),
                 Item.name.ilike(f"%{q}%"),
+                cast(Item.id, String).ilike(f"%{q}%"),
+                Item.category.ilike(f"%{q}%"),
                 Listing.listing_id.ilike(f"%{q}%"),
             )
         ).distinct()

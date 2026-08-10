@@ -6,7 +6,7 @@
 
 <div class="card shadow-sm mb-3">
     <div class="card-body">
-        <form method="get" class="row g-2 align-items-end">
+        <form id="inventory-filters" method="get" class="row g-2 align-items-end">
             <div class="col-md-3">
                 <label class="form-label small mb-1">Search</label>
                 <input type="text" class="form-control form-control-sm" name="q" value="{{ q }}" placeholder="Name, Inventory ID, Listing ID">
@@ -48,7 +48,7 @@
                 </select>
             </div>
             <div class="col-md-1">
-                <button class="btn btn-primary btn-sm w-100" type="submit">Go</button>
+                <button class="btn btn-secondary btn-sm w-100" type="button" id="inventory-reset">Reset</button>
             </div>
         </form>
     </div>
@@ -90,4 +90,92 @@
     </div>
 </div>
 
+{% endblock %}
+
+{% block scripts %}
+<script>
+// AI code
+// I wanted live search functionaility to make it a bit nicer to filter the inventory
+// As I'm focusing more on Python in this project, I decided it would've taken a bit too much time to figure this one out by myself
+// Made sure it has plenty of detailed comments, to prevent 'magical' code I don't understand
+
+// Wait until the HTML page has loaded
+document.addEventListener('DOMContentLoaded', function () {
+    // stop if script is used on something without a form
+    const form = document.getElementById('inventory-filters');
+    if (!form) {
+        return;
+    }
+
+    // Find the search box and all dropdowns
+    const searchInput = form.querySelector('input[name="q"]');
+    const selects = form.querySelectorAll('select');
+    const resetButton = document.getElementById('inventory-reset');
+
+    // Stores the timer used to delay the search while the user types.
+    let debounceTimer;
+
+    // The key is removed as soon as focus has been restored.
+    const restoreSearchFocusKey = 'inventory-restore-search-focus';
+
+    // Turn the current form values into URL parameters, such as ?q=book&status=Sold.
+    function buildQueryString() {
+        const params = new URLSearchParams();
+        const formData = new FormData(form);
+
+        // Only include fields that have a value, so the URL stays short and readable.
+        for (const [key, value] of formData.entries()) {
+            if (value) {
+                params.set(key, value);
+            }
+        }
+
+        return params.toString();
+    }
+
+    // Reload the page with the selected filters in the URL.
+    // Flask reads these URL parameters and returns the matching inventory items.
+    function updateResults() {
+        const queryString = buildQueryString();
+        const newUrl = queryString ? `${window.location.pathname}?${queryString}` : window.location.pathname;
+        window.location.href = newUrl;
+    }
+
+    if (searchInput) {
+        // A page reload normally removes focus from the search box. Restore it
+        // when the reload was caused by typing in the search box.
+        if (sessionStorage.getItem(restoreSearchFocusKey) === 'true') {
+            sessionStorage.removeItem(restoreSearchFocusKey);
+            searchInput.focus();
+            // Put the cursor after the existing text so typing can continue naturally.
+            searchInput.setSelectionRange(searchInput.value.length, searchInput.value.length);
+        }
+
+        // The input event runs whenever the user adds, removes, or changes text.
+        searchInput.addEventListener('input', function () {
+            // Remember why the page is about to reload, so focus can be restored.
+            sessionStorage.setItem(restoreSearchFocusKey, 'true');
+
+            // Cancel the previous timer. This prevents a search for every keystroke.
+            clearTimeout(debounceTimer);
+
+            // Wait 300 milliseconds after the last keystroke before searching.
+            debounceTimer = setTimeout(updateResults, 300);
+        });
+    }
+
+    // Changing any dropdown updates the results immediately.
+    selects.forEach(function (select) {
+        select.addEventListener('change', updateResults);
+    });
+
+    // Remove all URL parameters to restore the default search options.
+    if (resetButton) {
+        resetButton.addEventListener('click', function () {
+            sessionStorage.removeItem(restoreSearchFocusKey);
+            window.location.href = window.location.pathname;
+        });
+    }
+});
+</script>
 {% endblock %}
