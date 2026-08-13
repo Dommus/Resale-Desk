@@ -69,6 +69,28 @@ code.inv-code {
     border-radius: 0.35rem;
 }
 
+.bundle-add-row {
+    cursor: pointer;
+}
+
+.bundle-add-row td {
+    background-color: var(--bs-tertiary-bg);
+    border: 2px dashed var(--bs-border-color) !important;
+    color: var(--bs-secondary-color);
+    transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.bundle-add-row:hover td,
+.bundle-add-row:focus td {
+    background-color: var(--bs-secondary-bg);
+    color: var(--bs-body-color);
+}
+
+.bundle-add-row:focus {
+    outline: 2px solid var(--bs-primary);
+    outline-offset: 2px;
+}
+
 .auth-card {
     max-width: 420px;
     margin: 4rem auto;

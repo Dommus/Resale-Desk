@@ -92,6 +92,14 @@ class Purchase(db.Model):
     def allocated_total(self):
         return round(sum(i.allocated_cost or 0 for i in self.items), 2)
 
+    # Sums revenue across the purchase's sold items and subtracts total cost of all items associated with it
+    @property
+    def profit(self):
+        total_revenue = sum(
+            item.sale.net_revenue for item in self.items if item.sale is not None
+        )
+        return round(sum(i.allocated_cost or 0 for i in self.items), 2)
+
 class Item(db.Model):
     __tablename__ = "items"
 
@@ -113,12 +121,15 @@ class Item(db.Model):
     )
     notes: Mapped[Optional[str]] = mapped_column(String(5120))
     created_at: Mapped[datetime] = mapped_column(server_default=func.now())
-    allocated_cost: Mapped[float] = mapped_column(nullable=False, default=0)
+    allocated_cost: Mapped[float] = mapped_column(default=0) #RENAME THIS TO JUST COST
 
     owner: Mapped["User"] = relationship("User", back_populates="items")
     purchase: Mapped["Purchase"] = relationship("Purchase", back_populates="items")
     shelf: Mapped[Optional["Shelf"]] = relationship("Shelf", back_populates="items")
+
     listings = db.relationship("Listing", backref="item", lazy=True, cascade="all, delete-orphan")
+    sale = db.relationship("Sale", backref="item", uselist=False, cascade="all, delete-orphan")
+
 
     def generate_code(self):
         self.inventory_code = f"INV-{self.id:06d}"
@@ -128,6 +139,51 @@ class Item(db.Model):
         end = self.sale.sale_date if self.sale else datetime_date.today
         start = self.created_at.date() if self.created_at else end
         return (end - start).days
+
+class Sale(db.Model):
+    __tablename__ = "sales"
+
+    id = db.Column(db.Integer, primary_key=True)
+    item_id = db.Column(db.Integer, db.ForeignKey("items.id"), nullable=False, unique=True)
+    listing_id = db.Column(db.Integer, db.ForeignKey("listings.id"))
+
+    sale_date = db.Column(db.Date, nullable=False, default=datetime_date.today)
+    sale_price = db.Column(db.Float, nullable=False, default=0)
+    shipping_received = db.Column(db.Float, nullable=False, default=0)
+    shipping_paid = db.Column(db.Float, nullable=False, default=0)
+    platform_fee = db.Column(db.Float, nullable=False, default=0)
+    payment_fee = db.Column(db.Float, nullable=False, default=0)
+    notes = db.Column(db.Text)
+
+    listing = db.relationship("Listing", backref="sale")
+
+    @property
+    def gross_revenue(self):
+        return round((self.sale_price or 0) + (self.shipping_received or 0), 2)
+
+    @property
+    def net_revenue(self):
+        return round(
+            self.gross_revenue - (self.shipping_paid or 0) - (self.platform_fee or 0) - (self.payment_fee or 0), 2
+        )
+
+    @property
+    def profit(self):
+        cost = self.item.allocated_cost or 0
+        return round(self.net_revenue - cost, 2)
+
+    @property
+    def roi(self):
+        cost = self.item.allocated_cost or 0
+        if cost <= 0:
+            return None
+        return round((self.profit / cost) * 100, 1)
+
+    @property
+    def margin(self):
+        if self.gross_revenue <= 0:
+            return None
+        return round((self.profit / self.gross_revenue) * 100, 1)
 
 class Listing(db.Model):
     __tablename__ = "listings"
