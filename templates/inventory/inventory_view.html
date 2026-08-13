@@ -7,7 +7,7 @@
         <h3 class="mb-1">{{ item.name }}</h3>
         <p class="text-muted mb-0">
             <code class="inv-code">{{ item.inventory_code }}</code>
-            &middot; <span class="badge status-badge-{{ item.status|replace(' ', '-') }}">{{ item.status }}</span>
+            &middot; <span class="badge status-badge-{{ item.status.value|replace(' ', '-') }}">{{ item.status.value }}</span>
             &middot; Shelf: {{ item.shelf.name if item.shelf else "Unassigned" }}
         </p>
     </div>
@@ -58,7 +58,7 @@
             <div class="card-body">
                 <div class="d-flex justify-content-between align-items-center mb-2">
                     <h6 class="card-title mb-0">Marketplace Listings</h6>
-                    {% if item.status != "Sold" %}
+                    {% if item.status.value != "Sold" %}
                     <a href="{{ url_for('new_listing', item_id=item.id) }}" class="btn btn-sm btn-outline-primary"><i class="bi bi-plus-lg"></i> Add Listing</a>
                     {% endif %}
                 </div>
@@ -76,8 +76,8 @@
                             <td>
                                 <form method="post" action="{{ url_for('update_listing_status', listing_id=l.id) }}" class="d-flex gap-1">
                                     <select name="status" class="form-select form-select-sm" onchange="this.form.submit()" {% if l.status == 'Sold' %}disabled{% endif %}>
-                                        {% for s in ["Active", "Sold", "Removed", "Expired"] %}
-                                        <option value="{{ s }}" {% if l.status == s %}selected{% endif %}>{{ s }}</option>
+                                        {% for status in ListingStatus %}
+                                        <option value="{{ status.value }}" {% if l.status == status.value %}selected{% endif %}>{{ status.value }}</option>
                                         {% endfor %}
                                     </select>
                                 </form>
@@ -156,8 +156,11 @@
                         <div class="col-6">
                             <label class="form-label small">Status</label>
                             <select class="form-select" name="status">
-                                {% for s in ["In Storage", "Listed", "Reserved", "Sold"] %}
-                                <option value="{{ s }}" {% if item.status == s %}selected{% endif %}>{{ s }}</option>
+                                {% for status in ItemStatus %}
+                                    <option value="{{ status.value }}"
+                                            {% if item.status == status %}selected{% endif %}>
+                                        {{ status.value }}
+                                    </option>
                                 {% endfor %}
                             </select>
                         </div>

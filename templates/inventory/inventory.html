@@ -58,18 +58,26 @@
     <div class="card-body">
         <table class="table table-hover align-middle">
             <thead>
-                <tr><th>ID</th><th>Item Code</th><th>Name</th><th>Category</th><th>Shelf</th><th>Status</th><th>Cost</th><th>Profit</th><th>Date Added</th></tr>
+                <tr><th>ID</th><th>Item Code</th><th>Name</th><th>Category</th><th>Shelf</th><th>Status</th><th>Cost</th><th>Profit</th><th>Purchase Date</th></tr>
             </thead>
             <tbody>
                 {% for item in items %}
                 <tr>
+                    <!-- ID -->
                     <td><code class="inv-code">{{ item.id }}</code></td>
+                    <!-- Item Code -->
                     <td><code class="inv-code">{{ item.code or 'No Code Assigned' }}</code></td>
+                    <!-- Name -->
                     <td>{{ item.name }}</td>
+                    <!-- Category -->
                     <td>{{ item.category or "-" }}</td>
+                    <!-- Shelf -->
                     <td>{{ item.shelf.name if item.shelf else "-" }}</td>
-                    <td><span class="badge status-badge-{{ item.status|replace(' ', '-') }}">{{ item.status.value }}</span></td>
+                    <!-- Status -->
+                    <td><span class="badge status-badge-{{ item.status.value|replace(' ', '-') }}">{{ item.status.value }}</span></td>
+                    <!-- Cost -->
                     <td>€{{ "%.2f"|format(item.allocated_cost) }}</td>
+                    <!-- Profit -->
                     <td>
                         {% if item.sale %}
                             <span class="{{ 'text-success' if item.sale.profit >= 0 else 'text-danger' }}">
@@ -79,7 +87,8 @@
                             <span class="text-muted">-</span>
                         {% endif %}
                     </td>
-                    <td>{{ item.created_at.strftime('%Y-%m-%d') }}</td>
+                    <!-- Purchase Date -->
+                    <td>{{ item.purchase.date.strftime('%Y-%m-%d') }}</td>
                     <td class="text-end"><a href="{{ url_for('view_item', item_id=item.id) }}" class="btn btn-sm btn-outline-primary">View</a></td>
                 </tr>
                 {% else %}

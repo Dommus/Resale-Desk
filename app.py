@@ -2,7 +2,7 @@ import os
 from datetime import datetime, date
 
 # Imports from local python files
-from models import db, User, Shelf, Item, Purchase, ItemStatus, PurchaseType, Listing
+from models import db, User, Shelf, Item, Purchase, ItemStatus, PurchaseType, Listing, ListingStatus
 from utilities import login_manager, parse_date, parse_float
 
 from flask import Flask, render_template, request, redirect, url_for, flash
@@ -22,7 +22,7 @@ os.makedirs(os.path.join(BASE_DIR, 'instance'), exist_ok=True)
 # App configs
 app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{DB_PATH}'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-app.config['SQLALCHEMY_ECHO'] = False # 'True' for debugging SQL queries
+app.config['SQLALCHEMY_ECHO'] = False # Set to 'True' for debugging SQL queries
 app.secret_key = '4815_THISisCS50_162342'
 
 # Login Manager
@@ -36,17 +36,20 @@ def load_user(user_id):
     except (TypeError, ValueError):
         return db.session.get(User, user_id)
 
+# Bind db object to this app instance
+db.init_app(app)
 
-
-# #################
+###################
 # FUTURE FEATURES:
 # CSV import & export feature
 # Change currency symbol all throughout the app
-# ########################
+# Translate (at least English & Portuguese)
+##########################
 
 
-# Bind db object to this app instance
-db.init_app(app)
+##########################
+#       FUNCTIONS
+##########################
 
 # Create test account for debugging
 def create_admin_account():
@@ -87,11 +90,14 @@ def reset_database():
 
     print(f"Database reset at {DB_PATH}")
 
-# Routes
-# ------
+##########################
+#        ROUTES
+##########################
+
 @app.route('/')
 @login_required
 def index():
+    # Queries for dashboard data
     item_count = Item.query.filter_by(user_id=current_user.id).count()
     on_sale_count = Item.query.filter_by(user_id=current_user.id, status=ItemStatus.ON_SALE).count()
     sold_count = Item.query.filter_by(user_id=current_user.id, status=ItemStatus.SOLD).count()
@@ -115,24 +121,26 @@ def index():
         recent_purchases=recent_purchases,
     )
 
-# INVENTORY
+
+#########################
+#       Inventory
+
 @app.route('/inventory', methods=['GET', 'POST'])
 @login_required
 def inventory():
     query = Item.query.filter_by(user_id=current_user.id)
-
-    q = request.args.get("q", "").strip()
+    q = request.args.get('q', '').strip()
     if q:
         query = query.outerjoin(Listing).filter(
             or_(
-                Item.name.ilike(f"%{q}%"),
-                cast(Item.id, String).ilike(f"%{q}%"),
-                Item.category.ilike(f"%{q}%"),
-                Listing.listing_id.ilike(f"%{q}%"),
+                Item.name.ilike(f'%{q}%'),
+                cast(Item.id, String).ilike(f'%{q}%'),
+                Item.category.ilike(f'%{q}%'),
+                Listing.listing_id.ilike(f'%{q}%'),
             )
         ).distinct()
 
-    status = request.args.get("status")
+    status = request.args.get('status')
     if status:
         try:
             status_enum = ItemStatus(status)
@@ -181,15 +189,58 @@ def inventory():
         sort=sort,
     )
 
-@app.route("/items/<int:item_id>")
+
+#    Inventory - Item
+
+@app.route('/inventory/<int:item_id>')
 @login_required
 def view_item(item_id):
     item = Item.query.filter_by(id=item_id, user_id=current_user.id).first_or_404()
-    shelves_list = Shelf.query.filter_by(user_id=current_user.id).order_by(Shelf.name).all()
-    return render_template("inventory/inventory_view.html", item=item, shelves=shelves_list)
+    shelves = Shelf.query.filter_by(user_id=current_user.id).order_by(Shelf.name).all()
+    return render_template(
+        "inventory/inventory_view.html",
+        item=item,
+        shelves=shelves,
+        ItemStatus=ItemStatus,
+        ListingStatus=ListingStatus,
+    )
 
 
-# PURCHASES
+@app.route("/items/<int:item_id>/edit", methods=["POST"])
+@login_required
+def edit_item(item_id):
+    item = Item.query.filter_by(id=item_id, user_id=current_user.id).first_or_404()
+    item.name = request.form.get('name', item.name).strip()
+    item.category = request.form.get('category', '').strip() or None
+    item.condition = request.form.get('condition', '').strip() or None
+    shelf_id = request.form.get('shelf_id')
+    item.shelf_id = int(shelf_id) if shelf_id else None
+    status = request.form.get('status')
+    # 
+    try:
+        item.status = ItemStatus(status)
+    except (ValueError, TypeError):
+        pass
+
+    item.notes = request.form.get('notes', '').strip()
+    db.session.commit()
+    flash('Item updated.', 'success')
+    return redirect(url_for('view_item', item_id=item.id))
+
+
+@app.route('/items/<int:item_id>/delete', methods=["POST"])
+@login_required
+def delete_item(item_id):
+    item = Item.query.filter_by(id=item_id, user_id=current_user.id).first_or_404()
+    db.session.delete(item)
+    db.session.commit()
+    flash("Item deleted.", "success")
+    return redirect(url_for("inventory"))
+
+
+#########################
+#       Purchases
+
 @app.route('/purchases', methods=['GET', 'POST'])
 @login_required
 def purchases():
@@ -223,7 +274,7 @@ def new_purchase():
 
         if purchase_type is None:
             flash('Invalid purchase type', 'danger')
-            return "Invalid purchase type submitted", 400
+            return 'Invalid purchase type submitted', 400
 
         print(f'Purchase type is {purchase_type.value}')
 
@@ -235,7 +286,7 @@ def new_purchase():
             purchase_type = purchase_type,
             purchase_price = parse_float(request.form.get('purchase_price')),
             shipping_cost = parse_float(request.form.get('shipping_cost')),
-            notes = request.form.get("purchaseNotes", "").strip(),
+            notes = request.form.get('purchaseNotes', '').strip(),
         )
 
         db.session.add(purchase)
@@ -290,7 +341,7 @@ def new_purchase():
     return render_template ("purchases/purchases_new.html", today=today, shelves=shelves)
 
 
-@app.route("/purchases/<int:purchase_id>")
+@app.route('/purchases/<int:purchase_id>')
 @login_required
 def view_purchase(purchase_id):
     purchase = Purchase.query.filter_by(id=purchase_id, user_id=current_user.id).first_or_404()
@@ -298,7 +349,9 @@ def view_purchase(purchase_id):
 
 
 
-# SHELVES
+#########################
+#        Shelves
+
 @app.route('/shelves', methods=['GET', 'POST'])
 @login_required
 def shelves():
@@ -319,7 +372,7 @@ def shelves():
     all_shelves = Shelf.query.filter_by(user_id=current_user.id).order_by(Shelf.name).all()
     return render_template('shelves.html', shelves=all_shelves)
 
-@app.route("/shelves/<int:shelf_id>/delete", methods=["POST"])
+@app.route('/shelves/<int:shelf_id>/delete', methods=["POST"])
 @login_required
 def delete_shelf(shelf_id):
     # Also make sure the user id matches for security
@@ -328,7 +381,9 @@ def delete_shelf(shelf_id):
         flash("Cannot delete a shelf that still has items on it.", "danger")
 
     ##############
+    ##############
     # ADD option for it to automatically delete all items on the shelf?
+    ##############
     ##############
     
     else:
@@ -338,12 +393,96 @@ def delete_shelf(shelf_id):
     return redirect(url_for("shelves"))
 
 
-# SALES
+#########################
+#       Listings
+
+@app.route('/items/<int:item_id>/listings/new', methods=["GET", "POST"])
+@login_required
+def new_listing(item_id):
+    item = Item.query.filter_by(id=item_id, user_id=current_user.id).first_or_404()
+
+    if request.method == "POST":
+        listing = Listing(
+            item_id=item.id,
+            platform=request.form.get("platform", "").strip(),
+            listing_id=request.form.get("listing_id", "").strip(),
+            listing_url=request.form.get("listing_url", "").strip(),
+            listing_price=parse_float(request.form.get("listing_price")),
+            date_listed=parse_date(request.form.get("date_listed")),
+            status="Active",
+        )
+        if not listing.platform or not listing.listing_id:
+            flash("Platform and listing ID are required.", "danger")
+            return render_template("listings/new.html", item=item)
+
+        db.session.add(listing)
+        if item.status == ItemStatus.IN_STORAGE:
+            item.status = ItemStatus.ON_SALE
+        db.session.commit()
+        flash("Listing added.", "success")
+        return redirect(url_for("view_item", item_id=item.id))
+
+    return render_template("listings/new.html", item=item)
 
 
+@app.route('/listings/<int:listing_id>/status', methods=["POST"])
+@login_required
+def update_listing_status(listing_id):
+    listing = Listing.query.join(Item).filter(
+        Listing.id == listing_id, Item.user_id == current_user.id
+    ).first_or_404()
+    status = request.form.get("status")
+    # NEED TO UPDATE THIS TO TAKE INTO ACCOUNT ENUMS
+    if status in ("Active", "Sold", "Removed", "Expired"):
+        listing.status = status
+        db.session.commit()
+        flash("Listing status updated.", "success")
+    return redirect(url_for("view_item", item_id=listing.item_id))
 
 
-# Authentication
+#########################
+#       Sales
+
+@app.route("/items/<int:item_id>/sale/new", methods=["GET", "POST"])
+@login_required
+def new_sale(item_id):
+    item = Item.query.filter_by(id=item_id, user_id=current_user.id).first_or_404()
+    if item.sale is not None:
+        flash("This item has already been sold.", "warning")
+        return redirect(url_for("view_item", item_id=item.id))
+
+    if request.method == "POST":
+        listing_id = request.form.get("listing_id")
+        sale = Sale(
+            item_id=item.id,
+            listing_id=int(listing_id) if listing_id else None,
+            sale_date=parse_date(request.form.get("sale_date")),
+            sale_price=parse_float(request.form.get("sale_price")),
+            shipping_received=parse_float(request.form.get("shipping_received")),
+            shipping_paid=parse_float(request.form.get("shipping_paid")),
+            platform_fee=parse_float(request.form.get("platform_fee")),
+            payment_fee=parse_float(request.form.get("payment_fee")),
+            notes=request.form.get("notes", "").strip(),
+        )
+        db.session.add(sale)
+        item.status = ItemStatus.SOLD
+        if sale.listing_id:
+            chosen = db.session.get(Listing, sale.listing_id)
+            if chosen:
+                chosen.status = "Sold"
+        for l in item.listings:
+            if l.id != sale.listing_id and l.status == "Active":
+                l.status = "Removed"
+        db.session.commit()
+        flash("Sale recorded.", "success")
+        return redirect(url_for("view_item", item_id=item.id))
+
+    return render_template("sales/new.html", item=item)
+
+
+#########################
+#     Authentication
+
 # https://flask-login.readthedocs.io/en/latest/#login-example
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -407,7 +546,8 @@ def register():
     
     return render_template('register.html')
 
-# User
+#########################
+#         User
 
 @app.route('/user', methods=['GET', 'POST'])
 @login_required

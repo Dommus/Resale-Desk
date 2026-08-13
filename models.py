@@ -26,6 +26,12 @@ class ItemStatus(Enum):
     IN_STORAGE = 'In Storage'
     RESERVED = 'Reserved'
 
+class ListingStatus(Enum):
+    ACTIVE = 'Active'
+    SOLD = 'Sold'
+    REMOVED = 'Removed'
+    EXPIRED = 'Expired'
+
 class PurchaseType(Enum):
     SINGLE = 'Single'
     BUNDLE = 'Bundle'
@@ -67,9 +73,9 @@ class Purchase(db.Model):
     id: Mapped[int] = mapped_column(primary_key=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
 
-    date: Mapped[datetime_date] = mapped_column(nullable=False, default=datetime_date.today)
     seller: Mapped[Optional[str]] = mapped_column(String(128))
     platform: Mapped[Optional[str]] = mapped_column(String(64))
+    date: Mapped[datetime_date] = mapped_column(default=datetime_date.today)
     purchase_type: Mapped[PurchaseType] = mapped_column(SQLEnum(PurchaseType), nullable=False, default=PurchaseType.SINGLE)
     purchase_price: Mapped[float] = mapped_column(nullable=False, default=0.0)
     shipping_cost: Mapped[float] = mapped_column(nullable=False, default=0.0)
@@ -94,12 +100,17 @@ class Item(db.Model):
     purchase_id: Mapped[int] = mapped_column(ForeignKey("purchases.id"), nullable=False)
     shelf_id: Mapped[Optional[int]] = mapped_column(ForeignKey("shelves.id"))
 
+    # Can use Item.purchase.date to access the date the item was bought
+
     name: Mapped[str] = mapped_column(String(64), nullable=False)
     category: Mapped[Optional[str]] = mapped_column(String(64))
     condition: Mapped[Optional[str]] = mapped_column(String(32))
     # code: Mapped[Optional[str]] = mapped_column(String(10), unique=True)  # NEED TO IMPLEMENT THIS, MAYBE EVEN WITH A QR CODE
     brand: Mapped[Optional[str]] = mapped_column(String(64))
-    status: Mapped[ItemStatus] = mapped_column(SQLEnum(ItemStatus), default=ItemStatus.ON_SALE)
+    status: Mapped[ItemStatus] = mapped_column(
+        SQLEnum(ItemStatus, values_callable=lambda statuses: [status.value for status in statuses]),
+        default=ItemStatus.ON_SALE,
+    )
     notes: Mapped[Optional[str]] = mapped_column(String(5120))
     created_at: Mapped[datetime] = mapped_column(server_default=func.now())
     allocated_cost: Mapped[float] = mapped_column(nullable=False, default=0)
@@ -128,5 +139,5 @@ class Listing(db.Model):
     listing_id = db.Column(db.String(120), nullable=False)
     listing_url = db.Column(db.String(500))
     listing_price = db.Column(db.Float)
-    date_listed = db.Column(db.Date, default=datetime.utcnow)
-    status = db.Column(db.String(20), nullable=False, default="Active")  # Active/Sold/Removed/Expired
+    date_listed = db.Column(db.Date, default=datetime_date.today)
+    status: Mapped[ListingStatus] = mapped_column(SQLEnum(ListingStatus), default=ListingStatus.ACTIVE)
