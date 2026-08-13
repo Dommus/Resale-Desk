@@ -60,7 +60,7 @@
     {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
             {% for category, message in messages %}
-                <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                <div class="alert alert-{{ category }} alert-dismissible fade show flash-alert" role="alert">
                     {{ message }}
                     <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
                 </div>
@@ -73,6 +73,14 @@
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script>
+    // Automatically fade flash alerts after X ms
+    document.querySelectorAll('.alert.alert-dismissible').forEach((alert) => {
+        window.setTimeout(() => {
+            bootstrap.Alert.getOrCreateInstance(alert).close();
+        }, 4000);
+    });
+
+    // Theme toggle (dark mode - light mode)
     (() => {
         const themeToggle = document.getElementById("themeToggle");
         const root = document.documentElement;
