@@ -258,6 +258,9 @@ def new_purchase():
         Shelf.query.filter_by(user_id=current_user.id).order_by(Shelf.name.desc()).all()
     )
     today = date.today().isoformat()
+    purchase_type = request.args.get('purchase_type', 'single').lower()
+    if purchase_type not in ('single', 'bundle'):
+        purchase_type = 'single'
 
     if request.method == 'POST':
 
@@ -300,7 +303,7 @@ def new_purchase():
             if not name:
                 db.session.rollback()
                 flash('Item name is required.', 'danger')
-                return render_template ("purchases/purchases_new.html", today=today, shelves=shelves)
+                return render_template ("purchases/purchases_new.html", today=today, shelves=shelves, purchase_type=purchase_type)
             
             item = Item(
                 user_id = current_user.id,
@@ -338,7 +341,12 @@ def new_purchase():
         render_template ("purchases/purchases_new.html", today=today, shelves=shelves)
 
     
-    return render_template ("purchases/purchases_new.html", today=today, shelves=shelves)
+    return render_template ("purchases/purchases_new.html", today=today, shelves=shelves, purchase_type=purchase_type)
+
+@app.route("/purchases/new/type")
+@login_required
+def choose_purchase_type():
+    return render_template("purchases/purchases_type.html")
 
 
 @app.route('/purchases/<int:purchase_id>')

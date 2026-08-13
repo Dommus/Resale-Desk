@@ -2,7 +2,7 @@
 {% block title %}New Purchase{% endblock %}
 {% block content %}
 
-<h3 class="mb-3">Record a Purchase</h3>
+<h3 class="mb-3">Add a {{ purchase_type }} purchase</h3>
 
 <div class="card shadow-sm">
     <div class="card-body">
@@ -21,13 +21,7 @@
                     <input type="text" class="form-control" name="platform" placeholder="e.g. Vinted...">
                 </div>
 
-                <div class="col-md-4">
-                    <label class="form-label">Purchase Type</label>
-                    <select class="form-select" name="purchase_type" required>
-                        <option value="single">Single item</option>
-                        <option value="bundle">Bundle (multiple items)</option>
-                    </select>
-                </div>
+                <input type="hidden" name="purchase_type" value="{{ purchase_type }}">
                 <div class="col-md-4">
                     <label class="form-label">Purchase Price (€)</label>
                     <input type="number" step="0.01" min="0" class="form-control" name="purchase_price" value="0" required>
@@ -149,7 +143,7 @@
 
 {% block scripts %}
 <script>
-const typeSelect = document.querySelector('select[name="purchase_type"]');
+const typeSelect = document.querySelector('input[name="purchase_type"]');
 const addItemsToggle = document.getElementById('addItemsToggle');
 const singleFields = document.getElementById('singleItemFields');
 const bundleFields = document.getElementById('bundleItemFields');
@@ -171,7 +165,6 @@ function toggleSingleFields() {
     submitBtn.textContent = (shouldShowDetails || shouldShowBundle) ? 'Save Purchase with Items' : 'Save Purchase';
 }
 
-typeSelect.addEventListener('change', toggleSingleFields);
 addItemsToggle.addEventListener('change', toggleSingleFields);
 toggleSingleFields();
 
