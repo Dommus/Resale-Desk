@@ -2,22 +2,28 @@
 # https://docs.sqlalchemy.org/en/20/orm/quickstart.html
 from flask_login import UserMixin
 from flask_sqlalchemy import SQLAlchemy
-from sqlalchemy import String, ForeignKey, Enum as SQLEnum, func
+from sqlalchemy import String, Text, ForeignKey, Numeric, Enum as SQLEnum, func
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 from datetime import date as datetime_date, datetime
 from enum import Enum
 from typing import List, Optional
+from decimal import Decimal
 
 
-# Using SQLAlchemy as an ORM (Object Relational Mapping)
-# to interact with the database using Python instead of SQL queries.
+# Using SQLAlchemy as an ORM (Object Relational Mapping) to interact with the database by writing  Python instead of SQL queries.
+
+# Initialize the extension
 class Base(DeclarativeBase):
     pass
 
 db = SQLAlchemy(model_class=Base)
 
+#############
 # Models
+#############
+
 class ItemStatus(Enum):
+    # TODO: Remove any status I decide later not to use
     ON_SALE = 'On Sale'
     SOLD = 'Sold'
     NOT_SOLD = 'Not Sold'
@@ -68,7 +74,7 @@ class Shelf(db.Model):
 
 
 class Purchase(db.Model):
-    __tablename__ = "purchases"
+    __tablename__ = 'purchases'
 
     id: Mapped[int] = mapped_column(primary_key=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
@@ -79,13 +85,15 @@ class Purchase(db.Model):
     purchase_type: Mapped[PurchaseType] = mapped_column(SQLEnum(PurchaseType), nullable=False, default=PurchaseType.SINGLE)
     purchase_price: Mapped[float] = mapped_column(nullable=False, default=0.0)
     shipping_cost: Mapped[float] = mapped_column(nullable=False, default=0.0)
-    notes: Mapped[Optional[str]] = mapped_column(String(5120))
+    notes: Mapped[Optional[str]] = mapped_column(Text)
 
     items: Mapped[List["Item"]] = relationship("Item", back_populates="purchase", cascade="all, delete-orphan", lazy=True)
     owner: Mapped["User"] = relationship("User", back_populates="purchases")
 
+
+    # Using '->' annotations on these functions to state the type expected
     @property
-    def total_cost(self):
+    def total_cost(self) -> float:
         return round((self.purchase_price or 0) + (self.shipping_cost or 0), 2)
 
     @property

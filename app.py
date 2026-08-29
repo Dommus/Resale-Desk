@@ -10,6 +10,8 @@ from flask_login import login_user, logout_user, login_required, current_user
 from sqlalchemy import func, or_, cast, String
 from werkzeug.security import generate_password_hash, check_password_hash
 
+from decimal import Decimal
+
 
 # Configure App and Database (https://www.geeksforgeeks.org/python/declaring-models-in-flask/)
 app = Flask(__name__)
