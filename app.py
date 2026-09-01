@@ -2,7 +2,7 @@ import os
 from datetime import datetime, date
 
 # Imports from local python files
-from models import db, User, Shelf, Item, Purchase, ItemStatus, PurchaseType, Listing, ListingStatus
+from models import db, User, Shelf, Item, Purchase, ItemStatus, PurchaseType, Listing, ListingStatus, Sale
 from utilities import login_manager, parse_date, parse_float
 
 from flask import Flask, render_template, request, redirect, url_for, flash
@@ -281,6 +281,7 @@ def new_purchase():
             flash('Invalid purchase type', 'danger')
             return 'Invalid purchase type submitted', 400
 
+        purchase_type_label = purchase_type.value.lower()
         print(f'Purchase type is {purchase_type.value}')
 
         purchase = Purchase(
@@ -305,7 +306,7 @@ def new_purchase():
             if not name:
                 db.session.rollback()
                 flash('Item name is required.', 'danger')
-                return render_template ("purchases/purchases_new.html", today=today, shelves=shelves, purchase_type=purchase_type)
+                return render_template ("purchases/purchases_new.html", today=today, shelves=shelves, purchase_type=purchase_type_label)
             
             item = Item(
                 user_id = current_user.id,
@@ -340,10 +341,10 @@ def new_purchase():
             print('ERROR: NO PURCHASE TYPE SELECTED')
             flash('Select a purchase type', 'danger')
 
-        render_template ("purchases/purchases_new.html", today=today, shelves=shelves)
+        return render_template ("purchases/purchases_new.html", today=today, shelves=shelves, purchase_type=purchase_type_label)
 
     
-    return render_template ("purchases/purchases_new.html", today=today, shelves=shelves, purchase_type=purchase_type)
+    return render_template ("purchases/purchases_new.html", today=today, shelves=shelves, purchase_type=purchase_type_label if isinstance(purchase_type, PurchaseType) else purchase_type)
 
 @app.route("/purchases/new/type")
 @login_required

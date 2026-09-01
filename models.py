@@ -58,11 +58,6 @@ class User(UserMixin, db.Model):
     purchases: Mapped[List["Purchase"]] = relationship("Purchase", back_populates="owner", cascade="all, delete-orphan", lazy=True)
     items: Mapped[List["Item"]] = relationship("Item", back_populates="owner", cascade="all, delete-orphan", lazy=True)
 
-class Inventory(db.Model):
-    __tablename__ = 'inventory'
-
-    id: Mapped[int] = mapped_column(primary_key=True)
-
 class Shelf(db.Model):
     __tablename__ = 'shelves'
 
