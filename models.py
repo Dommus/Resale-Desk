@@ -16,6 +16,9 @@ from decimal import Decimal
 class Base(DeclarativeBase):
     pass
 
+# Define standard type for money, to not have to write it over and over again
+MONEY = Numeric(12, 2)
+
 db = SQLAlchemy(model_class=Base)
 
 #############
@@ -83,8 +86,8 @@ class Purchase(db.Model):
     platform: Mapped[Optional[str]] = mapped_column(String(64))
     date: Mapped[datetime_date] = mapped_column(default=datetime_date.today)
     purchase_type: Mapped[PurchaseType] = mapped_column(SQLEnum(PurchaseType), nullable=False, default=PurchaseType.SINGLE)
-    purchase_price: Mapped[float] = mapped_column(nullable=False, default=0.0)
-    shipping_cost: Mapped[float] = mapped_column(nullable=False, default=0.0)
+    purchase_price: Mapped[Decimal] = mapped_column(MONEY, nullable=False, default=0.0)
+    shipping_cost: Mapped[Decimal] = mapped_column(MONEY, nullable=False, default=0.0)
     notes: Mapped[Optional[str]] = mapped_column(Text)
 
     items: Mapped[List["Item"]] = relationship("Item", back_populates="purchase", cascade="all, delete-orphan", lazy=True)
@@ -93,14 +96,17 @@ class Purchase(db.Model):
 
     # Using '->' annotations on these functions to state the type expected
     @property
-    def total_cost(self) -> float:
-        return round((self.purchase_price or 0) + (self.shipping_cost or 0), 2)
+    def total_cost(self) -> Decimal:
+        purchase_price = self.purchase_price if self.purchase_price is not None else Decimal("0")
+        shipping_cost = self.shipping_cost if self.shipping_cost is not None else Decimal("0")
+        return purchase_price + shipping_cost
 
     @property
-    def allocated_total(self):
-        return round(sum(i.allocated_cost or 0 for i in self.items), 2)
+    def allocated_total(self) -> Decimal:
+        return sum(i.allocated_cost or 0 for i in self.items)
 
     # Sums revenue across the purchase's sold items and subtracts total cost of all items associated with it
+    # FIX THIS LATER
     @property
     def profit(self):
         total_revenue = sum(
@@ -129,41 +135,41 @@ class Item(db.Model):
     )
     notes: Mapped[Optional[str]] = mapped_column(String(5120))
     created_at: Mapped[datetime] = mapped_column(server_default=func.now())
-    allocated_cost: Mapped[float] = mapped_column(default=0) #RENAME THIS TO JUST COST
+    allocated_cost: Mapped[Decimal] = mapped_column(MONEY, default=0) #RENAME THIS TO JUST COST
 
     owner: Mapped["User"] = relationship("User", back_populates="items")
     purchase: Mapped["Purchase"] = relationship("Purchase", back_populates="items")
     shelf: Mapped[Optional["Shelf"]] = relationship("Shelf", back_populates="items")
 
-    listings = db.relationship("Listing", backref="item", lazy=True, cascade="all, delete-orphan")
-    sale = db.relationship("Sale", backref="item", uselist=False, cascade="all, delete-orphan")
-
+    listings: Mapped[List["Listing"]] = relationship("Listing", back_populates="item", cascade="all, delete-orphan", lazy=True)
+    sale: Mapped[Optional["Sale"]] = relationship("Sale", back_populates="item", uselist=False, cascade="all, delete-orphan")
 
     def generate_code(self):
         self.inventory_code = f"INV-{self.id:06d}"
 
     @property
     def days_in_inventory(self):
-        end = self.sale.sale_date if self.sale else datetime_date.today
         start = self.created_at.date() if self.created_at else end
+        end = self.sale.sale_date if self.sale else datetime_date.today
         return (end - start).days
 
 class Sale(db.Model):
     __tablename__ = "sales"
 
-    id = db.Column(db.Integer, primary_key=True)
-    item_id = db.Column(db.Integer, db.ForeignKey("items.id"), nullable=False, unique=True)
-    listing_id = db.Column(db.Integer, db.ForeignKey("listings.id"))
+    id: Mapped[int] = mapped_column(primary_key=True)
+    item_id: Mapped[int] = mapped_column(ForeignKey("items.id"), nullable=False, unique=True)
+    listing_id: Mapped[Optional[int]] = mapped_column(ForeignKey("listings.id"))
 
-    sale_date = db.Column(db.Date, nullable=False, default=datetime_date.today)
-    sale_price = db.Column(db.Float, nullable=False, default=0)
-    shipping_received = db.Column(db.Float, nullable=False, default=0)
-    shipping_paid = db.Column(db.Float, nullable=False, default=0)
-    platform_fee = db.Column(db.Float, nullable=False, default=0)
-    payment_fee = db.Column(db.Float, nullable=False, default=0)
-    notes = db.Column(db.Text)
+    sale_date: Mapped[datetime_date] = mapped_column(default=datetime_date.today)
+    sale_price: Mapped[Decimal] = mapped_column(MONEY, default=0.0)
+    shipping_received: Mapped[Decimal] = mapped_column(MONEY, default=0.0)
+    shipping_paid: Mapped[Decimal] = mapped_column(MONEY, default=0.0)
+    platform_fee: Mapped[Decimal] = mapped_column(MONEY, default=0.0)
+    payment_fee: Mapped[Decimal] = mapped_column(MONEY, default=0.0)
+    notes: Mapped[Optional[str]] = mapped_column(Text)
 
-    listing = db.relationship("Listing", backref="sale")
+    item: Mapped["Item"] = relationship("Item", back_populates="sale")
+    listing: Mapped[Optional["Listing"]] = relationship("Listing", back_populates="sale")
 
     @property
     def gross_revenue(self):
@@ -196,12 +202,15 @@ class Sale(db.Model):
 class Listing(db.Model):
     __tablename__ = "listings"
 
-    id = db.Column(db.Integer, primary_key=True)
-    item_id = db.Column(db.Integer, db.ForeignKey("items.id"), nullable=False)
+    id: Mapped[int] = mapped_column(primary_key=True)
+    item_id: Mapped[int] = mapped_column(ForeignKey("items.id"), nullable=False)
 
-    platform = db.Column(db.String(80), nullable=False)
-    listing_id = db.Column(db.String(120), nullable=False)
-    listing_url = db.Column(db.String(500))
-    listing_price = db.Column(db.Float)
-    date_listed = db.Column(db.Date, default=datetime_date.today)
+    platform: Mapped[str] = mapped_column(String(80), nullable=False)
+    listing_id: Mapped[str] = mapped_column(String(120), nullable=False)
+    listing_url: Mapped[Optional[str]] = mapped_column(String(500))
+    listing_price: Mapped[Optional[Decimal]] = mapped_column(MONEY, default=None)
+    date_listed: Mapped[datetime_date] = mapped_column(default=datetime_date.today)
     status: Mapped[ListingStatus] = mapped_column(SQLEnum(ListingStatus), default=ListingStatus.ACTIVE)
+
+    item: Mapped["Item"] = relationship("Item", back_populates="listings")
+    sale: Mapped[Optional["Sale"]] = relationship("Sale", back_populates="listing", uselist=False)
