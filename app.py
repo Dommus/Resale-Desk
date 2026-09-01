@@ -264,6 +264,25 @@ def new_purchase():
     if purchase_type not in ('single', 'bundle'):
         purchase_type = 'single'
 
+    def get_form_options():
+        # Show previously submitted entries as options
+        return {
+            'used_sellers': [value[0] for value in db.session.query(Purchase.seller)
+                             .filter(Purchase.user_id == current_user.id, Purchase.seller.isnot(None), Purchase.seller != '')
+                             .distinct().order_by(Purchase.seller).all()],
+            'used_platforms': [value[0] for value in db.session.query(Purchase.platform)
+                               .filter(Purchase.user_id == current_user.id, Purchase.platform.isnot(None), Purchase.platform != '')
+                               .distinct().order_by(Purchase.platform).all()],
+            'used_categories': [value[0] for value in db.session.query(Item.category)
+                                .filter(Item.user_id == current_user.id, Item.category.isnot(None), Item.category != '')
+                                .distinct().order_by(Item.category).all()],
+            'used_brands': [value[0] for value in db.session.query(Item.brand)
+                            .filter(Item.user_id == current_user.id, Item.brand.isnot(None), Item.brand != '')
+                            .distinct().order_by(Item.brand).all()],
+        }
+
+    form_options = get_form_options()
+
     if request.method == 'POST':
 
         # Validate the purchase type
@@ -306,7 +325,8 @@ def new_purchase():
             if not name:
                 db.session.rollback()
                 flash('Item name is required.', 'danger')
-                return render_template ("purchases/purchases_new.html", today=today, shelves=shelves, purchase_type=purchase_type_label)
+                return render_template("purchases/purchases_new.html", today=today, shelves=shelves,
+                                       purchase_type=purchase_type_label, **form_options)
             
             item = Item(
                 user_id = current_user.id,
@@ -341,10 +361,15 @@ def new_purchase():
             print('ERROR: NO PURCHASE TYPE SELECTED')
             flash('Select a purchase type', 'danger')
 
-        return render_template ("purchases/purchases_new.html", today=today, shelves=shelves, purchase_type=purchase_type_label)
+        # Re-query after the commit so values from this purchase are immediately available.
+        form_options = get_form_options()
+        return render_template("purchases/purchases_new.html", today=today, shelves=shelves,
+                               purchase_type=purchase_type_label, **form_options)
 
     
-    return render_template ("purchases/purchases_new.html", today=today, shelves=shelves, purchase_type=purchase_type_label if isinstance(purchase_type, PurchaseType) else purchase_type)
+    return render_template("purchases/purchases_new.html", today=today, shelves=shelves,
+                           purchase_type=purchase_type_label if isinstance(purchase_type, PurchaseType) else purchase_type,
+                           **form_options)
 
 @app.route("/purchases/new/type")
 @login_required
