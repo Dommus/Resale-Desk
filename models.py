@@ -81,8 +81,8 @@ class Purchase(db.Model):
     platform: Mapped[Optional[str]] = mapped_column(String(64))
     date: Mapped[datetime_date] = mapped_column(default=datetime_date.today)
     purchase_type: Mapped[PurchaseType] = mapped_column(SQLEnum(PurchaseType), nullable=False, default=PurchaseType.SINGLE)
-    purchase_price: Mapped[Decimal] = mapped_column(MONEY, nullable=False, default=0.0)
-    shipping_cost: Mapped[Decimal] = mapped_column(MONEY, nullable=False, default=0.0)
+    purchase_price: Mapped[Decimal] = mapped_column(MONEY, nullable=False, default=Decimal("0.00"))
+    shipping_cost: Mapped[Decimal] = mapped_column(MONEY, nullable=False, default=Decimal("0.00"))
     notes: Mapped[Optional[str]] = mapped_column(Text)
 
     items: Mapped[List["Item"]] = relationship("Item", back_populates="purchase", cascade="all, delete-orphan", lazy=True)
@@ -98,16 +98,20 @@ class Purchase(db.Model):
 
     @property
     def allocated_total(self) -> Decimal:
-        return sum(i.allocated_cost or 0 for i in self.items)
+        return sum((i.allocated_cost or Decimal("0.00") for i in self.items), Decimal("0.00"))
 
     # Sums revenue across the purchase's sold items and subtracts total cost of all items associated with it
     # FIX THIS LATER
     @property
     def profit(self):
         total_revenue = sum(
-            item.sale.net_revenue for item in self.items if item.sale is not None
+            (item.sale.net_revenue for item in self.items if item.sale is not None),
+            Decimal("0.00"),
         )
-        return round(sum(i.allocated_cost or 0 for i in self.items), 2)
+        return round(
+            sum((i.allocated_cost or Decimal("0.00") for i in self.items), Decimal("0.00")),
+            2,
+        )
 
 class Item(db.Model):
     __tablename__ = "items"
@@ -130,7 +134,7 @@ class Item(db.Model):
     )
     notes: Mapped[Optional[str]] = mapped_column(String(5120))
     created_at: Mapped[datetime] = mapped_column(server_default=func.now())
-    allocated_cost: Mapped[Decimal] = mapped_column(MONEY, default=0) #RENAME THIS TO JUST COST
+    allocated_cost: Mapped[Decimal] = mapped_column(MONEY, default=Decimal("0.00")) #RENAME THIS TO JUST COST
 
     owner: Mapped["User"] = relationship("User", back_populates="items")
     purchase: Mapped["Purchase"] = relationship("Purchase", back_populates="items")
@@ -156,11 +160,11 @@ class Sale(db.Model):
     listing_id: Mapped[Optional[int]] = mapped_column(ForeignKey("listings.id"))
 
     sale_date: Mapped[datetime_date] = mapped_column(default=datetime_date.today)
-    sale_price: Mapped[Decimal] = mapped_column(MONEY, default=0.0)
-    shipping_received: Mapped[Decimal] = mapped_column(MONEY, default=0.0)
-    shipping_paid: Mapped[Decimal] = mapped_column(MONEY, default=0.0)
-    platform_fee: Mapped[Decimal] = mapped_column(MONEY, default=0.0)
-    payment_fee: Mapped[Decimal] = mapped_column(MONEY, default=0.0)
+    sale_price: Mapped[Decimal] = mapped_column(MONEY, default=Decimal("0.00"))
+    shipping_received: Mapped[Decimal] = mapped_column(MONEY, default=Decimal("0.00"))
+    shipping_paid: Mapped[Decimal] = mapped_column(MONEY, default=Decimal("0.00"))
+    platform_fee: Mapped[Decimal] = mapped_column(MONEY, default=Decimal("0.00"))
+    payment_fee: Mapped[Decimal] = mapped_column(MONEY, default=Decimal("0.00"))
     notes: Mapped[Optional[str]] = mapped_column(Text)
 
     item: Mapped["Item"] = relationship("Item", back_populates="sale")
@@ -168,22 +172,26 @@ class Sale(db.Model):
 
     @property
     def gross_revenue(self):
-        return round((self.sale_price or 0) + (self.shipping_received or 0), 2)
+        return round((self.sale_price or Decimal("0.00")) + (self.shipping_received or Decimal("0.00")), 2)
 
     @property
     def net_revenue(self):
         return round(
-            self.gross_revenue - (self.shipping_paid or 0) - (self.platform_fee or 0) - (self.payment_fee or 0), 2
+            self.gross_revenue
+            - (self.shipping_paid or Decimal("0.00"))
+            - (self.platform_fee or Decimal("0.00"))
+            - (self.payment_fee or Decimal("0.00")),
+            2,
         )
 
     @property
     def profit(self):
-        cost = self.item.allocated_cost or 0
+        cost = self.item.allocated_cost or Decimal("0.00")
         return round(self.net_revenue - cost, 2)
 
     @property
     def roi(self):
-        cost = self.item.allocated_cost or 0
+        cost = self.item.allocated_cost or Decimal("0.00")
         if cost <= 0:
             return None
         return round((self.profit / cost) * 100, 1)

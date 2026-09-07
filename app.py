@@ -3,7 +3,7 @@ from datetime import datetime, date
 
 # Imports from local python files
 from models import db, User, Shelf, Item, Purchase, ItemStatus, PurchaseType, Listing, ListingStatus, Sale
-from utilities import login_manager, parse_date, parse_float
+from utilities import login_manager, parse_date, parse_decimal
 
 from flask import Flask, render_template, request, redirect, url_for, flash
 from flask_login import login_user, logout_user, login_required, current_user
@@ -105,9 +105,9 @@ def index():
     sold_count = Item.query.filter_by(user_id=current_user.id, status=ItemStatus.SOLD).count()
     purchase_count = Purchase.query.filter_by(user_id=current_user.id).count()
     total_spend = (
-        db.session.query(func.coalesce(func.sum(Purchase.purchase_price + Purchase.shipping_cost), 0.0))
+        db.session.query(func.coalesce(func.sum(Purchase.purchase_price + Purchase.shipping_cost), Decimal("0.00")))
         .filter(Purchase.user_id == current_user.id)
-        .scalar() or 0.0
+        .scalar() or Decimal("0.00")
     )
     recent_items = Item.query.filter_by(user_id=current_user.id).order_by(Item.created_at.desc()).limit(5).all()
     recent_purchases = Purchase.query.filter_by(user_id=current_user.id).order_by(Purchase.date.desc()).limit(5).all()
@@ -172,9 +172,9 @@ def inventory():
     results = query.all()
 
     if sort == "highest_profit":
-        results.sort(key=lambda i: (i.sale.profit if i.sale else float("-inf")), reverse=True)
+        results.sort(key=lambda i: (i.sale.profit if i.sale else Decimal("-Infinity")), reverse=True)
     elif sort == "lowest_profit":
-        results.sort(key=lambda i: (i.sale.profit if i.sale else float("inf")))
+        results.sort(key=lambda i: (i.sale.profit if i.sale else Decimal("Infinity")))
 
     shelves_list = Shelf.query.filter_by(user_id=current_user.id).order_by(Shelf.name).all()
     categories = sorted({i.category for i in Item.query.filter_by(user_id=current_user.id) if i.category})
@@ -309,8 +309,8 @@ def new_purchase():
             seller = request.form.get('seller', '').strip(),
             platform = request.form.get('platform', '').strip(),
             purchase_type = purchase_type,
-            purchase_price = parse_float(request.form.get('purchase_price')),
-            shipping_cost = parse_float(request.form.get('shipping_cost')),
+            purchase_price = parse_decimal(request.form.get('purchase_price')),
+            shipping_cost = parse_decimal(request.form.get('shipping_cost')),
             notes = request.form.get('purchaseNotes', '').strip(),
         )
 
@@ -443,7 +443,7 @@ def new_listing(item_id):
             platform=request.form.get("platform", "").strip(),
             listing_id=request.form.get("listing_id", "").strip(),
             listing_url=request.form.get("listing_url", "").strip(),
-            listing_price=parse_float(request.form.get("listing_price")),
+            listing_price=parse_decimal(request.form.get("listing_price")),
             date_listed=parse_date(request.form.get("date_listed")),
             status="Active",
         )
@@ -493,11 +493,11 @@ def new_sale(item_id):
             item_id=item.id,
             listing_id=int(listing_id) if listing_id else None,
             sale_date=parse_date(request.form.get("sale_date")),
-            sale_price=parse_float(request.form.get("sale_price")),
-            shipping_received=parse_float(request.form.get("shipping_received")),
-            shipping_paid=parse_float(request.form.get("shipping_paid")),
-            platform_fee=parse_float(request.form.get("platform_fee")),
-            payment_fee=parse_float(request.form.get("payment_fee")),
+            sale_price=parse_decimal(request.form.get("sale_price")),
+            shipping_received=parse_decimal(request.form.get("shipping_received")),
+            shipping_paid=parse_decimal(request.form.get("shipping_paid")),
+            platform_fee=parse_decimal(request.form.get("platform_fee")),
+            payment_fee=parse_decimal(request.form.get("payment_fee")),
             notes=request.form.get("notes", "").strip(),
         )
         db.session.add(sale)

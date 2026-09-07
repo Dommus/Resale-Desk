@@ -1,4 +1,5 @@
 from datetime import datetime, date
+from decimal import Decimal, InvalidOperation
 from flask_login import LoginManager
 
 # Login Manager
@@ -18,9 +19,13 @@ def parse_date(value, default=None):
     except ValueError:
         return default or date.today()
 
-# Utility to proccess floating numbers
-def parse_float(value, default=0.0):
+# Utility to process currency values without introducing binary floating-point
+# rounding errors.
+def parse_decimal(value, default=Decimal("0.00")):
+    if value is None or value == '':
+        return default
     try:
-        return float(value)
-    except (TypeError, ValueError):
+        parsed = Decimal(str(value))
+        return parsed if parsed.is_finite() else default
+    except (InvalidOperation, TypeError, ValueError):
         return default
