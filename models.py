@@ -144,8 +144,8 @@ class Item(db.Model):
 
     @property
     def days_in_inventory(self) -> int:
+        end = self.sale.sale_date if self.sale else datetime_date.today()
         start = self.created_at.date() if self.created_at else end
-        end = self.sale.sale_date if self.sale else datetime_date.today
         return (end - start).days
 
 class Sale(db.Model):
