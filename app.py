@@ -325,8 +325,7 @@ def new_purchase():
             if not name:
                 db.session.rollback()
                 flash('Item name is required.', 'danger')
-                return render_template("purchases/purchases_new.html", today=today, shelves=shelves,
-                                       purchase_type=purchase_type_label, **form_options)
+                return render_template("purchases/purchases_new.html", today=today, shelves=shelves, purchase_type=purchase_type_label, **form_options)
             
             item = Item(
                 user_id = current_user.id,
@@ -334,7 +333,7 @@ def new_purchase():
                 shelf_id = int(shelf_id) if shelf_id else None,
                 name = name,
                 category = request.form.get('category', '').strip() or None,
-                condition = request.form.get('condition', '').strip() or None, # !!!Check if leaving it blank will actually return None
+                condition = request.form.get('condition', '').strip() or None,
                 brand = request.form.get('brand', '').strip() or None,
                 status = ItemStatus.IN_STORAGE,
                 notes = request.form.get('itemNotes', '').strip() or None,
@@ -342,6 +341,7 @@ def new_purchase():
             )
 
             db.session.add(item)
+            flash(f'{name} purchase added sucessfully.', 'success')
             db.session.flush()
 
         # Begin proccessing purchase

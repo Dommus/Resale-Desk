@@ -97,21 +97,12 @@ class Purchase(db.Model):
         return purchase_price + shipping_cost
 
     @property
-    def allocated_total(self) -> Decimal:
-        return sum((i.allocated_cost or Decimal("0.00") for i in self.items), Decimal("0.00"))
-
-    # Sums revenue across the purchase's sold items and subtracts total cost of all items associated with it
-    # FIX THIS LATER
+    def total_revenue(self) -> Decimal:
+        return sum((item.sale.net_revenue for item in self.items if item.sale is not None), Decimal("0.00"))
+    
     @property
-    def profit(self):
-        total_revenue = sum(
-            (item.sale.net_revenue for item in self.items if item.sale is not None),
-            Decimal("0.00"),
-        )
-        return round(
-            sum((i.allocated_cost or Decimal("0.00") for i in self.items), Decimal("0.00")),
-            2,
-        )
+    def profit(self) -> Decimal:
+        return round(self.total_revenue - self.total_cost, 2)
 
 class Item(db.Model):
     __tablename__ = "items"
