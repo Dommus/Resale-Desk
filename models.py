@@ -181,12 +181,16 @@ class Sale(db.Model):
         )
 
     @property
-    def profit(self) -> Decimal:
-        cost = self.item.cost or Decimal("0.00")
-        return round(self.net_revenue - cost, 2)
+    def profit(self) -> Optional[Decimal]:
+        if self.item.cost is None:
+            return None     # for bundles, whose profit is tracked on Purchase
+        return round(self.net_revenue - self.item.cost, 2)
 
     @property
     def roi(self) -> Optional[Decimal]:
+        if self.profit is None:     # because bundles can return None
+            return None
+        
         cost = self.item.cost or Decimal("0.00")
         if cost <= 0:
             return None
@@ -194,6 +198,9 @@ class Sale(db.Model):
 
     @property
     def margin(self) -> Optional[Decimal]:
+        if self.profit is None:     # because bundles can return None
+            return None
+        
         if self.gross_revenue <= 0:
             return None
         return round((self.profit / self.gross_revenue) * 100, 1)
