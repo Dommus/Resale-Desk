@@ -89,7 +89,7 @@ class Purchase(db.Model):
     owner: Mapped["User"] = relationship("User", back_populates="purchases")
 
 
-    # Using '->' annotations on these functions to state the type expected
+    # Note: using '->' annotations on these functions to specify the return type
     @property
     def total_cost(self) -> Decimal:
         purchase_price = self.purchase_price if self.purchase_price is not None else Decimal("0")
@@ -125,7 +125,9 @@ class Item(db.Model):
     )
     notes: Mapped[Optional[str]] = mapped_column(String(5120))
     created_at: Mapped[datetime] = mapped_column(server_default=func.now())
-    allocated_cost: Mapped[Decimal] = mapped_column(MONEY, default=Decimal("0.00")) #RENAME THIS TO JUST COST
+
+    # cost is only used for individual items. Should be NULL for bundles.
+    cost: Mapped[Optional[Decimal]] = mapped_column(MONEY)
 
     owner: Mapped["User"] = relationship("User", back_populates="items")
     purchase: Mapped["Purchase"] = relationship("Purchase", back_populates="items")
@@ -134,11 +136,14 @@ class Item(db.Model):
     listings: Mapped[List["Listing"]] = relationship("Listing", back_populates="item", cascade="all, delete-orphan", lazy=True)
     sale: Mapped[Optional["Sale"]] = relationship("Sale", back_populates="item", uselist=False, cascade="all, delete-orphan")
 
+    # WORK ON THIS LATER. UNFINISHED IMPLEMENTATION
+    # # # # # ## # ## # ## # #
+     # # # # # # # # # # # # 
     def generate_code(self):
         self.inventory_code = f"INV-{self.id:06d}"
 
     @property
-    def days_in_inventory(self):
+    def days_in_inventory(self) -> int:
         start = self.created_at.date() if self.created_at else end
         end = self.sale.sale_date if self.sale else datetime_date.today
         return (end - start).days
@@ -162,11 +167,11 @@ class Sale(db.Model):
     listing: Mapped[Optional["Listing"]] = relationship("Listing", back_populates="sale")
 
     @property
-    def gross_revenue(self):
+    def gross_revenue(self) -> Decimal:
         return round((self.sale_price or Decimal("0.00")) + (self.shipping_received or Decimal("0.00")), 2)
 
     @property
-    def net_revenue(self):
+    def net_revenue(self) -> Decimal:
         return round(
             self.gross_revenue
             - (self.shipping_paid or Decimal("0.00"))
@@ -176,19 +181,19 @@ class Sale(db.Model):
         )
 
     @property
-    def profit(self):
-        cost = self.item.allocated_cost or Decimal("0.00")
+    def profit(self) -> Decimal:
+        cost = self.item.cost or Decimal("0.00")
         return round(self.net_revenue - cost, 2)
 
     @property
-    def roi(self):
-        cost = self.item.allocated_cost or Decimal("0.00")
+    def roi(self) -> Optional[Decimal]:
+        cost = self.item.cost or Decimal("0.00")
         if cost <= 0:
             return None
         return round((self.profit / cost) * 100, 1)
 
     @property
-    def margin(self):
+    def margin(self) -> Optional[Decimal]:
         if self.gross_revenue <= 0:
             return None
         return round((self.profit / self.gross_revenue) * 100, 1)

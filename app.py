@@ -337,7 +337,7 @@ def new_purchase():
                 brand = request.form.get('brand', '').strip() or None,
                 status = ItemStatus.IN_STORAGE,
                 notes = request.form.get('itemNotes', '').strip() or None,
-                allocated_cost = purchase.total_cost,
+                cost = purchase.total_cost,
             )
 
             db.session.add(item)

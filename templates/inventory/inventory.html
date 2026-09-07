@@ -76,7 +76,7 @@
                     <!-- Status -->
                     <td><span class="badge status-badge-{{ item.status.value|replace(' ', '-') }}">{{ item.status.value }}</span></td>
                     <!-- Cost -->
-                    <td>€{{ "%.2f"|format(item.allocated_cost) }}</td>
+                    <td>€{{ "%.2f"|format(item.cost) }}</td>
                     <!-- Profit -->
                     <td>
                         {% if item.sale %}

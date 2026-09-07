@@ -57,7 +57,7 @@
                     <td><code class="inv-code">{{ item.inventory_code }}</code></td>
                     <td>{{ item.name }}</td>
                     <td>{{ item.category or "-" }}</td>
-                    <td>€{{ "%.2f"|format(item.allocated_cost) }}</td>
+                    <td>€{{ "%.2f"|format(item.cost) }}</td>
                     <td><span class="badge status-badge-{{ item.status.value|replace(' ', '-') }}">{{ item.status.value }}</span></td>
                     <td class="text-end"><a href="{{ url_for('view_item', item_id=item.id) }}" class="btn btn-sm btn-outline-primary">View</a></td>
                 </tr>
