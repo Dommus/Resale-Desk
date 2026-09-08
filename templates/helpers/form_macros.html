@@ -1,0 +1,18 @@
+{% macro suggestion_input(name, value='', option_id='', placeholder='') %}
+<div class="position-relative previous-value-wrapper">
+    <div class="input-group">
+        <input type="text" class="form-control previous-value-input" name="{{ name }}"
+               value="{{ value or '' }}" list="{{ option_id }}" data-options="{{ option_id }}"
+               {% if placeholder %}placeholder="{{ placeholder }}"{% endif %}>
+        <button type="button" class="btn btn-outline-secondary suggestion-toggle"
+                aria-label="Show previous values">&#9662;</button>
+    </div>
+    <div class="dropdown-menu w-100 suggestion-menu"></div>
+</div>
+{% endmacro %}
+
+{% macro suggestion_datalist(option_id, values) %}
+<datalist id="{{ option_id }}">
+    {% for value in values %}<option value="{{ value }}">{% endfor %}
+</datalist>
+{% endmacro %}
