@@ -1,4 +1,5 @@
 {% extends "layout.html" %}
+{% from "helpers/form_macros.html" import suggestion_input, suggestion_datalist %}
 {% block title %}{{ item.name }}{% endblock %}
 {% block content %}
 
@@ -131,7 +132,11 @@
                     <div class="row g-2 mb-2">
                         <div class="col-6">
                             <label class="form-label small">Category</label>
-                            <input type="text" class="form-control" name="category" value="{{ item.category or '' }}">
+                            {{ suggestion_input('category', item.category, 'category-options') }}
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label small">Brand</label>
+                            {{ suggestion_input('brand', item.brand, 'brand-options') }}
                         </div>
                         <div class="col-6">
                             <label class="form-label small">Condition</label>
@@ -171,6 +176,8 @@
                     </div>
                     <button type="submit" class="btn btn-primary">Save Changes</button>
                 </form>
+                {{ suggestion_datalist('category-options', used_categories) }}
+                {{ suggestion_datalist('brand-options', used_brands) }}
             </div>
         </div>
 
@@ -186,5 +193,9 @@
         </div>
     </div>
 </div>
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/suggestions.js') }}"></script>
+{% endblock %}
 
 {% endblock %}

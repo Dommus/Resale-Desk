@@ -92,6 +92,34 @@ def reset_database():
 
     print(f"Database reset at {DB_PATH}")
 
+# Helper functions for quality-of-life UI features
+##########################
+
+def get_used_values(model, column_name, user_id):
+    items = model.query.filter_by(user_id=user_id).all()
+    values = [getattr(item, column_name) for item in items]
+    values = [v for v in values if v]
+    return sorted(set(values))
+
+
+def get_item_form_options(user_id):
+    return {
+        'used_categories': get_used_values(Item, 'category', user_id),
+        'used_brands': get_used_values(Item, 'brand', user_id),
+    }
+
+
+def get_purchase_form_options(user_id):
+    options = get_item_form_options(user_id)
+
+    options.update({
+        'used_sellers': get_used_values(Purchase, 'seller', user_id),
+        'used_platforms': get_used_values(Purchase, 'platform', user_id),
+    })
+    
+    return options
+
+
 ##########################
 #        ROUTES
 ##########################
@@ -203,6 +231,7 @@ def view_item(item_id):
         "inventory/inventory_view.html",
         item=item,
         shelves=shelves,
+        **get_item_form_options(current_user.id),
         ItemStatus=ItemStatus,
         ListingStatus=ListingStatus,
     )
@@ -214,6 +243,7 @@ def edit_item(item_id):
     item = Item.query.filter_by(id=item_id, user_id=current_user.id).first_or_404()
     item.name = request.form.get('name', item.name).strip()
     item.category = request.form.get('category', '').strip() or None
+    item.brand = request.form.get('brand', '').strip() or None
     item.condition = request.form.get('condition', '').strip() or None
     shelf_id = request.form.get('shelf_id')
     item.shelf_id = int(shelf_id) if shelf_id else None
@@ -264,24 +294,7 @@ def new_purchase():
     if purchase_type not in ('single', 'bundle'):
         purchase_type = 'single'
 
-    def get_form_options():
-        # Show previously submitted entries as options
-        return {
-            'used_sellers': [value[0] for value in db.session.query(Purchase.seller)
-                             .filter(Purchase.user_id == current_user.id, Purchase.seller.isnot(None), Purchase.seller != '')
-                             .distinct().order_by(Purchase.seller).all()],
-            'used_platforms': [value[0] for value in db.session.query(Purchase.platform)
-                               .filter(Purchase.user_id == current_user.id, Purchase.platform.isnot(None), Purchase.platform != '')
-                               .distinct().order_by(Purchase.platform).all()],
-            'used_categories': [value[0] for value in db.session.query(Item.category)
-                                .filter(Item.user_id == current_user.id, Item.category.isnot(None), Item.category != '')
-                                .distinct().order_by(Item.category).all()],
-            'used_brands': [value[0] for value in db.session.query(Item.brand)
-                            .filter(Item.user_id == current_user.id, Item.brand.isnot(None), Item.brand != '')
-                            .distinct().order_by(Item.brand).all()],
-        }
-
-    form_options = get_form_options()
+    form_options = get_purchase_form_options(current_user.id)
 
     if request.method == 'POST':
 
@@ -362,7 +375,7 @@ def new_purchase():
             flash('Select a purchase type', 'danger')
 
         # Re-query after the commit so values from this purchase are immediately available.
-        form_options = get_form_options()
+        form_options = get_purchase_form_options(current_user.id)
         return render_template("purchases/purchases_new.html", today=today, shelves=shelves,
                                purchase_type=purchase_type_label, **form_options)
 
