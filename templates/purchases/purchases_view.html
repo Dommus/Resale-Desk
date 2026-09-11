@@ -2,16 +2,23 @@
 {% block title %}Purchase #{{ purchase.id }}{% endblock %}
 {% block content %}
 
+{% set ns = namespace(allocated=0) %}
+{% for item in purchase.items %}
+    {% set ns.allocated = ns.allocated + (item.cost or 0) %}
+{% endfor %}
+
 <div class="d-flex justify-content-between align-items-start mb-3">
     <div>
         <h3 class="mb-1">Purchase #{{ purchase.id }}</h3>
         <p class="text-muted mb-0">
-            {{ purchase.date }} &middot; {{ purchase.seller or "Unknown seller" }} &middot; {{ purchase.platform or "-" }}
-            &middot; <span class="badge bg-secondary">{{ purchase.purchase_type|capitalize }}</span>
+            {{ purchase.date }}
+            &middot; {{ purchase.seller or "Unknown seller" }}
+            &middot; {{ purchase.platform or "No platform" }}
+            &middot; <span class="badge bg-secondary">{{ purchase.purchase_type.value }}</span>
         </p>
     </div>
     <a href="{{ url_for('add_items', purchase_id=purchase.id) }}" class="btn btn-outline-primary btn-sm">
-        <i class="bi bi-plus-lg"></i> Add more items
+        <i class="bi bi-plus-lg"></i> Add items
     </a>
 </div>
 
@@ -19,54 +26,100 @@
     <div class="col-md-3">
         <div class="card card-kpi"><div class="card-body">
             <div class="kpi-label">Purchase Price</div>
-            <div class="kpi-value">€{{ "%.2f"|format(purchase.purchase_price) }}</div>
+            <div class="kpi-value">€{{ "%.2f"|format(purchase.purchase_price or 0) }}</div>
         </div></div>
     </div>
     <div class="col-md-3">
         <div class="card card-kpi"><div class="card-body">
             <div class="kpi-label">Shipping</div>
-            <div class="kpi-value">€{{ "%.2f"|format(purchase.shipping_cost) }}</div>
+            <div class="kpi-value">€{{ "%.2f"|format(purchase.shipping_cost or 0) }}</div>
         </div></div>
     </div>
     <div class="col-md-3">
         <div class="card card-kpi"><div class="card-body">
             <div class="kpi-label">Total Cost</div>
-            <div class="kpi-value">€{{ "%.2f"|format(purchase.total_cost) }}</div>
-        </div></div>
-    </div>
-    <div class="col-md-3">
-        <div class="card card-kpi"><div class="card-body">
-            <div class="kpi-label">Allocated</div>
-            <div class="kpi-value">€{{ "%.2f"|format(purchase.allocated_total) }}</div>
+            <div class="kpi-value">€{{ "%.2f"|format(purchase.total_cost or 0) }}</div>
         </div></div>
     </div>
 </div>
 
-{% if purchase.notes %}
-<p><strong>Notes:</strong> {{ purchase.notes }}</p>
-{% endif %}
+<div class="row g-4">
+    <div class="col-lg-8">
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <h6 class="card-title mb-0">Items from this Purchase</h6>
+                    <span class="text-muted small">{{ purchase.items|length }} item{% if purchase.items|length != 1 %}s{% endif %}</span>
+                </div>
 
-<div class="card shadow-sm">
-    <div class="card-body">
-        <h6 class="card-title">Items from this Purchase</h6>
-        <table class="table align-middle">
-            <thead><tr><th>Inventory ID</th><th>Name</th><th>Category</th><th>Allocated Cost</th><th>Status</th><th></th></tr></thead>
-            <tbody>
-                {% for item in purchase.items %}
-                <tr>
-                    <td><code class="inv-code">{{ item.inventory_code }}</code></td>
-                    <td>{{ item.name }}</td>
-                    <td>{{ item.category or "-" }}</td>
-                    <td>€{{ "%.2f"|format(item.cost) }}</td>
-                    <td><span class="badge status-badge-{{ item.status.value|replace(' ', '-') }}">{{ item.status.value }}</span></td>
-                    <td class="text-end"><a href="{{ url_for('view_item', item_id=item.id) }}" class="btn btn-sm btn-outline-primary">View</a></td>
-                </tr>
+                {% if purchase.items %}
+                <div class="table-responsive">
+                    <table class="table table-sm align-middle mb-0">
+                        <thead>
+                            <tr>
+                                <th>ID</th><th>Code</th><th>Name</th><th>Category</th><th>Cost</th><th>Status</th><th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in purchase.items %}
+                            <tr>
+                                <td><code class="inv-code">{{ item.id }}</code></td>
+                                <td><code class="inv-code">INV-{{ "%06d"|format(item.id) }}</code></td>
+                                <td>{{ item.name }}</td>
+                                <td>{{ item.category or "-" }}</td>
+                                <td>€{{ "%.2f"|format(item.cost or 0) }}</td>
+                                <td>
+                                    <span class="badge status-badge-{{ item.status.value|replace(' ', '-') }}">
+                                        {{ item.status.value }}
+                                    </span>
+                                </td>
+                                <td class="text-end">
+                                    <a href="{{ url_for('view_item', item_id=item.id) }}" class="btn btn-sm btn-outline-primary">View</a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
                 {% else %}
-                <tr><td colspan="6" class="text-center text-muted py-3">No items added yet.</td></tr>
-                {% endfor %}
-            </tbody>
-        </table>
+                <p class="text-muted mb-3">No items have been added to this purchase yet.</p>
+                <a href="{{ url_for('add_items', purchase_id=purchase.id) }}" class="btn btn-primary btn-sm">
+                    <i class="bi bi-plus-lg"></i> Add the first item
+                </a>
+                {% endif %}
+            </div>
+        </div>
     </div>
+
+    <div class="col-lg-4">
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <h6 class="card-title">Purchase Details</h6>
+                <table class="table table-sm mb-0">
+                    <tr><th>Date</th><td>{{ purchase.date }}</td></tr>
+                    <tr><th>Seller</th><td>{{ purchase.seller or "-" }}</td></tr>
+                    <tr><th>Platform</th><td>{{ purchase.platform or "-" }}</td></tr>
+                    <tr><th>Type</th><td>{{ purchase.purchase_type.value }}</td></tr>
+                    {% if purchase.notes %}<tr><th>Notes</th><td>{{ purchase.notes }}</td></tr>{% endif %}
+                </table>
+            </div>
+        </div>
+
+        <div class="card shadow-sm mt-4">
+            <div class="card-body">
+                <h6 class="card-title">Cost Summary</h6>
+                <table class="table table-sm mb-0">
+                    <tr><th>Purchase price</th><td class="text-end">€{{ "%.2f"|format(purchase.purchase_price or 0) }}</td></tr>
+                    <tr><th>Shipping</th><td class="text-end">€{{ "%.2f"|format(purchase.shipping_cost or 0) }}</td></tr>
+                    <tr class="fw-bold"><th>Total cost</th><td class="text-end">€{{ "%.2f"|format(purchase.total_cost or 0) }}</td></tr>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="mt-4">
+    <a href="{{ url_for('purchases') }}" class="btn btn-link px-0">&larr; Back to Purchases</a>
 </div>
 
 {% endblock %}

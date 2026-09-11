@@ -396,6 +396,20 @@ def view_purchase(purchase_id):
     purchase = Purchase.query.filter_by(id=purchase_id, user_id=current_user.id).first_or_404()
     return render_template("purchases/purchases_view.html", purchase=purchase)
 
+@app.route("/purchases/<int:purchase_id>/items", methods=["GET", "POST"])
+@login_required
+def add_items(purchase_id):
+    purchase = Purchase.query.filter_by(
+        id=purchase_id,
+        user_id=current_user.id
+    ).first_or_404()
+
+    # process the form here
+    return render_template(
+        "purchases/purchases_add_items.html",
+        purchase=purchase,
+        shelves=Shelf.query.filter_by(user_id=current_user.id).all()
+    )
 
 
 #########################
@@ -589,7 +603,7 @@ def register():
             db.session.commit()
 
         # Redirect to login page
-        # ADD AUTO-LOGIN 
+        ################################################################### ADD AUTO-LOGIN 
         return redirect(url_for('login'))
             
     
