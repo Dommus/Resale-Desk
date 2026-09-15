@@ -103,6 +103,11 @@ class Purchase(db.Model):
     @property
     def profit(self) -> Decimal:
         return round(self.total_revenue - self.total_cost, 2)
+    
+    @property
+    def display_name(self) -> str:
+        name = self.seller or self.platform or "Purchase"
+        return f"{name} - {self.date}"
 
 class Item(db.Model):
     __tablename__ = "items"
