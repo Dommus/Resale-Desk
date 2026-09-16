@@ -242,7 +242,6 @@ def inventory():
 def view_item(item_id):
 
     item = Item.query.filter_by(id=item_id, user_id=current_user.id).first()
-
     if not item:
         flash('Invalid item', 'danger')
         return redirect("/inventory")

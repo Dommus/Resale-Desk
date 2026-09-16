@@ -76,14 +76,24 @@
                             <td>€{{ "%.2f"|format(l.listing_price or 0) }}</td>
                             <td>
                                 <form method="post" action="{{ url_for('update_listing_status', listing_id=l.id) }}" class="d-flex gap-1">
-                                    <select name="status" class="form-select form-select-sm" onchange="this.form.submit()" {% if l.status.value == 'Sold' %}disabled{% endif %}>
+                                    <select name="status" class="form-select form-select-sm" onchange="this.form.submit()">
                                         {% for status in ListingStatus %}
                                         <option value="{{ status.value }}" {% if l.status == status %}selected{% endif %}>{{ status.value }}</option>
                                         {% endfor %}
                                     </select>
                                 </form>
                             </td>
-                            <td></td>
+                            <td class="text-end">
+                                {% if l.status not in [ListingStatus.SOLD, ListingStatus.REMOVED] %}
+                                <form method="post" action="{{ url_for('update_listing_status', listing_id=l.id) }}"
+                                      onsubmit="return confirm('Mark this listing as removed?');">
+                                    <input type="hidden" name="status" value="{{ ListingStatus.REMOVED.value }}">
+                                    <button type="submit" class="btn btn-sm btn-outline-danger" title="Remove listing">
+                                        <i class="bi bi-x-circle"></i> Remove
+                                    </button>
+                                </form>
+                                {% endif %}
+                            </td>
                         </tr>
                         {% endfor %}
                     </tbody>
