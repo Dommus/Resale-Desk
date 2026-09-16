@@ -241,10 +241,9 @@ def inventory():
 @login_required
 def view_item(item_id):
 
-    # If item can't be assigned (doesn't exist, invalid user id, etc) redirect back
-    try:
-        item = Item.query.filter_by(id=item_id, user_id=current_user.id).first_or_404()
-    except:
+    item = Item.query.filter_by(id=item_id, user_id=current_user.id).first()
+
+    if not item:
         flash('Invalid item', 'danger')
         return redirect("/inventory")
     
