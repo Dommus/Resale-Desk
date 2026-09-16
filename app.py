@@ -268,10 +268,17 @@ def edit_item(item_id):
     shelf_id = request.form.get('shelf_id')
     item.shelf_id = int(shelf_id) if shelf_id else None
     status = request.form.get('status')
-    # 
+
+    # Change item status
     try:
-        item.status = ItemStatus(status)
+        # Item should only being set as Sold when recording a sale
+        new_status = ItemStatus(status)
+        if new_status == ItemStatus.SOLD:
+            flash('Items are marked Sold automatically when a sale is recorded.', 'warning')
+            return redirect(url_for('view_item', item_id=item.id))
+        item.status = new_status
     except (ValueError, TypeError):
+        flash(f"Invalid status: {status!r}", "error")
         pass
 
     item.notes = request.form.get('notes', '').strip()
@@ -554,7 +561,11 @@ def update_listing_status(listing_id):
     ).first_or_404()
     status = request.form.get("status")
     try:
-        listing.status = ListingStatus(status)
+        new_status = ListingStatus(status)
+        if new_status == ListingStatus.SOLD:
+            flash('Listings are marked Sold automatically when a sale is recorded.', 'warning')
+            return redirect(url_for('view_item', item_id=listing.item_id))
+        listing.status = new_status
     except (ValueError, TypeError):
         flash("Invalid listing status.", "danger")
         return redirect(url_for("view_item", item_id=listing.item_id))

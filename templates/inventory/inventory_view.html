@@ -7,7 +7,7 @@
     <div>
         <h3 class="mb-1">{{ item.name }}</h3>
         <p class="text-muted mb-0">
-            <code class="inv-code">{{ item.inventory_code }}</code>
+            <code class="inv-code">{{ item.id }}</code>
             &middot; <span class="badge status-badge-{{ item.status.value|replace(' ', '-') }}">{{ item.status.value }}</span>
             &middot; Shelf: {{ item.shelf.name if item.shelf else "Unassigned" }}
         </p>
@@ -75,13 +75,19 @@
                             </td>
                             <td>€{{ "%.2f"|format(l.listing_price or 0) }}</td>
                             <td>
+                                {% if l.status == ListingStatus.SOLD %}
+                                <span class="badge bg-success">{{ l.status.value }}</span>
+                                {% else %}
                                 <form method="post" action="{{ url_for('update_listing_status', listing_id=l.id) }}" class="d-flex gap-1">
                                     <select name="status" class="form-select form-select-sm" onchange="this.form.submit()">
                                         {% for status in ListingStatus %}
+                                        {% if status != ListingStatus.SOLD %}
                                         <option value="{{ status.value }}" {% if l.status == status %}selected{% endif %}>{{ status.value }}</option>
+                                        {% endif %}
                                         {% endfor %}
                                     </select>
                                 </form>
+                                {% endif %}
                             </td>
                             <td class="text-end">
                                 {% if l.status not in [ListingStatus.SOLD, ListingStatus.REMOVED] %}
@@ -170,14 +176,20 @@
                         </div>
                         <div class="col-6">
                             <label class="form-label small">Status</label>
+                            {% if item.status == ItemStatus.SOLD %}
+                            <input type="text" class="form-control" value="Sold" disabled>
+                            {% else %}
                             <select class="form-select" name="status">
                                 {% for status in ItemStatus %}
+                                    {% if status != ItemStatus.SOLD %}
                                     <option value="{{ status.value }}"
                                             {% if item.status == status %}selected{% endif %}>
                                         {{ status.value }}
                                     </option>
+                                    {% endif %}
                                 {% endfor %}
                             </select>
+                            {% endif %}
                         </div>
                     </div>
                     <div class="mb-3">

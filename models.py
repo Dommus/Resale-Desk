@@ -89,6 +89,7 @@ class Purchase(db.Model):
     owner: Mapped["User"] = relationship("User", back_populates="purchases")
 
 
+    # https://www.geeksforgeeks.org/python/python-property-function/
     # Note: using '->' annotations on these functions to specify the return type
     @property
     def total_cost(self) -> Decimal:
