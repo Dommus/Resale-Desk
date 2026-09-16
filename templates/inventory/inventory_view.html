@@ -7,7 +7,7 @@
     <div>
         <h3 class="mb-1">{{ item.name }}</h3>
         <p class="text-muted mb-0">
-            <code class="inv-code">{{ item.id }}</code>
+            <code class="inv-code">{{ item.inventory_code }}</code>
             &middot; <span class="badge status-badge-{{ item.status.value|replace(' ', '-') }}">{{ item.status.value }}</span>
             &middot; Shelf: {{ item.shelf.name if item.shelf else "Unassigned" }}
         </p>

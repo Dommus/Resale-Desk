@@ -140,7 +140,6 @@ class Item(db.Model):
     name: Mapped[str] = mapped_column(String(64), nullable=False)
     category: Mapped[Optional[str]] = mapped_column(String(64))
     condition: Mapped[Optional[str]] = mapped_column(String(32))
-    # code: Mapped[Optional[str]] = mapped_column(String(10), unique=True)  # NEED TO IMPLEMENT THIS, MAYBE EVEN WITH A QR CODE
     brand: Mapped[Optional[str]] = mapped_column(String(64))
     status: Mapped[ItemStatus] = mapped_column(
         SQLEnum(ItemStatus, values_callable=lambda statuses: [status.value for status in statuses]),
@@ -158,9 +157,12 @@ class Item(db.Model):
 
     # WORK ON THIS LATER. UNFINISHED IMPLEMENTATION
     # # # # # ## # ## # ## # #
-     # # # # # # # # # # # # 
-    def generate_code(self):
-        self.inventory_code = f"INV-{self.id:06d}"
+     # # # # # # # # # # # #
+    @property
+    def inventory_code(self) -> str | None:
+        if self.id is None:
+            return None
+        return f"INV-{self.id:06d}"
 
     @property
     def days_in_inventory(self) -> int:
