@@ -134,6 +134,10 @@ def create_purchase_item(purchase, user_id, name, category=None, brand=None, con
         notes=notes.strip() or None if notes else None,
     )
 
+@app.context_processor
+def inject_today():
+    return {"today": date.today().isoformat()}
+
 
 ##########################
 #        ROUTES
@@ -316,7 +320,6 @@ def new_purchase():
     shelves = (
         Shelf.query.filter_by(user_id=current_user.id).order_by(Shelf.name.desc()).all()
     )
-    today = date.today().isoformat()
     purchase_type = request.args.get('purchase_type', 'single').lower()
     if purchase_type not in ('single', 'bundle'):
         purchase_type = 'single'
@@ -365,7 +368,7 @@ def new_purchase():
             if not name:
                 db.session.rollback()
                 flash('Item name is required.', 'danger')
-                return render_template("purchases/purchases_new.html", today=today,
+                return render_template("purchases/purchases_new.html",
                                        shelves=shelves, purchase_type=purchase_type_label,
                                        **form_options)
 
@@ -391,7 +394,7 @@ def new_purchase():
             if not valid_names:
                 db.session.rollback()
                 flash('Add at least one item to this bundle.', 'danger')
-                return render_template("purchases/purchases_new.html", today=today,
+                return render_template("purchases/purchases_new.html",
                                        shelves=shelves, purchase_type=purchase_type_label,
                                        **form_options)
 
@@ -413,7 +416,7 @@ def new_purchase():
         return redirect(url_for('view_purchase', purchase_id=purchase.id))
 
     
-    return render_template("purchases/purchases_new.html", today=today, shelves=shelves,
+    return render_template("purchases/purchases_new.html", shelves=shelves,
                            purchase_type=purchase_type_label if isinstance(purchase_type, PurchaseType) else purchase_type,
                            **form_options)
 
