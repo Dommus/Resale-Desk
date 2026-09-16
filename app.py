@@ -240,7 +240,14 @@ def inventory():
 @app.route('/inventory/<int:item_id>')
 @login_required
 def view_item(item_id):
-    item = Item.query.filter_by(id=item_id, user_id=current_user.id).first_or_404()
+
+    # If item can't be assigned (doesn't exist, invalid user id, etc) redirect back
+    try:
+        item = Item.query.filter_by(id=item_id, user_id=current_user.id).first_or_404()
+    except:
+        flash('Invalid item', 'danger')
+        return redirect("/inventory")
+    
     shelves = Shelf.query.filter_by(user_id=current_user.id).order_by(Shelf.name).all()
     return render_template(
         "inventory/inventory_view.html",
