@@ -87,6 +87,23 @@ code.inv-code {
     border-radius: 0.35rem;
 }
 
+.sortable-header {
+    cursor: pointer;
+    user-select: none;
+    white-space: nowrap;
+}
+
+.sortable-header:hover,
+.sortable-header:focus-visible {
+    background-color: var(--bs-tertiary-bg);
+}
+
+.sort-indicator {
+    display: inline-block;
+    min-width: 0.8em;
+    color: var(--bs-primary);
+}
+
 .bundle-add-row {
     cursor: pointer;
 }
