@@ -103,24 +103,7 @@ class Purchase(db.Model):
     
     @property
     def profit(self) -> Decimal:
-        # Show profit differently depending on the situation
-        # Might make different profit functions instead later?
-        ##### THIS IS UNFINISHED. TOUCH LATER
-
-        total_profit = Decimal("0.00")
-        if self.purchase_type == PurchaseType.BUNDLE:
-            bundle_cost = self.purchase_price
-
-        for item in self.items:
-            if item.status == ItemStatus.SOLD and item.sale:
-                if self.purchase_type == PurchaseType.SINGLE:
-                    item_profit = item.sale.sale_price
-                    total_profit += item_profit
-                elif self.purchase_type == PurchaseType.BUNDLE:
-                    items_revenue += item.sale.sale_price
-                    total_profit = items_revenue - bundle_cost 
-
-        return round(total_profit, 2)
+        return sum(item.sale.profit for item in self.items if item.sale)
     
     @property
     def display_name(self) -> str:
