@@ -2,11 +2,6 @@
 {% block title %}Purchase #{{ purchase.id }}{% endblock %}
 {% block content %}
 
-{% set ns = namespace(allocated=0) %}
-{% for item in purchase.items %}
-    {% set ns.allocated = ns.allocated + (item.cost or 0) %}
-{% endfor %}
-
 <div class="d-flex justify-content-between align-items-start mb-3">
     <div>
         <h3 class="mb-1">Purchase #{{purchase.id}}: {{ purchase.display_name }}</h3>
@@ -17,28 +12,24 @@
             &middot; <span class="badge bg-secondary">{{ purchase.purchase_type.value }}</span>
         </p>
     </div>
+    {% if purchase.purchase_type.value == 'Bundle' %}
     <a href="{{ url_for('add_items', purchase_id=purchase.id) }}" class="btn btn-outline-primary btn-sm">
         <i class="bi bi-plus-lg"></i> Add items
     </a>
+    {% endif %}
 </div>
 
 <div class="row g-3 mb-4">
     <div class="col-md-3">
         <div class="card card-kpi"><div class="card-body">
-            <div class="kpi-label">Purchase Price</div>
-            <div class="kpi-value">€{{ "%.2f"|format(purchase.purchase_price or 0) }}</div>
-        </div></div>
-    </div>
-    <div class="col-md-3">
-        <div class="card card-kpi"><div class="card-body">
-            <div class="kpi-label">Shipping</div>
-            <div class="kpi-value">€{{ "%.2f"|format(purchase.shipping_cost or 0) }}</div>
-        </div></div>
-    </div>
-    <div class="col-md-3">
-        <div class="card card-kpi"><div class="card-body">
             <div class="kpi-label">Total Cost</div>
             <div class="kpi-value">€{{ "%.2f"|format(purchase.total_cost or 0) }}</div>
+        </div></div>
+    </div>
+    <div class="col-md-3">
+        <div class="card card-kpi"><div class="card-body">
+            <div class="kpi-label">Realized Profit</div>
+            <div class="kpi-value {{ 'text-success' if purchase.profit >= 0 else 'text-danger' }}">€{{ "%.2f"|format(purchase.profit) }}</div>
         </div></div>
     </div>
 </div>
@@ -57,7 +48,11 @@
                     <table class="table table-sm align-middle mb-0">
                         <thead>
                             <tr>
-                                <th>ID</th><th>Code</th><th>Name</th><th>Category</th><th>Cost</th><th>Status</th><th></th>
+                                {% if purchase.purchase_type.value == 'Single' %}
+                                <th>ID</th><th>Code</th><th>Name</th><th>Category</th><th>Purchase Cost</th><th>Profit</th><th>Status</th><th></th>
+                                {% elif purchase.purchase_type.value == 'Bundle' %}
+                                <th>ID</th><th>Code</th><th>Name</th><th>Category</th><th>Profit</th><th>Status</th><th></th>
+                                {% endif %}
                             </tr>
                         </thead>
                         <tbody>
@@ -67,7 +62,16 @@
                                 <td><code class="inv-code">INV-{{ "%06d"|format(item.id) }}</code></td>
                                 <td>{{ item.name }}</td>
                                 <td>{{ item.category or "-" }}</td>
-                                <td>€{{ "%.2f"|format(item.cost or 0) }}</td>
+                                {% if purchase.purchase_type.value == 'Single' %}               
+                                <td>€{{ "%.2f"|format(item.purchase_cost) }}</td>
+                                {% endif %}
+                                <td>
+                                    {% if item.sale %}
+                                    <span class="{{ 'text-success' if item.sale.profit >= 0 else 'text-danger' }}">
+                                        €{{ "%.2f"|format(item.sale.profit) }}
+                                    </span>
+                                    {% else %}<span class="text-muted">-</span>{% endif %}
+                                </td>
                                 <td>
                                     <span class="badge status-badge-{{ item.status.value|replace(' ', '-') }}">
                                         {{ item.status.value }}
@@ -83,9 +87,11 @@
                 </div>
                 {% else %}
                 <p class="text-muted mb-3">No items have been added to this purchase yet.</p>
+                {% if purchase.purchase_type.value == 'Bundle' %}
                 <a href="{{ url_for('add_items', purchase_id=purchase.id) }}" class="btn btn-primary btn-sm">
                     <i class="bi bi-plus-lg"></i> Add the first item
                 </a>
+                {% endif %}
                 {% endif %}
             </div>
         </div>
@@ -112,6 +118,8 @@
                     <tr><th>Purchase price</th><td class="text-end">€{{ "%.2f"|format(purchase.purchase_price or 0) }}</td></tr>
                     <tr><th>Shipping</th><td class="text-end">€{{ "%.2f"|format(purchase.shipping_cost or 0) }}</td></tr>
                     <tr class="fw-bold"><th>Total cost</th><td class="text-end">€{{ "%.2f"|format(purchase.total_cost or 0) }}</td></tr>
+                    <tr><th>Net revenue</th><td class="text-end">€{{ "%.2f"|format(purchase.total_revenue) }}</td></tr>
+                    <tr class="fw-bold"><th>Profit</th><td class="text-end">€{{ "%.2f"|format(purchase.profit) }}</td></tr>
                 </table>
             </div>
         </div>

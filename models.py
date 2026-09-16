@@ -102,7 +102,24 @@ class Purchase(db.Model):
     
     @property
     def profit(self) -> Decimal:
-        return round(self.total_revenue - self.total_cost, 2)
+        # Show profit differently depending on the situation
+        # Might make different profit functions instead later?
+        ##### THIS IS UNFINISHED. TOUCH LATER
+
+        total_profit = Decimal("0.00")
+        if self.purchase_type == PurchaseType.BUNDLE:
+            bundle_cost = self.purchase_price
+
+        for item in self.items:
+            if item.status == ItemStatus.SOLD and item.sale:
+                if self.purchase_type == PurchaseType.SINGLE:
+                    item_profit = item.sale.sale_price
+                    total_profit += item_profit
+                elif self.purchase_type == PurchaseType.BUNDLE:
+                    items_revenue += item.sale.sale_price
+                    total_profit = items_revenue - bundle_cost 
+
+        return round(total_profit, 2)
     
     @property
     def display_name(self) -> str:
@@ -131,9 +148,6 @@ class Item(db.Model):
     notes: Mapped[Optional[str]] = mapped_column(String(5120))
     created_at: Mapped[datetime] = mapped_column(server_default=func.now())
 
-    # cost is only used for individual items. Should be NULL for bundles.
-    cost: Mapped[Optional[Decimal]] = mapped_column(MONEY)
-
     owner: Mapped["User"] = relationship("User", back_populates="items")
     purchase: Mapped["Purchase"] = relationship("Purchase", back_populates="items")
     shelf: Mapped[Optional["Shelf"]] = relationship("Shelf", back_populates="items")
@@ -152,6 +166,10 @@ class Item(db.Model):
         end = self.sale.sale_date if self.sale else datetime_date.today()
         start = self.created_at.date() if self.created_at else end
         return (end - start).days
+
+    @property
+    def purchase_cost(self) -> Decimal:
+        return self.purchase.total_cost if self.purchase else Decimal("0.00")
 
 class Sale(db.Model):
     __tablename__ = "sales"
@@ -187,25 +205,17 @@ class Sale(db.Model):
 
     @property
     def profit(self) -> Optional[Decimal]:
-        if self.item.cost is None:
-            return None     # for bundles, whose profit is tracked on Purchase
-        return round(self.net_revenue - self.item.cost, 2)
+        return round(self.net_revenue - self.item.purchase_cost, 2)
 
     @property
     def roi(self) -> Optional[Decimal]:
-        if self.profit is None:     # because bundles can return None
-            return None
-        
-        cost = self.item.cost or Decimal("0.00")
+        cost = self.item.purchase_cost
         if cost <= 0:
             return None
         return round((self.profit / cost) * 100, 1)
 
     @property
     def margin(self) -> Optional[Decimal]:
-        if self.profit is None:     # because bundles can return None
-            return None
-        
         if self.gross_revenue <= 0:
             return None
         return round((self.profit / self.gross_revenue) * 100, 1)

@@ -58,7 +58,7 @@
     <div class="card-body">
         <table class="table table-hover align-middle">
             <thead>
-                <tr><th>ID</th><th>Item Code</th><th>Name</th><th>Category</th><th>Shelf</th><th>Status</th><th>Cost</th><th>Profit</th><th>Purchase Date</th></tr>
+                <tr><th>ID</th><th>Item Code</th><th>Name</th><th>Category</th><th>Shelf</th><th>Status</th><th>Purchase Cost</th><th>Profit</th><th>Purchase Date</th></tr>
             </thead>
             <tbody>
                 {% for item in items %}
@@ -76,7 +76,7 @@
                     <!-- Status -->
                     <td><span class="badge status-badge-{{ item.status.value|replace(' ', '-') }}">{{ item.status.value }}</span></td>
                     <!-- Cost -->
-                    <td>€{{ "%.2f"|format(item.cost) }}</td>
+                    <td>€{{ "%.2f"|format(item.purchase_cost) }}</td>
                     <!-- Profit -->
                     <td>
                         {% if item.sale %}

@@ -92,13 +92,12 @@ def reset_database():
 
     print(f"Database reset at {DB_PATH}")
 
-# Helper functions for quality-of-life UI features
+# Helper functions
 ##########################
 
 def get_used_values(model, column_name, user_id):
     items = model.query.filter_by(user_id=user_id).all()
-    values = [getattr(item, column_name) for item in items]
-    values = [v for v in values if v]
+    values = {getattr(item, column_name) for item in items if getattr(item, column_name)}
     return sorted(set(values))
 
 
@@ -118,6 +117,22 @@ def get_purchase_form_options(user_id):
     })
     
     return options
+
+
+def create_purchase_item(purchase, user_id, name, category=None, brand=None, condition=None, 
+                         shelf_id=None, notes=None):
+    # Return new Item instance with sanitized inputs
+    return Item(
+        user_id=user_id,
+        purchase_id=purchase.id,
+        shelf_id=int(shelf_id) if shelf_id else None,
+        name=name.strip(),
+        category=category.strip() or None if category else None,
+        condition=condition.strip() or None if condition else None,
+        brand=brand.strip() or None if brand else None,
+        status=ItemStatus.IN_STORAGE,
+        notes=notes.strip() or None if notes else None,
+    )
 
 
 ##########################
@@ -330,54 +345,60 @@ def new_purchase():
         db.session.add(purchase)
         db.session.flush()
 
-        # Get item data
+        # A single purchase may contain at most one item. A bundle may
+        # contain any number of items, but there is no per-item allocation.
         checked_add_items = request.form.get('addItemsToggle') is not None
-        def process_items():
-            name = request.form.get('itemName','').strip()
-            shelf_id = request.form.get('shelf_id')
+        if checked_add_items and purchase_type == PurchaseType.SINGLE:
+            name = request.form.get('itemName', '').strip()
             if not name:
                 db.session.rollback()
                 flash('Item name is required.', 'danger')
-                return render_template("purchases/purchases_new.html", today=today, shelves=shelves, purchase_type=purchase_type_label, **form_options)
-            
-            item = Item(
-                user_id = current_user.id,
-                purchase_id = purchase.id,
-                shelf_id = int(shelf_id) if shelf_id else None,
-                name = name,
-                category = request.form.get('category', '').strip() or None,
-                condition = request.form.get('condition', '').strip() or None,
-                brand = request.form.get('brand', '').strip() or None,
-                status = ItemStatus.IN_STORAGE,
-                notes = request.form.get('itemNotes', '').strip() or None,
-                cost = purchase.total_cost,
-            )
+                return render_template("purchases/purchases_new.html", today=today,
+                                       shelves=shelves, purchase_type=purchase_type_label,
+                                       **form_options)
 
-            db.session.add(item)
-            flash(f'{name} purchase added sucessfully.', 'success')
-            db.session.flush()
+            db.session.add(create_purchase_item(
+                purchase, current_user.id, name,
+                category=request.form.get('category'),
+                brand=request.form.get('brand'),
+                condition=request.form.get('condition'),
+                shelf_id=request.form.get('shelf_id'),
+                notes=request.form.get('itemNotes'),
+            ))
+            flash(f'{name} added to the purchase.', 'success')
 
-        # Begin proccessing purchase
-        if purchase_type == PurchaseType.SINGLE:
-            if checked_add_items:
-                process_items()
-                db.session.commit()
-            else:
-                db.session.commit()
+        elif checked_add_items and purchase_type == PurchaseType.BUNDLE:
+            names = request.form.getlist('itemName[]')
+            categories = request.form.getlist('category[]')
+            brands = request.form.getlist('brand[]')
+            conditions = request.form.getlist('condition[]')
+            shelves_for_items = request.form.getlist('shelf_id[]')
+            notes = request.form.getlist('itemNotes[]')
 
-        elif purchase_type == PurchaseType.BUNDLE: #FINISH IMPLEMENTING THIS LATER, CURRENTLY WORKS THE SAME AS SINGLE ITEM
-            if checked_add_items:
-                process_items()
-                db.session.commit()
-            db.session.commit()
-        else:
-            print('ERROR: NO PURCHASE TYPE SELECTED')
-            flash('Select a purchase type', 'danger')
+            valid_names = [name.strip() for name in names if name.strip()]
+            if not valid_names:
+                db.session.rollback()
+                flash('Add at least one item to this bundle.', 'danger')
+                return render_template("purchases/purchases_new.html", today=today,
+                                       shelves=shelves, purchase_type=purchase_type_label,
+                                       **form_options)
 
-        # Re-query after the commit so values from this purchase are immediately available.
-        form_options = get_purchase_form_options(current_user.id)
-        return render_template("purchases/purchases_new.html", today=today, shelves=shelves,
-                               purchase_type=purchase_type_label, **form_options)
+            for index, name in enumerate(names):
+                name = name.strip()
+                if not name:
+                    continue
+                db.session.add(create_purchase_item(
+                    purchase, current_user.id, name,
+                    category=categories[index] if index < len(categories) else None,
+                    brand=brands[index] if index < len(brands) else None,
+                    condition=conditions[index] if index < len(conditions) else None,
+                    shelf_id=shelves_for_items[index] if index < len(shelves_for_items) else None,
+                    notes=notes[index] if index < len(notes) else None,
+                ))
+            flash(f'{len(valid_names)} item(s) added to the purchase.', 'success')
+
+        db.session.commit()
+        return redirect(url_for('view_purchase', purchase_id=purchase.id))
 
     
     return render_template("purchases/purchases_new.html", today=today, shelves=shelves,
@@ -396,7 +417,7 @@ def view_purchase(purchase_id):
     purchase = Purchase.query.filter_by(id=purchase_id, user_id=current_user.id).first_or_404()
     return render_template("purchases/purchases_view.html", purchase=purchase)
 
-@app.route("/purchases/<int:purchase_id>/items", methods=["GET", "POST"])
+@app.route("/purchases/<int:purchase_id>/add", methods=["GET", "POST"])
 @login_required
 def add_items(purchase_id):
     purchase = Purchase.query.filter_by(
@@ -404,11 +425,43 @@ def add_items(purchase_id):
         user_id=current_user.id
     ).first_or_404()
 
-    # process the form here
+    if purchase.purchase_type != PurchaseType.BUNDLE:
+        flash('Only bundle purchases can contain multiple items.', 'warning')
+        return redirect(url_for('view_purchase', purchase_id=purchase.id))
+
+    if request.method == 'POST':
+        names = request.form.getlist('itemName[]')
+        categories = request.form.getlist('category[]')
+        brands = request.form.getlist('brand[]')
+        conditions = request.form.getlist('condition[]')
+        shelves_for_items = request.form.getlist('shelf_id[]')
+        notes = request.form.getlist('itemNotes[]')
+
+        valid_names = [name.strip() for name in names if name.strip()]
+        if not valid_names:
+            flash('Add at least one item to this bundle.', 'danger')
+        else:
+            for index, name in enumerate(names):
+                name = name.strip()
+                if not name:
+                    continue
+                db.session.add(create_purchase_item(
+                    purchase, current_user.id, name,
+                    category=categories[index] if index < len(categories) else None,
+                    brand=brands[index] if index < len(brands) else None,
+                    condition=conditions[index] if index < len(conditions) else None,
+                    shelf_id=shelves_for_items[index] if index < len(shelves_for_items) else None,
+                    notes=notes[index] if index < len(notes) else None,
+                ))
+            db.session.commit()
+            flash(f'{len(valid_names)} item(s) added to the purchase.', 'success')
+            return redirect(url_for('view_purchase', purchase_id=purchase.id))
+
     return render_template(
         "purchases/purchases_add_items.html",
         purchase=purchase,
-        shelves=Shelf.query.filter_by(user_id=current_user.id).all()
+        shelves=Shelf.query.filter_by(user_id=current_user.id).order_by(Shelf.name).all(),
+        **get_item_form_options(current_user.id),
     )
 
 
