@@ -227,11 +227,16 @@ class Listing(db.Model):
     item_id: Mapped[int] = mapped_column(ForeignKey("items.id"), nullable=False)
 
     platform: Mapped[str] = mapped_column(String(80), nullable=False)
-    listing_id: Mapped[str] = mapped_column(String(120), nullable=False)
+    listing_id: Mapped[str] = mapped_column(String(120))
     listing_url: Mapped[Optional[str]] = mapped_column(String(500))
     listing_price: Mapped[Optional[Decimal]] = mapped_column(MONEY, default=None)
     date_listed: Mapped[datetime_date] = mapped_column(default=datetime_date.today)
-    status: Mapped[ListingStatus] = mapped_column(SQLEnum(ListingStatus), default=ListingStatus.ACTIVE)
+    # Persist the human-readable enum values (Active, Sold, ...) so they
+    # match the existing database rows and the values used by the forms.
+    status: Mapped[ListingStatus] = mapped_column(
+        SQLEnum(ListingStatus, values_callable=lambda statuses: [status.value for status in statuses]),
+        default=ListingStatus.ACTIVE,
+    )
 
     item: Mapped["Item"] = relationship("Item", back_populates="listings")
     sale: Mapped[Optional["Sale"]] = relationship("Sale", back_populates="listing", uselist=False)

@@ -152,6 +152,7 @@ def index():
         .filter(Purchase.user_id == current_user.id)
         .scalar() or Decimal("0.00")
     )
+    # TODO add total profit?
     recent_items = Item.query.filter_by(user_id=current_user.id).order_by(Item.created_at.desc()).limit(5).all()
     recent_purchases = Purchase.query.filter_by(user_id=current_user.id).order_by(Purchase.date.desc()).limit(5).all()
 
@@ -165,7 +166,6 @@ def index():
         recent_items=recent_items,
         recent_purchases=recent_purchases,
     )
-
 
 #########################
 #       Inventory
@@ -525,7 +525,7 @@ def new_listing(item_id):
             listing_url=request.form.get("listing_url", "").strip(),
             listing_price=parse_decimal(request.form.get("listing_price")),
             date_listed=parse_date(request.form.get("date_listed")),
-            status="Active",
+            status=ListingStatus.ACTIVE,
         )
         if not listing.platform or not listing.listing_id:
             flash("Platform and listing ID are required.", "danger")
@@ -538,7 +538,7 @@ def new_listing(item_id):
         flash("Listing added.", "success")
         return redirect(url_for("view_item", item_id=item.id))
 
-    return render_template("listings/new.html", item=item)
+    return render_template("listings/listings_new.html", item=item)
 
 
 @app.route('/listings/<int:listing_id>/status', methods=["POST"])
@@ -548,11 +548,14 @@ def update_listing_status(listing_id):
         Listing.id == listing_id, Item.user_id == current_user.id
     ).first_or_404()
     status = request.form.get("status")
-    # NEED TO UPDATE THIS TO TAKE INTO ACCOUNT ENUMS
-    if status in ("Active", "Sold", "Removed", "Expired"):
-        listing.status = status
-        db.session.commit()
-        flash("Listing status updated.", "success")
+    try:
+        listing.status = ListingStatus(status)
+    except (ValueError, TypeError):
+        flash("Invalid listing status.", "danger")
+        return redirect(url_for("view_item", item_id=listing.item_id))
+
+    db.session.commit()
+    flash("Listing status updated.", "success")
     return redirect(url_for("view_item", item_id=listing.item_id))
 
 
@@ -585,10 +588,10 @@ def new_sale(item_id):
         if sale.listing_id:
             chosen = db.session.get(Listing, sale.listing_id)
             if chosen:
-                chosen.status = "Sold"
+                chosen.status = ListingStatus.SOLD
         for l in item.listings:
-            if l.id != sale.listing_id and l.status == "Active":
-                l.status = "Removed"
+            if l.id != sale.listing_id and l.status == ListingStatus.ACTIVE:
+                l.status = ListingStatus.REMOVED
         db.session.commit()
         flash("Sale recorded.", "success")
         return redirect(url_for("view_item", item_id=item.id))
