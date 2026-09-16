@@ -137,15 +137,15 @@
                     </div>
                     <div class="row g-2 mb-2">
                         <div class="col-6">
-                            <label class="form-label small">Category</label>
+                            <label class="form-label small">Category <span class="text-muted">(optional)</span></label>
                             {{ suggestion_input('category', item.category, 'category-options') }}
                         </div>
                         <div class="col-6">
-                            <label class="form-label small">Brand</label>
+                            <label class="form-label small">Brand <span class="text-muted">(optional)</span></label>
                             {{ suggestion_input('brand', item.brand, 'brand-options') }}
                         </div>
                         <div class="col-6">
-                            <label class="form-label small">Condition</label>
+                            <label class="form-label small">Condition <span class="text-muted">(optional)</span></label>
                             <select class="form-select" name="condition">
                                 <option value="">-</option>
                                 {% for c in ["New", "Like New", "Good", "Fair", "Poor"] %}
@@ -156,7 +156,7 @@
                     </div>
                     <div class="row g-2 mb-2">
                         <div class="col-6">
-                            <label class="form-label small">Shelf</label>
+                            <label class="form-label small">Shelf <span class="text-muted">(optional)</span></label>
                             <select class="form-select" name="shelf_id">
                                 <option value="">Unassigned</option>
                                 {% for shelf in shelves %}
@@ -165,7 +165,7 @@
                             </select>
                         </div>
                         <div class="col-6">
-                            <label class="form-label small">Status</label>
+                            <label class="form-label small">Status <span class="text-muted">(optional)</span></label>
                             {% if item.status == ItemStatus.SOLD %}
                             <input type="text" class="form-control" value="Sold" disabled>
                             {% else %}
@@ -183,7 +183,7 @@
                         </div>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label small">Notes</label>
+                        <label class="form-label small">Notes <span class="text-muted">(optional)</span></label>
                         <textarea class="form-control" name="notes" rows="3">{{ item.notes or '' }}</textarea>
                     </div>
                     <button type="submit" class="btn btn-primary">Save Changes</button>

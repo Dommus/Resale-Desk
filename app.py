@@ -427,7 +427,31 @@ def choose_purchase_type():
 @login_required
 def view_purchase(purchase_id):
     purchase = Purchase.query.filter_by(id=purchase_id, user_id=current_user.id).first_or_404()
-    return render_template("purchases/purchases_view.html", purchase=purchase)
+    return render_template(
+        "purchases/purchases_view.html",
+        purchase=purchase,
+        **get_purchase_form_options(current_user.id),
+    )
+
+
+@app.route('/purchases/<int:purchase_id>/edit', methods=['POST'])
+@login_required
+def edit_purchase(purchase_id):
+    purchase = Purchase.query.filter_by(
+        id=purchase_id,
+        user_id=current_user.id,
+    ).first_or_404()
+
+    purchase.date = parse_date(request.form.get('date'), default=purchase.date)
+    purchase.seller = request.form.get('seller', '').strip() or None
+    purchase.platform = request.form.get('platform', '').strip() or None
+    purchase.purchase_price = parse_decimal(request.form.get('purchase_price'))
+    purchase.shipping_cost = parse_decimal(request.form.get('shipping_cost'))
+    purchase.notes = request.form.get('purchaseNotes', '').strip() or None
+
+    db.session.commit()
+    flash('Purchase updated.', 'success')
+    return redirect(url_for('view_purchase', purchase_id=purchase.id))
 
 @app.route("/purchases/<int:purchase_id>/add", methods=["GET", "POST"])
 @login_required
@@ -612,7 +636,7 @@ def new_sale(item_id):
         flash("Sale recorded.", "success")
         return redirect(url_for("view_item", item_id=item.id))
 
-    return render_template("sales/new.html", item=item)
+    return render_template("sales/sales_new.html", item=item)
 
 
 #########################
