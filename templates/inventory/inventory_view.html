@@ -68,7 +68,7 @@
                     <thead><tr><th>Platform</th><th>Listing ID</th><th>Price</th><th>Status</th><th></th></tr></thead>
                     <tbody>
                         {% for l in item.listings %}
-                        <tr>
+                        <tr class="{% if l.status == ListingStatus.REMOVED %}removed-listing{% endif %}">
                             <td>{{ l.platform }}</td>
                             <td>
                                 {% if l.listing_url %}<a href="{{ l.listing_url }}" target="_blank">{{ l.listing_id }}</a>{% else %}{{ l.listing_id }}{% endif %}
@@ -89,17 +89,7 @@
                                 </form>
                                 {% endif %}
                             </td>
-                            <td class="text-end">
-                                {% if l.status not in [ListingStatus.SOLD, ListingStatus.REMOVED] %}
-                                <form method="post" action="{{ url_for('update_listing_status', listing_id=l.id) }}"
-                                      onsubmit="return confirm('Mark this listing as removed?');">
-                                    <input type="hidden" name="status" value="{{ ListingStatus.REMOVED.value }}">
-                                    <button type="submit" class="btn btn-sm btn-outline-danger" title="Remove listing">
-                                        <i class="bi bi-x-circle"></i> Remove
-                                    </button>
-                                </form>
-                                {% endif %}
-                            </td>
+                            <td></td>
                         </tr>
                         {% endfor %}
                     </tbody>
