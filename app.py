@@ -323,10 +323,42 @@ def delete_item(item_id):
 @app.route('/purchases', methods=['GET', 'POST'])
 @login_required
 def purchases():
-    purchases = (
-        Purchase.query.filter_by(user_id=current_user.id).order_by(Purchase.date.desc()).all()
+    query = Purchase.query.filter_by(user_id=current_user.id)
+    q = request.args.get('q', '').strip()
+    if q:
+        query = query.outerjoin(Item).filter(or_(
+            cast(Purchase.id, String).ilike(f'%{q}%'),
+            Purchase.name.ilike(f'%{q}%'),
+            Purchase.seller.ilike(f'%{q}%'),
+            Purchase.platform.ilike(f'%{q}%'),
+            Item.name.ilike(f'%{q}%'),
+        )).distinct()
+
+    purchase_type = request.args.get('purchase_type', '')
+    if purchase_type:
+        try:
+            query = query.filter(Purchase.purchase_type == PurchaseType(purchase_type))
+        except ValueError:
+            purchase_type = ''
+
+    sort = request.args.get('sort', 'newest')
+    if sort == 'oldest':
+        purchases = query.order_by(Purchase.date.asc()).all()
+    else:
+        purchases = query.order_by(Purchase.date.desc()).all()
+
+    if sort == 'highest_profit':
+        purchases.sort(key=lambda p: p.profit, reverse=True)
+    elif sort == 'lowest_profit':
+        purchases.sort(key=lambda p: p.profit)
+
+    return render_template(
+        "purchases/purchases.html",
+        purchases=purchases,
+        q=q,
+        purchase_type=purchase_type,
+        sort=sort,
     )
-    return render_template("purchases/purchases.html", purchases=purchases)
 
 @app.route("/purchases/new", methods=["GET", "POST"])
 @login_required

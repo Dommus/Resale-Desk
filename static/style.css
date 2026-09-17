@@ -136,11 +136,13 @@ code.inv-code {
     color: inherit;
 }
 
-.bundle-add-row {
+.bundle-add-row,
+.purchase-add-row {
     cursor: pointer;
 }
 
-.bundle-add-row td {
+.bundle-add-row td,
+.purchase-add-row td {
     background-color: var(--bs-tertiary-bg);
     border: 2px dashed var(--bs-border-color) !important;
     color: var(--bs-secondary-color);
@@ -148,12 +150,15 @@ code.inv-code {
 }
 
 .bundle-add-row:hover td,
-.bundle-add-row:focus td {
+.bundle-add-row:focus td,
+.purchase-add-row:hover td,
+.purchase-add-row:focus td {
     background-color: var(--bs-secondary-bg);
     color: var(--bs-body-color);
 }
 
-.bundle-add-row:focus {
+.bundle-add-row:focus,
+.purchase-add-row:focus {
     outline: 2px solid var(--bs-primary);
     outline-offset: 2px;
 }
