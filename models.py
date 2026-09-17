@@ -165,7 +165,7 @@ class Sale(db.Model):
 
     sale_date: Mapped[datetime_date] = mapped_column(default=datetime_date.today)
     sale_price: Mapped[Decimal] = mapped_column(MONEY, default=Decimal("0.00"))
-    shipping_received: Mapped[Decimal] = mapped_column(MONEY, default=Decimal("0.00"))
+    shipping_collected: Mapped[Decimal] = mapped_column(MONEY, default=Decimal("0.00"))
     shipping_paid: Mapped[Decimal] = mapped_column(MONEY, default=Decimal("0.00"))
     platform_fee: Mapped[Decimal] = mapped_column(MONEY, default=Decimal("0.00"))
     payment_fee: Mapped[Decimal] = mapped_column(MONEY, default=Decimal("0.00"))
@@ -176,7 +176,7 @@ class Sale(db.Model):
 
     @property
     def gross_proceeds(self) -> Decimal:
-        return round((self.sale_price or Decimal("0.00")) + (self.shipping_received or Decimal("0.00")), 2)
+        return round((self.sale_price or Decimal("0.00")) + (self.shipping_collected or Decimal("0.00")), 2)
 
     @property
     def net_proceeds(self) -> Decimal:

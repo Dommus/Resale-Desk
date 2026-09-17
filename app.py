@@ -1,5 +1,6 @@
 import os
 from datetime import datetime, date
+from urllib.parse import urlparse
 
 # Imports from local python files
 from models import db, User, Shelf, Item, Purchase, ItemStatus, PurchaseType, Listing, ListingStatus, Sale
@@ -298,6 +299,15 @@ def delete_item(item_id):
     db.session.delete(item)
     db.session.commit()
     flash("Item deleted.", "success")
+
+    # Redirect to current page
+    referrer = request.referrer
+    if referrer:
+        parsed_referrer = urlparse(referrer)
+        if parsed_referrer.netloc in ("", request.host):
+            return redirect(referrer)
+
+    # Fallback
     return redirect(url_for("inventory"))
 
 
@@ -445,6 +455,23 @@ def edit_purchase(purchase_id):
         user_id=current_user.id,
     ).first_or_404()
 
+    requested_type = request.form.get('purchase_type')
+    if requested_type and requested_type != purchase.purchase_type.value:
+        try:
+            requested_type = PurchaseType(requested_type)
+        except ValueError:
+            flash('Invalid purchase type.', 'danger')
+            return redirect(url_for('view_purchase', purchase_id=purchase.id))
+
+        if not (
+            purchase.purchase_type == PurchaseType.BUNDLE
+            and len(purchase.items) == 1
+            and requested_type == PurchaseType.SINGLE
+        ):
+            flash('A Bundle can only be changed to Single when it has exactly one item.', 'warning')
+            return redirect(url_for('view_purchase', purchase_id=purchase.id))
+        purchase.purchase_type = requested_type
+
     purchase.date = parse_date(request.form.get('date'), default=purchase.date)
     purchase.seller = request.form.get('seller', '').strip() or None
     purchase.platform = request.form.get('platform', '').strip() or None
@@ -464,17 +491,31 @@ def add_items(purchase_id):
         user_id=current_user.id
     ).first_or_404()
 
-    if purchase.purchase_type != PurchaseType.BUNDLE:
+    # Check if single purchase has no items assigned to it
+    # Normally items can only be added to bundles, unless it's an empty single purchase
+    empty_single_purchase = False
+    if (purchase.purchase_type.value == 'Single' and len(purchase.items) < 1):
+        empty_single_purchase = True
+        print("SINGLE PURCHASE")
+
+    # This shouldn't happen since the add button is conditionally disabled with Jinja, but just in case
+    if purchase.purchase_type != PurchaseType.BUNDLE and not empty_single_purchase:
         flash('Only bundle purchases can contain multiple items.', 'warning')
         return redirect(url_for('view_purchase', purchase_id=purchase.id))
 
     if request.method == 'POST':
+
         names = request.form.getlist('itemName[]')
         categories = request.form.getlist('category[]')
         brands = request.form.getlist('brand[]')
         conditions = request.form.getlist('condition[]')
         shelves_for_items = request.form.getlist('shelf_id[]')
         notes = request.form.getlist('itemNotes[]')
+
+        # Convert purchase type to Bundle if needed
+        if empty_single_purchase and len(names) > 1:
+            print("PURCHASE TYPE CONVERSION TO BUNDLE")
+            purchase.purchase_type = PurchaseType.BUNDLE
 
         valid_names = [name.strip() for name in names if name.strip()]
         if not valid_names:
@@ -500,7 +541,7 @@ def add_items(purchase_id):
         "purchases/purchases_add_items.html",
         purchase=purchase,
         shelves=Shelf.query.filter_by(user_id=current_user.id).order_by(Shelf.name).all(),
-        **get_item_form_options(current_user.id),
+        **get_item_form_options(current_user.id), empty_single_purchase=empty_single_purchase
     )
 
 
@@ -620,7 +661,7 @@ def new_sale(item_id):
             listing_id=int(listing_id) if listing_id else None,
             sale_date=parse_date(request.form.get("sale_date")),
             sale_price=parse_decimal(request.form.get("sale_price")),
-            shipping_received=parse_decimal(request.form.get("shipping_received")),
+            shipping_collected=parse_decimal(request.form.get("shipping_collected")),
             shipping_paid=parse_decimal(request.form.get("shipping_paid")),
             platform_fee=parse_decimal(request.form.get("platform_fee")),
             payment_fee=parse_decimal(request.form.get("payment_fee")),
@@ -662,7 +703,7 @@ def edit_sale(sale_id):
     sale.listing_id = listing.id if listing else None
     sale.sale_date = parse_date(request.form.get("sale_date"), default=sale.sale_date)
     sale.sale_price = parse_decimal(request.form.get("sale_price"))
-    sale.shipping_received = parse_decimal(request.form.get("shipping_received"))
+    sale.shipping_collected = parse_decimal(request.form.get("shipping_collected"))
     sale.shipping_paid = parse_decimal(request.form.get("shipping_paid"))
     sale.platform_fee = parse_decimal(request.form.get("platform_fee"))
     sale.payment_fee = parse_decimal(request.form.get("payment_fee"))

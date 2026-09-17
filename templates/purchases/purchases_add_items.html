@@ -9,7 +9,7 @@
         <p class="text-muted mb-0">
             {{ purchase.date }}
             &middot; {{ purchase.seller or "Unknown seller" }}
-            &middot; <span class="badge bg-secondary">Bundle</span>
+            &middot; <span class="badge bg-secondary">{{ purchase.purchase_type.value }}</span>
         </p>
     </div>
     <a href="{{ url_for('view_purchase', purchase_id=purchase.id) }}" class="btn btn-outline-secondary btn-sm">
@@ -24,7 +24,7 @@
 
 <div class="card shadow-sm">
     <div class="card-body">
-        <form method="post" id="itemsForm">
+        <form method="post" id="itemsForm" {% if empty_single_purchase %}onsubmit="return confirmMultipleItems();"{% endif %}>
             <div class="d-flex justify-content-between align-items-center border-bottom pb-3 mb-3">
                 <div>
                     <h6 class="mb-1">Bundle Items</h6>
@@ -99,6 +99,12 @@
 {% block scripts %}
 <script src="{{ url_for('static', filename='js/suggestions.js') }}"></script>
 <script>
+function confirmMultipleItems() {
+    const itemCount = Array.from(document.querySelectorAll('input[name="itemName[]"]'))
+        .filter(input => input.value.trim() !== '').length;
+    return itemCount <= 1 || confirm('You are about to add multiple items to a purchase marked as Single. This action will convert it to a Bundle. Do you want to continue?');
+}
+
 const table = document.getElementById('itemsTable');
 const body = table.querySelector('tbody');
 const addRow = document.getElementById('addRow');
