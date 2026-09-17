@@ -78,7 +78,7 @@
                 {% else %}
                 <tr><td colspan="9" class="text-center text-muted py-4">No purchases recorded yet. <a href="{{ url_for('choose_purchase_type') }}">Add your first purchase</a>.</td></tr>
                 {% endfor %}
-                <tr id="addPurchaseRow" class="purchase-add-row text-body-secondary" data-href="{{ url_for('choose_purchase_type') }}" role="button" tabindex="0" aria-label="Add a new purchase">
+                <tr id="addPurchaseRow" class="purchase-add-row text-body-secondary" data-sort-pinned-bottom data-href="{{ url_for('choose_purchase_type') }}" role="button" tabindex="0" aria-label="Add a new purchase">
                     <td colspan="9" class="text-center py-3">
                         <i class="bi bi-plus-lg"></i> Click to add a new purchase
                     </td>

@@ -88,12 +88,19 @@
                 activeHeader = header;
 
                 const rows = [...tableBody.querySelectorAll('tr[data-sort-row]')];
+                const pinnedBottomRow = tableBody.querySelector('[data-sort-pinned-bottom]');
                 rows.sort((leftRow, rightRow) => direction * compareCells(
                     leftRow.cells[header.cellIndex],
                     rightRow.cells[header.cellIndex],
                     header.dataset.sortType || 'text',
                 ));
-                rows.forEach(row => tableBody.appendChild(row));
+                rows.forEach(row => {
+                    if (pinnedBottomRow) {
+                        tableBody.insertBefore(row, pinnedBottomRow);
+                    } else {
+                        tableBody.appendChild(row);
+                    }
+                });
 
                 headers.forEach(currentHeader => {
                     const isActive = currentHeader === header;
