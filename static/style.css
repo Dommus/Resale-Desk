@@ -84,6 +84,16 @@ body:has(.navbar) .theme-toggle {
 .status-badge-Waiting { background-color: #6f42c1; }
 .status-badge-Refunded { background-color: #dc3545; }
 
+.purchase-type-badge-Single {
+    background-color: #6ea13e;
+    color: #fff;
+}
+
+.purchase-type-badge-Bundle {
+    background-color: #6f42c1;
+    color: #fff;
+}
+
 code.inv-code {
     background: #eef1f5;
     padding: 0.15rem 0.4rem;

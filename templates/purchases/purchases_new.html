@@ -14,11 +14,15 @@
                     <input type="date" class="form-control" name="date" value="{{ today }}" required>
                 </div>
                 <div class="col-md-4">
-                    <label class="form-label">Seller</label>
+                    <label class="form-label">Purchase Name <span class="text-muted">(optional)</span></label>
+                    <input type="text" class="form-control" name="name" maxlength="128" placeholder="e.g. 50€ Box">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Seller <span class="text-muted">(optional)</span></label>
                     {{ suggestion_input('seller', option_id='seller-options', placeholder='e.g. livestream, Vinted user...') }}
                 </div>
                 <div class="col-md-4">
-                    <label class="form-label">Source Platform</label>
+                    <label class="form-label">Source Platform <span class="text-muted">(optional)</span></label>
                     {{ suggestion_input('platform', option_id='platform-options', placeholder='e.g. TikTok, Vinted...') }}
                 </div>
 
@@ -33,7 +37,7 @@
                 </div>
 
                 <div class="col-12">
-                    <label class="form-label">Purchase Notes</label>
+                    <label class="form-label">Purchase Notes <span class="text-muted">(optional)</span></label>
                     <textarea class="form-control" name="purchaseNotes" rows="2"></textarea>
                 </div>
 
@@ -55,11 +59,11 @@
                         <input type="text" class="form-control" name="itemName" id="itemName" required>
                     </div>
                     <div class="col-md-3">
-                        <label class="form-label">Category</label>
+                        <label class="form-label">Category <span class="text-muted">(optional)</span></label>
                         {{ suggestion_input('category', option_id='category-options', placeholder='e.g. Video Game') }}
                     </div>
                     <div class="col-md-3">
-                        <label class="form-label">Brand</label>
+                        <label class="form-label">Brand <span class="text-muted">(optional)</span></label>
                         {{ suggestion_input('brand', option_id='brand-options', placeholder='e.g. Nike') }}
                     </div>
                     <div class="col-md-3">
@@ -74,7 +78,7 @@
                         </select>
                     </div>
                     <div class="col-md-3">
-                        <label class="form-label">Shelf</label>
+                        <label class="form-label">Shelf <span class="text-muted">(optional)</span></label>
                         <select class="form-select" name="shelf_id">
                             <option value="">-</option>
                             {% for shelf in shelves %}
@@ -83,7 +87,7 @@
                         </select>
                     </div>
                     <div class="col-md-6">
-                        <label class="form-label">Notes</label>
+                        <label class="form-label">Notes <span class="text-muted">(optional)</span></label>
                         <input type="text" class="form-control" name="itemNotes" placeholder="e.g. Broken">
                     </div>
                 </div>

@@ -76,6 +76,7 @@ class Purchase(db.Model):
     id: Mapped[int] = mapped_column(primary_key=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
 
+    name: Mapped[Optional[str]] = mapped_column(String(128))
     seller: Mapped[Optional[str]] = mapped_column(String(128))
     platform: Mapped[Optional[str]] = mapped_column(String(64))
     date: Mapped[datetime_date] = mapped_column(default=datetime_date.today)
@@ -106,8 +107,7 @@ class Purchase(db.Model):
     
     @property
     def display_name(self) -> str:
-        name = self.seller or self.platform or "Purchase"
-        return f"{name} - {self.date}"
+        return self.name or self.seller or self.platform or f"Purchase - {self.date}"
 
 class Item(db.Model):
     __tablename__ = "items"

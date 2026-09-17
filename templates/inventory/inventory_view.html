@@ -231,10 +231,10 @@
             <div class="card-body">
                 <h6 class="card-title">Purchase</h6>
                 <p class="mb-1">
-                    From <a href="{{ url_for('view_purchase', purchase_id=item.purchase.id) }}">Purchase #{{ item.purchase.id }}</a>
+                    From <a href="{{ url_for('view_purchase', purchase_id=item.purchase.id) }}">{{ item.purchase.display_name }}</a>
                     ({{ item.purchase.date }})
                 </p>
-                <p class="text-muted small mb-0">Seller: {{ item.purchase.seller or "-" }} &middot; {{ item.purchase.purchase_type|capitalize }}</p>
+                <p class="text-muted small mb-0">Seller: {{ item.purchase.seller or "-" }} &middot; <span class="badge purchase-type-badge-{{ item.purchase.purchase_type.value }}">{{ item.purchase.purchase_type.value }}</span></p>
             </div>
         </div>
     </div>

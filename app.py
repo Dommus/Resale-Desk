@@ -365,6 +365,7 @@ def new_purchase():
         purchase = Purchase(
             user_id = current_user.id,
             date = parse_date(request.form.get('date')),
+            name = request.form.get('name', '').strip() or None,
             seller = request.form.get('seller', '').strip(),
             platform = request.form.get('platform', '').strip(),
             purchase_type = purchase_type,
@@ -468,6 +469,7 @@ def edit_purchase(purchase_id):
     ).first_or_404()
 
     purchase.date = parse_date(request.form.get('date'), default=purchase.date)
+    purchase.name = request.form.get('name', '').strip() or None
     purchase.seller = request.form.get('seller', '').strip() or None
     purchase.platform = request.form.get('platform', '').strip() or None
     purchase.purchase_price = parse_decimal(request.form.get('purchase_price'))

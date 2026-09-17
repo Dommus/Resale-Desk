@@ -10,7 +10,7 @@
             {{ purchase.date }}
             &middot; {{ purchase.seller or "Unknown seller" }}
             &middot; {{ purchase.platform or "No platform" }}
-            &middot; <span class="badge bg-secondary">{{ purchase.purchase_type.value }}</span>
+            &middot; <span class="badge purchase-type-badge-{{ purchase.purchase_type.value }}">{{ purchase.purchase_type.value }}</span>
         </p>
     </div>
     <a href="{{ url_for('add_items', purchase_id=purchase.id) }}" class="btn btn-outline-primary btn-sm">
@@ -111,6 +111,10 @@
                     <div class="mb-2">
                         <label class="form-label small">Date</label>
                         <input type="date" class="form-control" name="date" value="{{ purchase.date.isoformat() }}" required>
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label small">Purchase Name <span class="text-muted">(optional)</span></label>
+                        <input type="text" class="form-control" name="name" value="{{ purchase.name or '' }}" maxlength="128" placeholder="e.g. 50€ Box">
                     </div>
                     <div class="mb-2">
                         <label class="form-label small">Seller <span class="text-muted">(optional)</span></label>
