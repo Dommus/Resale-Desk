@@ -41,24 +41,28 @@
 <div class="card shadow-sm">
     <div class="card-body">
         <div class="table-responsive">
-        <table class="table table-hover align-middle text-nowrap" id="purchases-table">
+        <table class="table table-hover align-middle text-nowrap" id="purchases-table"
+               data-sortable-table
+               data-filter-form="purchase-filters"
+               data-reset-button="purchase-reset"
+               data-search-focus-key="purchase-restore-search-focus">
             <thead>
                 <tr>
-                    <th class="sortable-header" data-sort-type="number"># <span class="sort-indicator"></span></th>
-                    <th class="sortable-header" data-sort-type="date">Date <span class="sort-indicator"></span></th>
-                    <th class="sortable-header" data-sort-type="text">Name <span class="sort-indicator"></span></th>
-                    <th class="sortable-header" data-sort-type="text">Seller <span class="sort-indicator"></span></th>
-                    <th class="sortable-header" data-sort-type="text">Platform <span class="sort-indicator"></span></th>
-                    <th class="sortable-header" data-sort-type="text">Type <span class="sort-indicator"></span></th>
-                    <th class="sortable-header" data-sort-type="number">Total Cost <span class="sort-indicator"></span></th>
-                    <th class="sortable-header" data-sort-type="number"># Items <span class="sort-indicator"></span></th>
+                    <th class="sortable-header" data-sort-key="id" data-sort-type="number" tabindex="0" role="button"># <span class="sort-indicator" aria-hidden="true"></span></th>
+                    <th class="sortable-header" data-sort-key="date" data-sort-type="date" tabindex="0" role="button">Date <span class="sort-indicator" aria-hidden="true"></span></th>
+                    <th class="sortable-header" data-sort-key="name" data-sort-type="text" tabindex="0" role="button">Name <span class="sort-indicator" aria-hidden="true"></span></th>
+                    <th class="sortable-header" data-sort-key="seller" data-sort-type="text" tabindex="0" role="button">Seller <span class="sort-indicator" aria-hidden="true"></span></th>
+                    <th class="sortable-header" data-sort-key="platform" data-sort-type="text" tabindex="0" role="button">Platform <span class="sort-indicator" aria-hidden="true"></span></th>
+                    <th class="sortable-header" data-sort-key="type" data-sort-type="text" tabindex="0" role="button">Type <span class="sort-indicator" aria-hidden="true"></span></th>
+                    <th class="sortable-header" data-sort-key="cost" data-sort-type="number" tabindex="0" role="button">Total Cost <span class="sort-indicator" aria-hidden="true"></span></th>
+                    <th class="sortable-header" data-sort-key="items" data-sort-type="number" tabindex="0" role="button"># Items <span class="sort-indicator" aria-hidden="true"></span></th>
                     <th></th>
                 </tr>
             </thead>
             <tbody>
                 {% for p in purchases %}
                 <!-- <tr onclick="window.location='{{ url_for('view_purchase', purchase_id=p.id) }}'" style="cursor:pointer;"> -->
-                <tr class="clickable-row" data-href="{{ url_for('view_purchase', purchase_id=p.id) }}">
+                <tr class="clickable-row" data-href="{{ url_for('view_purchase', purchase_id=p.id) }}" data-sort-row>
                     <td data-sort-value="{{ p.id }}">{{ p.id }}</td>
                     <td data-sort-value="{{ p.date.isoformat() }}">{{ p.date }}</td>
                     <td data-sort-value="{{ p.name or '' }}">{{ p.name or "-" }}</td>
@@ -88,20 +92,9 @@
 {% endblock %}
 
 {% block scripts %}
+<script src="{{ url_for('static', filename='js/table_controls.js') }}"></script>
 <script>
 document.addEventListener('DOMContentLoaded', () => {
-    const form = document.getElementById('purchase-filters');
-    const search = form.querySelector('input[name="q"]');
-    let timer;
-    const update = () => {
-        const params = new URLSearchParams(new FormData(form));
-        for (const [key, value] of [...params]) if (!value) params.delete(key);
-        window.location.href = `${window.location.pathname}${params.toString() ? '?' + params : ''}`;
-    };
-    search.addEventListener('input', () => { clearTimeout(timer); timer = setTimeout(update, 300); });
-    form.querySelectorAll('select').forEach(select => select.addEventListener('change', update));
-    document.getElementById('purchase-reset').addEventListener('click', () => { window.location.href = window.location.pathname; });
-
     const addPurchaseRow = document.getElementById('addPurchaseRow');
     const openPurchaseChooser = () => { window.location.href = addPurchaseRow.dataset.href; };
     addPurchaseRow.addEventListener('click', openPurchaseChooser);
@@ -112,26 +105,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    const table = document.getElementById('purchases-table');
-    const headers = [...table.querySelectorAll('th.sortable-header')];
-    let active = null;
-    let direction = 1;
-    headers.forEach(header => header.addEventListener('click', () => {
-        const index = headers.indexOf(header);
-        direction = active === header ? direction * -1 : 1;
-        active = header;
-        const type = header.dataset.sortType;
-        const rows = [...table.tBodies[0].rows].filter(row => row.children.length > 1);
-        rows.sort((a, b) => {
-            const left = a.children[index].dataset.sortValue || '';
-            const right = b.children[index].dataset.sortValue || '';
-            if (!left && right) return 1;
-            if (left && !right) return -1;
-            return direction * (type === 'number' ? Number(left) - Number(right) : left.localeCompare(right, undefined, { sensitivity: 'base' }));
-        });
-        rows.forEach(row => table.tBodies[0].appendChild(row));
-        headers.forEach(current => current.querySelector('.sort-indicator').textContent = current === header ? (direction === 1 ? '↑' : '↓') : '');
-    }));
 });
 </script>
 {% endblock %}
