@@ -146,7 +146,7 @@
                     <tr><th>Purchase price</th><td class="text-end">€{{ "%.2f"|format(purchase.purchase_price or 0) }}</td></tr>
                     <tr><th>Shipping</th><td class="text-end">€{{ "%.2f"|format(purchase.shipping_cost or 0) }}</td></tr>
                     <tr class="fw-bold"><th>Total cost</th><td class="text-end">€{{ "%.2f"|format(purchase.total_cost or 0) }}</td></tr>
-                    <tr><th>Net revenue</th><td class="text-end">€{{ "%.2f"|format(purchase.total_revenue) }}</td></tr>
+                    <tr><th>Total revenue</th><td class="text-end">€{{ "%.2f"|format(purchase.total_revenue) }}</td></tr>
                     <tr class="fw-bold"><th>Profit</th><td class="text-end">€{{ "%.2f"|format(purchase.profit) }}</td></tr>
                 </table>
             </div>

@@ -98,7 +98,7 @@ class Purchase(db.Model):
 
     @property
     def total_revenue(self) -> Decimal:
-        return sum((item.sale.net_revenue for item in self.items if item.sale is not None), Decimal("0.00"))
+        return sum((item.sale.net_proceeds for item in self.items if item.sale is not None), Decimal("0.00"))
     
     @property
     def profit(self) -> Decimal:
@@ -175,13 +175,13 @@ class Sale(db.Model):
     listing: Mapped[Optional["Listing"]] = relationship("Listing", back_populates="sale")
 
     @property
-    def gross_revenue(self) -> Decimal:
+    def gross_proceeds(self) -> Decimal:
         return round((self.sale_price or Decimal("0.00")) + (self.shipping_received or Decimal("0.00")), 2)
 
     @property
-    def net_revenue(self) -> Decimal:
+    def net_proceeds(self) -> Decimal:
         return round(
-            self.gross_revenue
+            self.gross_proceeds
             - (self.shipping_paid or Decimal("0.00"))
             - (self.platform_fee or Decimal("0.00"))
             - (self.payment_fee or Decimal("0.00")),
@@ -190,7 +190,7 @@ class Sale(db.Model):
 
     @property
     def profit(self) -> Optional[Decimal]:
-        return round(self.net_revenue - self.item.purchase_cost, 2)
+        return round(self.net_proceeds - self.item.purchase_cost, 2)
 
     @property
     def roi(self) -> Optional[Decimal]:
@@ -201,9 +201,9 @@ class Sale(db.Model):
 
     @property
     def margin(self) -> Optional[Decimal]:
-        if self.gross_revenue <= 0:
+        if self.gross_proceeds <= 0:
             return None
-        return round((self.profit / self.gross_revenue) * 100, 1)
+        return round((self.profit / self.gross_proceeds) * 100, 1)
 
 class Listing(db.Model):
     __tablename__ = "listings"
