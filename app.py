@@ -642,6 +642,43 @@ def new_sale(item_id):
     return render_template("sales/sales_new.html", item=item)
 
 
+@app.route("/sales/<int:sale_id>/edit", methods=["POST"])
+@login_required
+def edit_sale(sale_id):
+    sale = Sale.query.join(Item).filter(Sale.id == sale_id, Item.user_id == current_user.id).first_or_404()
+    item = sale.item
+
+    listing_id = request.form.get("listing_id")
+    listing = None
+    if listing_id:
+        try:
+            listing = Listing.query.filter_by(id=int(listing_id), item_id=item.id).first()
+        except (TypeError, ValueError):
+            listing = None
+        if listing is None:
+            flash("Invalid listing selected.", "danger")
+            return redirect(url_for("view_item", item_id=item.id))
+
+    sale.listing_id = listing.id if listing else None
+    sale.sale_date = parse_date(request.form.get("sale_date"), default=sale.sale_date)
+    sale.sale_price = parse_decimal(request.form.get("sale_price"))
+    sale.shipping_received = parse_decimal(request.form.get("shipping_received"))
+    sale.shipping_paid = parse_decimal(request.form.get("shipping_paid"))
+    sale.platform_fee = parse_decimal(request.form.get("platform_fee"))
+    sale.payment_fee = parse_decimal(request.form.get("payment_fee"))
+    sale.notes = request.form.get("notes", "").strip() or None
+
+    for listing in item.listings:
+        if listing.id == sale.listing_id:
+            listing.status = ListingStatus.SOLD
+        elif listing.status in (ListingStatus.ACTIVE, ListingStatus.SOLD):
+            listing.status = ListingStatus.REMOVED
+
+    db.session.commit()
+    flash("Sale updated.", "success")
+    return redirect(url_for("view_item", item_id=item.id))
+
+
 #########################
 #     Authentication
 

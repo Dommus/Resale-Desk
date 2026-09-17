@@ -29,7 +29,6 @@ class ItemStatus(Enum):
     # TODO: Remove any status I decide later not to use
     ON_SALE = 'On Sale'
     SOLD = 'Sold'
-    NOT_SOLD = 'Not Sold'
     WAITING = 'Waiting'
     REFUNDED = 'Refunded'
     IN_STORAGE = 'In Storage'
@@ -145,12 +144,12 @@ class Item(db.Model):
     def inventory_code(self) -> str | None:
         if self.id is None:
             return None
-        return f"INV-{self.id:06d}"
+        return f"I-{self.id:06d}"
 
     @property
     def days_in_inventory(self) -> int:
         end = self.sale.sale_date if self.sale else datetime_date.today()
-        start = self.created_at.date() if self.created_at else end
+        start = self.purchase.date if self.purchase.date else end
         return (end - start).days
 
     @property

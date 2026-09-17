@@ -59,7 +59,6 @@
         <table class="table table-hover align-middle" id="inventory-table">
             <thead>
                 <tr>
-                    <th class="sortable-header" data-sort-key="id" data-sort-type="number" tabindex="0" role="button">ID <span class="sort-indicator" aria-hidden="true"></span></th>
                     <th class="sortable-header" data-sort-key="code" data-sort-type="text" tabindex="0" role="button">Item Code <span class="sort-indicator" aria-hidden="true"></span></th>
                     <th class="sortable-header" data-sort-key="name" data-sort-type="text" tabindex="0" role="button">Name <span class="sort-indicator" aria-hidden="true"></span></th>
                     <th class="sortable-header" data-sort-key="category" data-sort-type="text" tabindex="0" role="button">Category <span class="sort-indicator" aria-hidden="true"></span></th>
@@ -74,10 +73,8 @@
             <tbody>
                 {% for item in items %}
                 <tr>
-                    <!-- ID -->
-                    <td data-sort-value="{{ item.id }}"><code class="inv-code">{{ item.id }}</code></td>
                     <!-- Item Code -->
-                    <td data-sort-value="{{ item.code or '' }}"><code class="inv-code">{{ item.code or 'No Code Assigned' }}</code></td>
+                    <td data-sort-value="{{ item.code or '' }}"><code class="inv-code">{{ item.inventory_code or 'No Code Assigned' }}</code></td>
                     <!-- Name -->
                     <td data-sort-value="{{ item.name }}">{{ item.name }}</td>
                     <!-- Category -->
