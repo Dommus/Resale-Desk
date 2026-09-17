@@ -24,7 +24,7 @@
 
 <div class="card shadow-sm">
     <div class="card-body">
-        <form method="post" id="itemsForm" {% if empty_single_purchase %}onsubmit="return confirmMultipleItems();"{% endif %}>
+        <form method="post" id="itemsForm" data-existing-item-count="{{ purchase.items|length }}" {% if single_purchase %}onsubmit="return confirmMultipleItems();"{% endif %}>
             <div class="d-flex justify-content-between align-items-center border-bottom pb-3 mb-3">
                 <div>
                     <h6 class="mb-1">Bundle Items</h6>
@@ -102,7 +102,9 @@
 function confirmMultipleItems() {
     const itemCount = Array.from(document.querySelectorAll('input[name="itemName[]"]'))
         .filter(input => input.value.trim() !== '').length;
-    return itemCount <= 1 || confirm('You are about to add multiple items to a purchase marked as Single. This action will convert it to a Bundle. Do you want to continue?');
+    const existingItemCount = Number(document.getElementById('itemsForm').dataset.existingItemCount);
+    const totalItemCount = existingItemCount + itemCount;
+    return totalItemCount <= 1 || confirm('This purchase will be converted to a Bundle.');
 }
 
 const table = document.getElementById('itemsTable');

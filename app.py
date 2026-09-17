@@ -296,6 +296,12 @@ def edit_item(item_id):
 @login_required
 def delete_item(item_id):
     item = Item.query.filter_by(id=item_id, user_id=current_user.id).first_or_404()
+
+    # Convert purchase type to Single if needed
+    purchase = item.purchase
+    if (purchase and purchase.purchase_type == PurchaseType.BUNDLE and len(purchase.items) == 2):
+        purchase.purchase_type = PurchaseType.SINGLE
+
     db.session.delete(item)
     db.session.commit()
     flash("Item deleted.", "success")
@@ -440,6 +446,12 @@ def choose_purchase_type():
 @login_required
 def view_purchase(purchase_id):
     purchase = Purchase.query.filter_by(id=purchase_id, user_id=current_user.id).first_or_404()
+
+    # Convert purchase type to Single if needed
+    if purchase.purchase_type == PurchaseType.BUNDLE and len(purchase.items) == 1:
+        purchase.purchase_type = PurchaseType.SINGLE
+        db.session.commit()
+
     return render_template(
         "purchases/purchases_view.html",
         purchase=purchase,
@@ -454,23 +466,6 @@ def edit_purchase(purchase_id):
         id=purchase_id,
         user_id=current_user.id,
     ).first_or_404()
-
-    requested_type = request.form.get('purchase_type')
-    if requested_type and requested_type != purchase.purchase_type.value:
-        try:
-            requested_type = PurchaseType(requested_type)
-        except ValueError:
-            flash('Invalid purchase type.', 'danger')
-            return redirect(url_for('view_purchase', purchase_id=purchase.id))
-
-        if not (
-            purchase.purchase_type == PurchaseType.BUNDLE
-            and len(purchase.items) == 1
-            and requested_type == PurchaseType.SINGLE
-        ):
-            flash('A Bundle can only be changed to Single when it has exactly one item.', 'warning')
-            return redirect(url_for('view_purchase', purchase_id=purchase.id))
-        purchase.purchase_type = requested_type
 
     purchase.date = parse_date(request.form.get('date'), default=purchase.date)
     purchase.seller = request.form.get('seller', '').strip() or None
@@ -491,17 +486,7 @@ def add_items(purchase_id):
         user_id=current_user.id
     ).first_or_404()
 
-    # Check if single purchase has no items assigned to it
-    # Normally items can only be added to bundles, unless it's an empty single purchase
-    empty_single_purchase = False
-    if (purchase.purchase_type.value == 'Single' and len(purchase.items) < 1):
-        empty_single_purchase = True
-        print("SINGLE PURCHASE")
-
-    # This shouldn't happen since the add button is conditionally disabled with Jinja, but just in case
-    if purchase.purchase_type != PurchaseType.BUNDLE and not empty_single_purchase:
-        flash('Only bundle purchases can contain multiple items.', 'warning')
-        return redirect(url_for('view_purchase', purchase_id=purchase.id))
+    single_purchase = purchase.purchase_type == PurchaseType.SINGLE
 
     if request.method == 'POST':
 
@@ -512,15 +497,14 @@ def add_items(purchase_id):
         shelves_for_items = request.form.getlist('shelf_id[]')
         notes = request.form.getlist('itemNotes[]')
 
-        # Convert purchase type to Bundle if needed
-        if empty_single_purchase and len(names) > 1:
-            print("PURCHASE TYPE CONVERSION TO BUNDLE")
-            purchase.purchase_type = PurchaseType.BUNDLE
-
         valid_names = [name.strip() for name in names if name.strip()]
         if not valid_names:
             flash('Add at least one item to this bundle.', 'danger')
         else:
+            # Convert a Single to Bundle when the completed purchase has multiple items.
+            if single_purchase and len(purchase.items) + len(valid_names) > 1:
+                purchase.purchase_type = PurchaseType.BUNDLE
+
             for index, name in enumerate(names):
                 name = name.strip()
                 if not name:
@@ -541,7 +525,7 @@ def add_items(purchase_id):
         "purchases/purchases_add_items.html",
         purchase=purchase,
         shelves=Shelf.query.filter_by(user_id=current_user.id).order_by(Shelf.name).all(),
-        **get_item_form_options(current_user.id), empty_single_purchase=empty_single_purchase
+        **get_item_form_options(current_user.id), single_purchase=single_purchase
     )
 
 
