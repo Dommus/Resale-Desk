@@ -1,0 +1,26 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+ 
+# Virtual environment
+venv/
+env/
+.venv/
+ 
+# Flask / instance data (SQLite database, local config)
+instance/
+*.db
+*.sqlite3
+ 
+# Environment variables / secrets
+.env
+ 
+# Editor / OS
+.vscode/
+.idea/
+.DS_Store
+ 
+# Logs
+*.log
