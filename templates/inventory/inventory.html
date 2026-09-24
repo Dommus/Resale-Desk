@@ -56,7 +56,8 @@
 
 <div class="card shadow-sm">
     <div class="card-body">
-        <table class="table table-hover align-middle" id="inventory-table"
+        <div class="app-fit-table-wrap">
+        <table class="table table-hover align-middle app-fit-table" id="inventory-table"
                data-sortable-table
                data-filter-form="inventory-filters"
                data-reset-button="inventory-reset"
@@ -65,6 +66,7 @@
                 <tr>
                     <th class="sortable-header" data-sort-key="code" data-sort-type="text" tabindex="0" role="button">Item Code <span class="sort-indicator" aria-hidden="true"></span></th>
                     <th class="sortable-header" data-sort-key="name" data-sort-type="text" tabindex="0" role="button">Name <span class="sort-indicator" aria-hidden="true"></span></th>
+                    <th class="sortable-header" data-sort-key="quantity" data-sort-type="number" tabindex="0" role="button">Quantity <span class="sort-indicator" aria-hidden="true"></span></th>
                     <th class="sortable-header" data-sort-key="category" data-sort-type="text" tabindex="0" role="button">Category <span class="sort-indicator" aria-hidden="true"></span></th>
                     <th class="sortable-header" data-sort-key="shelf" data-sort-type="text" tabindex="0" role="button">Shelf <span class="sort-indicator" aria-hidden="true"></span></th>
                     <th class="sortable-header" data-sort-key="status" data-sort-type="text" tabindex="0" role="button">Status <span class="sort-indicator" aria-hidden="true"></span></th>
@@ -78,36 +80,39 @@
                 {% for item in items %}
                 <tr data-sort-row>
                     <!-- Item Code -->
-                    <td data-sort-value="{{ item.code or '' }}"><code class="inv-code">{{ item.inventory_code or 'No Code Assigned' }}</code></td>
+                    <td data-label="Item code" data-sort-value="{{ item.code or '' }}"><code class="inv-code">{{ item.inventory_code or 'No Code Assigned' }}</code></td>
                     <!-- Name -->
-                    <td data-sort-value="{{ item.name }}">{{ item.name }}</td>
+                    <td data-label="Name" data-sort-value="{{ item.name }}">{{ item.name }}</td>
+                    <!-- Quantity -->
+                    <td data-label="Quantity" data-sort-value="{{ item.quantity }}">{{ item.available_quantity }} / {{ item.quantity }}</td>
                     <!-- Category -->
-                    <td data-sort-value="{{ item.category or '' }}">{{ item.category or "-" }}</td>
+                    <td data-label="Category" data-sort-value="{{ item.category or '' }}">{{ item.category or "-" }}</td>
                     <!-- Shelf -->
-                    <td data-sort-value="{{ item.shelf.name if item.shelf else '' }}">{{ item.shelf.name if item.shelf else "-" }}</td>
+                    <td data-label="Shelf" data-sort-value="{{ item.shelf.name if item.shelf else '' }}">{{ item.shelf.name if item.shelf else "-" }}</td>
                     <!-- Status -->
-                    <td data-sort-value="{{ item.status.value }}"><span class="badge status-badge-{{ item.status.value|replace(' ', '-') }}">{{ item.status.value }}</span></td>
+                    <td data-label="Status" data-sort-value="{{ item.status.value }}"><span class="badge status-badge-{{ item.status.value|replace(' ', '-') }}">{{ item.status.value }}</span></td>
                     <!-- Cost -->
-                    <td data-sort-value="{{ item.purchase_cost }}">€{{ "%.2f"|format(item.purchase_cost) }}</td>
+                    <td data-label="Purchase cost" data-sort-value="{{ item.purchase_cost }}">{% if item.unit_cost is not none %}€{{ "%.2f"|format(item.unit_cost) }} / unit{% else %}<span class="text-muted">Unallocated</span>{% endif %}</td>
                     <!-- Profit -->
-                    <td data-sort-value="{{ item.sale.profit if item.sale else '' }}">
+                    <td data-label="Profit" data-sort-value="{{ item.sale.profit if item.sale else '' }}">
                         {% if item.sale %}
-                            <span class="{{ 'text-success' if item.sale.profit >= 0 else 'text-danger' }}">
-                                €{{ "%.2f"|format(item.sale.profit) }}
-                            </span>
+                            {% if item.sale.profit is not none %}
+                            <span class="{{ 'text-success' if item.sale.profit >= 0 else 'text-danger' }}">€{{ "%.2f"|format(item.sale.profit) }}</span>
+                            {% else %}<span class="text-muted">Unallocated</span>{% endif %}
                         {% else %}
                             <span class="text-muted">-</span>
                         {% endif %}
                     </td>
                     <!-- Purchase Date -->
-                    <td data-sort-value="{{ item.purchase.date.isoformat() }}">{{ item.purchase.date.strftime('%Y-%m-%d') }}</td>
-                    <td class="text-end"><a href="{{ url_for('view_item', item_id=item.id) }}" class="btn btn-sm btn-outline-primary">View</a></td>
+                    <td data-label="Purchase date" data-sort-value="{{ item.purchase.date.isoformat() }}">{{ item.purchase.date.strftime('%Y-%m-%d') }}</td>
+                    <td data-label="" class="text-end table-action-cell"><a href="{{ url_for('view_item', item_id=item.id) }}" class="btn btn-sm btn-outline-primary">View</a></td>
                 </tr>
                 {% else %}
                 <tr><td colspan="10" class="text-center text-muted py-4">No items match your filters.</td></tr>
                 {% endfor %}
             </tbody>
         </table>
+        </div>
     </div>
 </div>
 

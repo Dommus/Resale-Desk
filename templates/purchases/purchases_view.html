@@ -34,49 +34,50 @@
 </div>
 
 <div class="row g-4">
-    <div class="col-lg-8">
+    <div class="col-12">
         <div class="card shadow-sm">
             <div class="card-body">
                 <div class="d-flex justify-content-between align-items-center mb-2">
                     <h6 class="card-title mb-0">Items from this Purchase</h6>
-                    <span class="text-muted small">{{ purchase.items|length }} item{% if purchase.items|length != 1 %}s{% endif %}</span>
+                    <span class="text-muted small">{{ purchase.items|length }} product line{% if purchase.items|length != 1 %}s{% endif %} · {{ purchase.items|sum(attribute='quantity') }} unit{% if purchase.items|sum(attribute='quantity') != 1 %}s{% endif %}</span>
                 </div>
 
                 {% if purchase.items %}
-                <div class="table-responsive">
-                    <table class="table table-sm align-middle mb-0">
+                <div class="app-fit-table-wrap">
+                    <table class="table table-sm align-middle app-fit-table purchase-items-table mb-0">
                         <thead>
                             <tr>
                                 {% if purchase.purchase_type.value == 'Single' %}
-                                <th>ID</th><th>Code</th><th>Name</th><th>Category</th><th>Purchase Cost</th><th>Profit</th><th>Status</th><th></th>
+                                <th>ID</th><th>Code</th><th>Name</th><th>Quantity</th><th>Category</th><th>Purchase Cost</th><th>Profit</th><th>Status</th><th></th>
                                 {% elif purchase.purchase_type.value == 'Bundle' %}
-                                <th>ID</th><th>Code</th><th>Name</th><th>Category</th><th>Profit</th><th>Status</th><th></th>
+                                <th>ID</th><th>Code</th><th>Name</th><th>Quantity</th><th>Category</th><th>Profit</th><th>Status</th><th></th>
                                 {% endif %}
                             </tr>
                         </thead>
                         <tbody>
                             {% for item in purchase.items %}
                             <tr>
-                                <td><code class="inv-code">{{ item.id }}</code></td>
-                                <td><code class="inv-code">INV-{{ "%06d"|format(item.id) }}</code></td>
-                                <td>{{ item.name }}</td>
-                                <td>{{ item.category or "-" }}</td>
+                                <td data-label="ID"><code class="inv-code">{{ item.id }}</code></td>
+                                <td data-label="Code"><code class="inv-code">INV-{{ "%06d"|format(item.id) }}</code></td>
+                                <td data-label="Name">{{ item.name }}</td>
+                                <td data-label="Quantity">{{ item.available_quantity }} / {{ item.quantity }}{% if item.quantity_sold %} sold{% endif %}</td>
+                                <td data-label="Category">{{ item.category or "-" }}</td>
                                 {% if purchase.purchase_type.value == 'Single' %}               
-                                <td>€{{ "%.2f"|format(item.purchase_cost) }}</td>
+                                <td data-label="Purchase cost">€{{ "%.2f"|format(item.purchase_cost) }}</td>
                                 {% endif %}
-                                <td>
+                                <td data-label="Profit">
                                     {% if item.sale %}
-                                    <span class="{{ 'text-success' if item.sale.profit >= 0 else 'text-danger' }}">
-                                        €{{ "%.2f"|format(item.sale.profit) }}
-                                    </span>
+                                    {% if item.sale.profit is not none %}
+                                    <span class="{{ 'text-success' if item.sale.profit >= 0 else 'text-danger' }}">€{{ "%.2f"|format(item.sale.profit) }}</span>
+                                    {% else %}<span class="text-muted">Unallocated</span>{% endif %}
                                     {% else %}<span class="text-muted">-</span>{% endif %}
                                 </td>
-                                <td>
+                                <td data-label="Status">
                                     <span class="badge status-badge-{{ item.status.value|replace(' ', '-') }}">
                                         {{ item.status.value }}
                                     </span>
                                 </td>
-                                <td class="text-end">
+                                <td data-label="" class="text-end table-action-cell">
                                     <div class="d-inline-flex gap-1">
                                         <a href="{{ url_for('view_item', item_id=item.id) }}" class="btn btn-sm btn-outline-primary">View</a>
                                         <form method="post" action="{{ url_for('delete_item', item_id=item.id) }}" onsubmit="return confirm('Delete this item permanently?');">
@@ -103,7 +104,7 @@
         </div>
     </div>
 
-    <div class="col-lg-4">
+    <div class="col-lg-8">
         <div class="card shadow-sm">
             <div class="card-body">
                 <h6 class="card-title">Edit Purchase</h6>
@@ -143,7 +144,10 @@
             </div>
         </div>
 
-        <div class="card shadow-sm mt-4">
+    </div>
+
+    <div class="col-lg-4">
+        <div class="card shadow-sm">
             <div class="card-body">
                 <h6 class="card-title">Cost Summary</h6>
                 <table class="table table-sm mb-0">

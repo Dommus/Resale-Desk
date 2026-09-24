@@ -29,3 +29,14 @@ def parse_decimal(value, default=Decimal("0.00")):
         return parsed if parsed.is_finite() else default
     except (InvalidOperation, TypeError, ValueError):
         return default
+
+# Utility to convert a form's input of 'quantity' into a valid entry
+def parse_quantity(value):
+    if value is None or str(value).strip() == "":
+        return None
+    try:
+        quantity = int(str(value).strip())
+    except (TypeError, ValueError):
+        return None
+        
+    return quantity if quantity > 0 else None

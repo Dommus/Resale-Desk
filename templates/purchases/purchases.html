@@ -40,8 +40,8 @@
 
 <div class="card shadow-sm">
     <div class="card-body">
-        <div class="table-responsive">
-        <table class="table table-hover align-middle text-nowrap" id="purchases-table"
+        <div class="app-fit-table-wrap">
+        <table class="table table-hover align-middle app-fit-table" id="purchases-table"
                data-sortable-table
                data-filter-form="purchase-filters"
                data-reset-button="purchase-reset"
@@ -55,7 +55,7 @@
                     <th class="sortable-header" data-sort-key="platform" data-sort-type="text" tabindex="0" role="button">Platform <span class="sort-indicator" aria-hidden="true"></span></th>
                     <th class="sortable-header" data-sort-key="type" data-sort-type="text" tabindex="0" role="button">Type <span class="sort-indicator" aria-hidden="true"></span></th>
                     <th class="sortable-header" data-sort-key="cost" data-sort-type="number" tabindex="0" role="button">Total Cost <span class="sort-indicator" aria-hidden="true"></span></th>
-                    <th class="sortable-header" data-sort-key="items" data-sort-type="number" tabindex="0" role="button"># Items <span class="sort-indicator" aria-hidden="true"></span></th>
+                    <th class="sortable-header" data-sort-key="items" data-sort-type="number" tabindex="0" role="button"># Units <span class="sort-indicator" aria-hidden="true"></span></th>
                     <th></th>
                 </tr>
             </thead>
@@ -63,15 +63,15 @@
                 {% for p in purchases %}
                 <!-- <tr onclick="window.location='{{ url_for('view_purchase', purchase_id=p.id) }}'" style="cursor:pointer;"> -->
                 <tr class="clickable-row" data-href="{{ url_for('view_purchase', purchase_id=p.id) }}" data-sort-row>
-                    <td data-sort-value="{{ p.id }}">{{ p.id }}</td>
-                    <td data-sort-value="{{ p.date.isoformat() }}">{{ p.date }}</td>
-                    <td data-sort-value="{{ p.name or '' }}">{{ p.name or "-" }}</td>
-                    <td data-sort-value="{{ p.seller or '' }}">{{ p.seller or "-" }}</td>
-                    <td data-sort-value="{{ p.platform or '' }}">{{ p.platform or "-" }}</td>
-                    <td data-sort-value="{{ p.purchase_type.value }}"><span class="badge purchase-type-badge-{{ p.purchase_type.value }}">{{ p.purchase_type.value }}</span></td>
-                    <td data-sort-value="{{ p.total_cost }}">€{{ "%.2f"|format(p.total_cost) }}</td>
-                    <td data-sort-value="{{ p.items|length }}">{{ p.items|length }}</td>
-                    <td class="text-end">
+                    <td data-label="#" data-sort-value="{{ p.id }}">{{ p.id }}</td>
+                    <td data-label="Date" data-sort-value="{{ p.date.isoformat() }}">{{ p.date }}</td>
+                    <td data-label="Name" data-sort-value="{{ p.name or '' }}">{{ p.name or "-" }}</td>
+                    <td data-label="Seller" data-sort-value="{{ p.seller or '' }}">{{ p.seller or "-" }}</td>
+                    <td data-label="Platform" data-sort-value="{{ p.platform or '' }}">{{ p.platform or "-" }}</td>
+                    <td data-label="Type" data-sort-value="{{ p.purchase_type.value }}"><span class="badge purchase-type-badge-{{ p.purchase_type.value }}">{{ p.purchase_type.value }}</span></td>
+                    <td data-label="Total cost" data-sort-value="{{ p.total_cost }}">€{{ "%.2f"|format(p.total_cost) }}</td>
+                    <td data-label="# Units" data-sort-value="{{ p.items|sum(attribute='quantity') }}">{{ p.items|sum(attribute='quantity') }}</td>
+                    <td data-label="" class="text-end table-action-cell">
                         <a href="{{ url_for('view_purchase', purchase_id=p.id) }}" class="btn btn-sm btn-outline-primary">View</a>
                     </td>
                 </tr>

@@ -2,7 +2,7 @@
 # https://docs.sqlalchemy.org/en/20/orm/quickstart.html
 from flask_login import UserMixin
 from flask_sqlalchemy import SQLAlchemy
-from sqlalchemy import String, Text, ForeignKey, Numeric, Enum as SQLEnum, func
+from sqlalchemy import String, Text, ForeignKey, Numeric, Enum as SQLEnum, func, CheckConstraint
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 from datetime import date as datetime_date, datetime
 from enum import Enum
@@ -103,7 +103,10 @@ class Purchase(db.Model):
     
     @property
     def profit(self) -> Decimal:
-        return sum(item.sale.profit for item in self.items if item.sale)
+        return sum(
+            (item.sale.profit for item in self.items if item.sale and item.sale.profit is not None),
+            Decimal("0.00"),
+        )
     
     @property
     def display_name(self) -> str:
@@ -111,6 +114,17 @@ class Purchase(db.Model):
 
 class Item(db.Model):
     __tablename__ = "items"
+
+    __table_args__ = (
+        # Ensure quantity is positive
+        CheckConstraint("quantity > 0", name="ck_items_quantity_positive"),
+
+        # Sold quantity must be between 0 and total quantity
+        CheckConstraint(
+            "quantity_sold >= 0 AND quantity_sold <= quantity",
+            name="ck_items_quantity_sold_range",
+        ),
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
@@ -120,6 +134,11 @@ class Item(db.Model):
     # Can use Item.purchase.date to access the date the item was bought
 
     name: Mapped[str] = mapped_column(String(64), nullable=False)
+    quantity: Mapped[int] = mapped_column(nullable=False, default=1)
+    quantity_sold: Mapped[int] = mapped_column(nullable=False, default=0)
+    # Total cost allocated to this product line. A zero value means that
+    # bundle cost allocation has not been provided yet.
+    cost_basis: Mapped[Decimal] = mapped_column(MONEY, nullable=False, default=Decimal("0.00"))
     category: Mapped[Optional[str]] = mapped_column(String(64))
     condition: Mapped[Optional[str]] = mapped_column(String(32))
     brand: Mapped[Optional[str]] = mapped_column(String(64))
@@ -153,8 +172,43 @@ class Item(db.Model):
         return (end - start).days
 
     @property
+    def available_quantity(self) -> int:
+        return max(self.quantity - self.quantity_sold, 0)
+
+    @property
+    def unit_cost(self) -> Optional[Decimal]:
+
+        # Cost of one unit when the purchase has an unambiguous cost.
+
+        if not self.purchase or self.quantity <= 0:
+            return None
+        basis = self.total_cost_basis
+        if basis is None:
+            return None
+        return basis / Decimal(self.quantity)
+
+    @property
+    def total_cost_basis(self) -> Optional[Decimal]:
+        if not self.purchase or self.quantity <= 0:
+            return None
+        if self.purchase.purchase_type == PurchaseType.SINGLE:
+            return round(self.purchase.total_cost, 2)
+        allocated_cost = self.cost_basis or Decimal("0.00")
+        if allocated_cost > 0:
+            return round(allocated_cost, 2)
+        return None
+
+    @property
     def purchase_cost(self) -> Decimal:
-        return self.purchase.total_cost if self.purchase else Decimal("0.00")
+        """Backward-compatible display value for this item's total cost."""
+        return self.total_cost_basis or Decimal("0.00")
+
+    def cost_for_quantity(self, quantity: int) -> Optional[Decimal]:
+        if self.unit_cost is None or quantity < 0 or quantity > self.quantity:
+            return None
+        if quantity == self.quantity:
+            return self.total_cost_basis
+        return round(self.unit_cost * quantity, 2)
 
 class Sale(db.Model):
     __tablename__ = "sales"
@@ -169,10 +223,17 @@ class Sale(db.Model):
     shipping_paid: Mapped[Decimal] = mapped_column(MONEY, default=Decimal("0.00"))
     platform_fee: Mapped[Decimal] = mapped_column(MONEY, default=Decimal("0.00"))
     payment_fee: Mapped[Decimal] = mapped_column(MONEY, default=Decimal("0.00"))
+    quantity: Mapped[int] = mapped_column(nullable=False, default=1)
     notes: Mapped[Optional[str]] = mapped_column(Text)
 
     item: Mapped["Item"] = relationship("Item", back_populates="sale")
     listing: Mapped[Optional["Listing"]] = relationship("Listing", back_populates="sale")
+
+    @property
+    def unit_sale_price(self):
+        if not self.quantity:
+            return Decimal("0.00")
+        return round((self.sale_price or Decimal("0.00")) / self.quantity, 2)
 
     @property
     def gross_proceeds(self) -> Decimal:
@@ -189,19 +250,25 @@ class Sale(db.Model):
         )
 
     @property
+    def cost_basis(self) -> Optional[Decimal]:
+        return self.item.cost_for_quantity(self.quantity) if self.item else None
+
+    @property
     def profit(self) -> Optional[Decimal]:
-        return round(self.net_proceeds - self.item.purchase_cost, 2)
+        if self.cost_basis is None:
+            return None
+        return round(self.net_proceeds - self.cost_basis, 2)
 
     @property
     def roi(self) -> Optional[Decimal]:
-        cost = self.item.purchase_cost
-        if cost <= 0:
+        cost = self.cost_basis
+        if cost is None or cost <= 0 or self.profit is None:
             return None
         return round((self.profit / cost) * 100, 1)
 
     @property
     def margin(self) -> Optional[Decimal]:
-        if self.gross_proceeds <= 0:
+        if self.gross_proceeds <= 0 or self.profit is None:
             return None
         return round((self.profit / self.gross_proceeds) * 100, 1)
 

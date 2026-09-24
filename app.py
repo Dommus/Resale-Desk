@@ -4,11 +4,11 @@ from urllib.parse import urlparse
 
 # Imports from local python files
 from models import db, User, Shelf, Item, Purchase, ItemStatus, PurchaseType, Listing, ListingStatus, Sale
-from utilities import login_manager, parse_date, parse_decimal
+from utilities import login_manager, parse_date, parse_decimal, parse_quantity
 
 from flask import Flask, render_template, request, redirect, url_for, flash
 from flask_login import login_user, logout_user, login_required, current_user
-from sqlalchemy import func, or_, cast, String
+from sqlalchemy import func, or_, cast, String, inspect, text
 from werkzeug.security import generate_password_hash, check_password_hash
 
 from decimal import Decimal
@@ -65,7 +65,47 @@ def create_admin_account():
 def create_database():
     with app.app_context():
         db.create_all()
+        ensure_quantity_columns()
         create_admin_account()
+
+def ensure_quantity_columns():
+    """Add quantity columns to databases created before quantity support.
+
+    This project currently uses ``db.create_all()`` without migrations, so
+    create_all() alone cannot update an existing SQLite database.
+    """
+    inspector = inspect(db.engine)
+    tables = set(inspector.get_table_names())
+    additions = {
+        "items": {
+            "quantity": "INTEGER NOT NULL DEFAULT 1",
+            "quantity_sold": "INTEGER NOT NULL DEFAULT 0",
+            "cost_basis": "NUMERIC(12, 2) NOT NULL DEFAULT 0.00",
+        },
+        "sales": {
+            "quantity": "INTEGER NOT NULL DEFAULT 1",
+        },
+    }
+
+    with db.engine.begin() as connection:
+        for table, columns in additions.items():
+            if table not in tables:
+                continue
+            existing = {column["name"] for column in inspect(connection).get_columns(table)}
+            for column, definition in columns.items():
+                if column not in existing:
+                    connection.execute(text(f"ALTER TABLE {table} ADD COLUMN {column} {definition}"))
+
+        if "items" in tables and "sales" in tables:
+            # Existing sold items predate quantity_sold and must retain their
+            # sold state after the compatibility migration.
+            connection.execute(text(
+                "UPDATE items SET quantity_sold = "
+                "(SELECT quantity FROM sales WHERE sales.item_id = items.id) "
+                "WHERE quantity_sold = 0 AND EXISTS "
+                "(SELECT 1 FROM sales WHERE sales.item_id = items.id)"
+            ))
+
 
 create_database()
 
@@ -121,19 +161,32 @@ def get_purchase_form_options(user_id):
 
 
 def create_purchase_item(purchase, user_id, name, category=None, brand=None, condition=None, 
-                         shelf_id=None, notes=None):
+                         shelf_id=None, notes=None, quantity=1):
     # Return new Item instance with sanitized inputs
     return Item(
         user_id=user_id,
         purchase_id=purchase.id,
         shelf_id=int(shelf_id) if shelf_id else None,
         name=name.strip(),
+        quantity=quantity,
+        quantity_sold=0,
+        cost_basis=Decimal("0.00"),
         category=category.strip() or None if category else None,
         condition=condition.strip() or None if condition else None,
         brand=brand.strip() or None if brand else None,
         status=ItemStatus.IN_STORAGE,
         notes=notes.strip() or None if notes else None,
     )
+
+
+def refresh_item_status(item):
+    """Keep the item status consistent with its sold and remaining quantity."""
+    if item.quantity_sold >= item.quantity:
+        item.quantity_sold = item.quantity
+        item.status = ItemStatus.SOLD
+    elif item.status == ItemStatus.SOLD:
+        has_active_listing = any(l.status == ListingStatus.ACTIVE for l in item.listings)
+        item.status = ItemStatus.ON_SALE if has_active_listing else ItemStatus.IN_STORAGE
 
 @app.context_processor
 def inject_today():
@@ -148,9 +201,21 @@ def inject_today():
 @login_required
 def index():
     # Queries for dashboard data
-    item_count = Item.query.filter_by(user_id=current_user.id).count()
-    on_sale_count = Item.query.filter_by(user_id=current_user.id, status=ItemStatus.ON_SALE).count()
-    sold_count = Item.query.filter_by(user_id=current_user.id, status=ItemStatus.SOLD).count()
+    item_count = (
+        db.session.query(func.coalesce(func.sum(Item.quantity), 0))
+        .filter(Item.user_id == current_user.id)
+        .scalar() or 0
+    )
+    on_sale_count = (
+        db.session.query(func.coalesce(func.sum(Item.quantity - Item.quantity_sold), 0))
+        .filter(Item.user_id == current_user.id, Item.status == ItemStatus.ON_SALE)
+        .scalar() or 0
+    )
+    sold_count = (
+        db.session.query(func.coalesce(func.sum(Item.quantity_sold), 0))
+        .filter(Item.user_id == current_user.id)
+        .scalar() or 0
+    )
     purchase_count = Purchase.query.filter_by(user_id=current_user.id).count()
     total_spend = (
         db.session.query(func.coalesce(func.sum(Purchase.purchase_price + Purchase.shipping_cost), Decimal("0.00")))
@@ -220,9 +285,22 @@ def inventory():
     results = query.all()
 
     if sort == "highest_profit":
-        results.sort(key=lambda i: (i.sale.profit if i.sale else Decimal("-Infinity")), reverse=True)
+        results.sort(
+            key=lambda i: (
+                i.sale.profit
+                if i.sale and i.sale.profit is not None
+                else Decimal("-Infinity")
+            ),
+            reverse=True,
+        )
     elif sort == "lowest_profit":
-        results.sort(key=lambda i: (i.sale.profit if i.sale else Decimal("Infinity")))
+        results.sort(
+            key=lambda i: (
+                i.sale.profit
+                if i.sale and i.sale.profit is not None
+                else Decimal("Infinity")
+            )
+        )
 
     shelves_list = Shelf.query.filter_by(user_id=current_user.id).order_by(Shelf.name).all()
     categories = sorted({i.category for i in Item.query.filter_by(user_id=current_user.id) if i.category})
@@ -267,6 +345,12 @@ def view_item(item_id):
 def edit_item(item_id):
     item = Item.query.filter_by(id=item_id, user_id=current_user.id).first_or_404()
     item.name = request.form.get('name', item.name).strip()
+    raw_quantity = request.form.get('quantity')
+    quantity = item.quantity if raw_quantity is None else parse_quantity(raw_quantity)
+    if quantity is None or quantity < item.quantity_sold:
+        flash(f'Quantity must be a whole number of at least {item.quantity_sold}.', 'danger')
+        return redirect(url_for('view_item', item_id=item.id))
+    item.quantity = quantity
     item.category = request.form.get('category', '').strip() or None
     item.brand = request.form.get('brand', '').strip() or None
     item.condition = request.form.get('condition', '').strip() or None
@@ -287,6 +371,7 @@ def edit_item(item_id):
         pass
 
     item.notes = request.form.get('notes', '').strip()
+    refresh_item_status(item)
     db.session.commit()
     flash('Item updated.', 'success')
     return redirect(url_for('view_item', item_id=item.id))
@@ -421,6 +506,14 @@ def new_purchase():
                                        shelves=shelves, purchase_type=purchase_type_label,
                                        **form_options)
 
+            quantity = parse_quantity(request.form.get('itemQuantity'))
+            if quantity is None:
+                db.session.rollback()
+                flash('Quantity must be a positive whole number.', 'danger')
+                return render_template("purchases/purchases_new.html",
+                                       shelves=shelves, purchase_type=purchase_type_label,
+                                       **form_options)
+
             db.session.add(create_purchase_item(
                 purchase, current_user.id, name,
                 category=request.form.get('category'),
@@ -428,6 +521,7 @@ def new_purchase():
                 condition=request.form.get('condition'),
                 shelf_id=request.form.get('shelf_id'),
                 notes=request.form.get('itemNotes'),
+                quantity=quantity,
             ))
             flash(f'{name} added to the purchase.', 'success')
 
@@ -438,6 +532,7 @@ def new_purchase():
             conditions = request.form.getlist('condition[]')
             shelves_for_items = request.form.getlist('shelf_id[]')
             notes = request.form.getlist('itemNotes[]')
+            quantities = request.form.getlist('itemQuantity[]')
 
             valid_names = [name.strip() for name in names if name.strip()]
             if not valid_names:
@@ -446,6 +541,19 @@ def new_purchase():
                 return render_template("purchases/purchases_new.html",
                                        shelves=shelves, purchase_type=purchase_type_label,
                                        **form_options)
+
+            parsed_quantities = {}
+            for index, name in enumerate(names):
+                if not name.strip():
+                    continue
+                quantity = parse_quantity(quantities[index] if index < len(quantities) else None)
+                if quantity is None:
+                    db.session.rollback()
+                    flash('Every item quantity must be a positive whole number.', 'danger')
+                    return render_template("purchases/purchases_new.html",
+                                           shelves=shelves, purchase_type=purchase_type_label,
+                                           **form_options)
+                parsed_quantities[index] = quantity
 
             for index, name in enumerate(names):
                 name = name.strip()
@@ -458,6 +566,7 @@ def new_purchase():
                     condition=conditions[index] if index < len(conditions) else None,
                     shelf_id=shelves_for_items[index] if index < len(shelves_for_items) else None,
                     notes=notes[index] if index < len(notes) else None,
+                    quantity=parsed_quantities[index],
                 ))
             flash(f'{len(valid_names)} item(s) added to the purchase.', 'success')
 
@@ -530,11 +639,27 @@ def add_items(purchase_id):
         conditions = request.form.getlist('condition[]')
         shelves_for_items = request.form.getlist('shelf_id[]')
         notes = request.form.getlist('itemNotes[]')
+        quantities = request.form.getlist('itemQuantity[]')
 
         valid_names = [name.strip() for name in names if name.strip()]
         if not valid_names:
             flash('Add at least one item to this bundle.', 'danger')
         else:
+            parsed_quantities = {}
+            for index, name in enumerate(names):
+                if not name.strip():
+                    continue
+                quantity = parse_quantity(quantities[index] if index < len(quantities) else None)
+                if quantity is None:
+                    flash('Every item quantity must be a positive whole number.', 'danger')
+                    return render_template(
+                        "purchases/purchases_add_items.html",
+                        purchase=purchase,
+                        shelves=Shelf.query.filter_by(user_id=current_user.id).order_by(Shelf.name).all(),
+                        **get_item_form_options(current_user.id), single_purchase=single_purchase
+                    )
+                parsed_quantities[index] = quantity
+
             # Convert a Single to Bundle when the completed purchase has multiple items.
             if single_purchase and len(purchase.items) + len(valid_names) > 1:
                 purchase.purchase_type = PurchaseType.BUNDLE
@@ -550,6 +675,7 @@ def add_items(purchase_id):
                     condition=conditions[index] if index < len(conditions) else None,
                     shelf_id=shelves_for_items[index] if index < len(shelves_for_items) else None,
                     notes=notes[index] if index < len(notes) else None,
+                    quantity=parsed_quantities[index],
                 ))
             db.session.commit()
             flash(f'{len(valid_names)} item(s) added to the purchase.', 'success')
@@ -668,31 +794,53 @@ def update_listing_status(listing_id):
 @login_required
 def new_sale(item_id):
     item = Item.query.filter_by(id=item_id, user_id=current_user.id).first_or_404()
+    if item.available_quantity <= 0:
+        flash("There are no available units to sell.", "warning")
+        return redirect(url_for("view_item", item_id=item.id))
     if item.sale is not None:
         flash("This item has already been sold.", "warning")
         return redirect(url_for("view_item", item_id=item.id))
 
     if request.method == "POST":
         listing_id = request.form.get("listing_id")
+        sale_quantity = parse_quantity(request.form.get("quantity"))
+        if sale_quantity is None or sale_quantity > item.available_quantity:
+            flash(f"Sale quantity must be between 1 and {item.available_quantity}.", "danger")
+            return render_template("sales/sales_new.html", item=item)
+
+        listing = None
+        if listing_id:
+            try:
+                listing = Listing.query.join(Item).filter(
+                    Listing.id == int(listing_id),
+                    Listing.item_id == item.id,
+                    Item.user_id == current_user.id,
+                ).first()
+            except (TypeError, ValueError):
+                listing = None
+            if listing is None:
+                flash("Invalid listing selected.", "danger")
+                return render_template("sales/sales_new.html", item=item)
+
         sale = Sale(
             item_id=item.id,
-            listing_id=int(listing_id) if listing_id else None,
+            listing_id=listing.id if listing else None,
             sale_date=parse_date(request.form.get("sale_date")),
             sale_price=parse_decimal(request.form.get("sale_price")),
             shipping_collected=parse_decimal(request.form.get("shipping_collected")),
             shipping_paid=parse_decimal(request.form.get("shipping_paid")),
             platform_fee=parse_decimal(request.form.get("platform_fee")),
             payment_fee=parse_decimal(request.form.get("payment_fee")),
+            quantity=sale_quantity,
             notes=request.form.get("notes", "").strip(),
         )
         db.session.add(sale)
-        item.status = ItemStatus.SOLD
-        if sale.listing_id:
-            chosen = db.session.get(Listing, sale.listing_id)
-            if chosen:
-                chosen.status = ListingStatus.SOLD
+        item.quantity_sold = sale.quantity
+        refresh_item_status(item)
+        if listing:
+            listing.status = ListingStatus.SOLD if item.available_quantity == 0 else ListingStatus.ACTIVE
         for l in item.listings:
-            if l.id != sale.listing_id and l.status == ListingStatus.ACTIVE:
+            if item.available_quantity == 0 and l.id != sale.listing_id and l.status == ListingStatus.ACTIVE:
                 l.status = ListingStatus.REMOVED
         db.session.commit()
         flash("Sale recorded.", "success")
@@ -727,10 +875,22 @@ def edit_sale(sale_id):
     sale.payment_fee = parse_decimal(request.form.get("payment_fee"))
     sale.notes = request.form.get("notes", "").strip() or None
 
+    raw_quantity = request.form.get("quantity")
+    if raw_quantity is None:
+        sale_quantity = sale.quantity
+    else:
+        sale_quantity = parse_quantity(raw_quantity)
+    if sale_quantity is None or sale_quantity > item.quantity:
+        flash(f"Sale quantity must be between 1 and {item.quantity}.", "danger")
+        return redirect(url_for("view_item", item_id=item.id))
+    sale.quantity = sale_quantity
+    item.quantity_sold = sale.quantity
+    refresh_item_status(item)
+
     for listing in item.listings:
         if listing.id == sale.listing_id:
-            listing.status = ListingStatus.SOLD
-        elif listing.status in (ListingStatus.ACTIVE, ListingStatus.SOLD):
+            listing.status = ListingStatus.SOLD if item.available_quantity == 0 else ListingStatus.ACTIVE
+        elif item.available_quantity == 0 and listing.status in (ListingStatus.ACTIVE, ListingStatus.SOLD):
             listing.status = ListingStatus.REMOVED
 
     db.session.commit()

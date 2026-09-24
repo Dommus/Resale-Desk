@@ -1,3 +1,6 @@
+// DISCLAIMER: This script was AI generated.
+// The goal was to unify and centralize multiple JS snippets used for building tables in .html files.
+
 /*
  * Shared filtering and sorting behavior for data tables.
  *

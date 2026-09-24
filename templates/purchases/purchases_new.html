@@ -58,6 +58,10 @@
                         <label class="form-label">Item Name <span class="required-symbol"> * </span></label>
                         <input type="text" class="form-control" name="itemName" id="itemName" required>
                     </div>
+                    <div class="col-md-1">
+                        <label class="form-label">Quantity</label>
+                        <input type="number" min="1" step="1" value="1" class="form-control" name="itemQuantity" id="itemQuantity" required>
+                    </div>
                     <div class="col-md-3">
                         <label class="form-label">Category <span class="text-muted">(optional)</span></label>
                         {{ suggestion_input('category', option_id='category-options', placeholder='e.g. Video Game') }}
@@ -95,11 +99,12 @@
 
             <div id="bundleItemFields" class="border-top mt-4 pt-3 d-none">
                 <h6 class="mb-3">Bundle Items</h6>
-                <div class="table-responsive">
-                    <table class="table align-middle mb-2" id="bundleItemsTable">
+                <div class="app-form-table-wrap">
+                    <table class="table align-middle app-form-table mb-2" id="bundleItemsTable">
                         <thead>
                             <tr>
                                 <th>Item Name</th>
+                                <th>Quantity</th>
                                 <th>Category</th>
                                 <th>Brand</th>
                                 <th>Condition</th>
@@ -110,31 +115,32 @@
                         </thead>
                         <tbody>
                             <tr class="bundle-item-row">
-                                <td><input type="text" class="form-control" name="itemName[]" required></td>
-                                <td>
+                                <td data-label="Item name"><input type="text" class="form-control" name="itemName[]" required></td>
+                                <td data-label="Quantity"><input type="number" min="1" step="1" value="1" class="form-control" name="itemQuantity[]" required></td>
+                                <td data-label="Category">
                                     {{ suggestion_input('category[]', option_id='category-options', placeholder='e.g. Video Game') }}
                                 </td>
-                                <td>
+                                <td data-label="Brand">
                                     {{ suggestion_input('brand[]', option_id='brand-options', placeholder='e.g. Nike') }}
                                 </td>
-                                <td>
+                                <td data-label="Condition">
                                     <select class="form-select" name="condition[]">
                                         <option value="">-</option>
                                         <option>New</option><option>Like New</option><option>Good</option>
                                         <option>Fair</option><option>Poor</option>
                                     </select>
                                 </td>
-                                <td>
+                                <td data-label="Shelf">
                                     <select class="form-select" name="shelf_id[]">
                                         <option value="">-</option>
                                         {% for shelf in shelves %}<option value="{{ shelf.id }}">{{ shelf.name }}</option>{% endfor %}
                                     </select>
                                 </td>
-                                <td><input type="text" class="form-control" name="itemNotes[]" placeholder="e.g. Broken"></td>
-                                <td><button type="button" class="btn btn-sm btn-outline-danger remove-bundle-row d-none" aria-label="Remove item">&times;</button></td>
+                                <td data-label="Notes"><input type="text" class="form-control" name="itemNotes[]" placeholder="e.g. Broken"></td>
+                                <td data-label=""><button type="button" class="btn btn-sm btn-outline-danger remove-bundle-row d-none" aria-label="Remove item">&times;</button></td>
                             </tr>
                             <tr id="addBundleRow" class="bundle-add-row text-body-secondary" role="button" tabindex="0" aria-label="Add another bundle item">
-                                <td colspan="7" class="text-center py-3">
+                                <td data-label="" colspan="8" class="text-center py-3">
                                     <i class="bi bi-plus-lg"></i> Click to add another item
                                 </td>
                             </tr>
@@ -188,6 +194,7 @@ function addBundleItem() {
     const row = sourceRow.cloneNode(true);
     row.querySelectorAll('input').forEach(input => input.value = '');
     row.querySelectorAll('select').forEach(select => select.selectedIndex = 0);
+    row.querySelector('input[name="itemQuantity[]"]').value = '1';
     row.querySelector('.remove-bundle-row').classList.remove('d-none');
     bundleTable.insertBefore(row, addBundleRow);
     toggleSingleFields();

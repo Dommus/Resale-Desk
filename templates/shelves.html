@@ -30,17 +30,18 @@
         <div class="card shadow-sm">
             <div class="card-body">
                 <h6 class="card-title">All Shelves</h6>
-                <table class="table table-sm align-middle">
+                <div class="app-fit-table-wrap">
+                <table class="table table-sm align-middle app-fit-table">
                     <thead>
                         <tr><th>Name</th><th>Description</th><th># Items</th><th></th></tr>
                     </thead>
                     <tbody>
                         {% for shelf in shelves %}
                         <tr>
-                            <td><a href="{{ url_for('inventory', shelf_id=shelf.id) }}">{{ shelf.name }}</a></td>
-                            <td class="text-muted">{{ shelf.description or "" }}</td>
-                            <td>{{ shelf.items|length }}</td>
-                            <td class="text-end">
+                            <td data-label="Name"><a href="{{ url_for('inventory', shelf_id=shelf.id) }}">{{ shelf.name }}</a></td>
+                            <td data-label="Description" class="text-muted">{{ shelf.description or "" }}</td>
+                            <td data-label="# Items">{{ shelf.items|length }}</td>
+                            <td data-label="" class="text-end table-action-cell">
                                 <form method="post" action="{{ url_for('delete_shelf', shelf_id=shelf.id) }}"
                                       onsubmit="return confirm('Delete this shelf?');">
                                     <button class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
@@ -52,6 +53,7 @@
                         {% endfor %}
                     </tbody>
                 </table>
+                </div>
             </div>
         </div>
     </div>
