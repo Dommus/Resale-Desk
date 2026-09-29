@@ -35,6 +35,18 @@
             </div>
         </div>
     </div>
+
+    <div class="col-lg-6">
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <h6 class="card-title">Import Database (.csv)</h6>
+                <form method="post" enctype="multipart/form-data" action="{{ url_for('import_csv') }}">
+                    <input type="file" name="csv_file" accept=".csv" required>
+                    <button type="submit">Import CSV</button>
+                </form>
+            </div>
+        </div>
+    </div>
 </div>
 
 {% endblock %}

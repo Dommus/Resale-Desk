@@ -33,6 +33,7 @@ class ItemStatus(Enum):
     REFUNDED = 'Refunded'
     IN_STORAGE = 'In Storage'
     RESERVED = 'Reserved'
+    NOT_SOLD = 'Not Sold'
 
 class ListingStatus(Enum):
     ACTIVE = 'Active'

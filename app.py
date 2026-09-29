@@ -1,10 +1,10 @@
-import os
+import os, csv
 from datetime import datetime, date
 from urllib.parse import urlparse
 
 # Imports from local python files
 from models import db, User, Shelf, Item, Purchase, ItemStatus, PurchaseType, Listing, ListingStatus, Sale
-from utilities import login_manager, parse_date, parse_decimal, parse_quantity
+from utilities import login_manager, parse_date, parse_decimal, parse_quantity, process_csv
 
 from flask import Flask, render_template, request, redirect, url_for, flash
 from flask_login import login_user, logout_user, login_required, current_user
@@ -12,6 +12,8 @@ from sqlalchemy import func, or_, cast, String, inspect, text
 from werkzeug.security import generate_password_hash, check_password_hash
 
 from decimal import Decimal
+
+from io import StringIO
 
 
 # Configure App and Database (https://www.geeksforgeeks.org/python/declaring-models-in-flask/)
@@ -980,5 +982,36 @@ def delete_database():
         flash('Database deleted.', 'success')
     except Exception as exc:
         flash(f'Could not delete database: {exc}', 'danger')
+
+    return redirect(url_for('user'))
+
+@app.route('/user/import-csv', methods=['POST'])
+@login_required
+def import_csv():
+    csv_file = request.files.get('csv_file')
+    if csv_file is None or not csv_file.filename:
+        flash('Choose a CSV file to import.', 'danger')
+        return redirect(url_for('user'))
+
+    try:
+        result = process_csv(csv_file, current_user.id)
+    except Exception:
+        db.session.rollback()
+        app.logger.exception('CSV import failed')
+        flash('The CSV could not be imported.', 'danger')
+        return redirect(url_for('user'))
+
+    message = (
+        f"Imported {result['purchases_created']} purchase(s) and "
+        f"{result['items_created']} item(s)."
+    )
+    if result['errors']:
+        flash(message + f" {len(result['errors'])} row(s) were skipped.", 'warning')
+        for error in result['errors'][:5]:
+            flash(error, 'warning')
+        if len(result['errors']) > 5:
+            flash('Only the first five import errors are shown.', 'warning')
+    else:
+        flash(message, 'success')
 
     return redirect(url_for('user'))
