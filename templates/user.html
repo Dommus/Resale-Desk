@@ -47,6 +47,33 @@
             </div>
         </div>
     </div>
+
+    {% if import_result %}
+    <div class="col-12">
+        <div class="card shadow-sm {% if import_result.errors %}border-warning{% else %}border-success{% endif %}">
+            <div class="card-body">
+                <h6 class="card-title">CSV import results</h6>
+                <p class="mb-2">
+                    Imported {{ import_result.purchases_created }} purchase(s) and
+                    {{ import_result.items_created }} item(s).
+                </p>
+
+                {% if import_result.errors %}
+                <p class="text-warning mb-2">
+                    {{ import_result.errors|length }} row(s) were skipped:
+                </p>
+                <ul class="mb-0">
+                    {% for error in import_result.errors %}
+                    <li>{{ error }}</li>
+                    {% endfor %}
+                </ul>
+                {% else %}
+                <p class="text-success mb-0">The import completed without errors.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
 </div>
 
 {% endblock %}

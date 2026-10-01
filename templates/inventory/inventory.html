@@ -104,7 +104,7 @@
                         {% endif %}
                     </td>
                     <!-- Purchase Date -->
-                    <td data-label="Purchase date" data-sort-value="{{ item.purchase.date.isoformat() }}">{{ item.purchase.date.strftime('%Y-%m-%d') }}</td>
+                    <td data-label="Purchase date" data-sort-value="{{ item.purchase.date.isoformat() if item.purchase.date else '' }}">{{ item.purchase.date.strftime('%Y-%m-%d') if item.purchase.date else '-' }}</td>
                     <td data-label="" class="text-end table-action-cell"><a href="{{ url_for('view_item', item_id=item.id) }}" class="btn btn-sm btn-outline-primary">View</a></td>
                 </tr>
                 {% else %}

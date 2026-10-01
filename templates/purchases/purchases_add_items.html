@@ -7,7 +7,7 @@
     <div>
         <h3 class="mb-1">Add Items to Purchase #{{ purchase.id }}</h3>
         <p class="text-muted mb-0">
-            {{ purchase.date }}
+            {{ purchase.date or "Unassigned" }}
             &middot; {{ purchase.seller or "Unknown seller" }}
             &middot; <span class="badge purchase-type-badge-{{ purchase.purchase_type.value }}">{{ purchase.purchase_type.value }}</span>
         </p>

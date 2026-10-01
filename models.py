@@ -80,7 +80,7 @@ class Purchase(db.Model):
     name: Mapped[Optional[str]] = mapped_column(String(128))
     seller: Mapped[Optional[str]] = mapped_column(String(128))
     platform: Mapped[Optional[str]] = mapped_column(String(64))
-    date: Mapped[datetime_date] = mapped_column(default=datetime_date.today)
+    date: Mapped[Optional[datetime_date]] = mapped_column(nullable=True, default=None)
     purchase_type: Mapped[PurchaseType] = mapped_column(SQLEnum(PurchaseType), nullable=False, default=PurchaseType.SINGLE)
     purchase_price: Mapped[Decimal] = mapped_column(MONEY, nullable=False, default=Decimal("0.00"))
     shipping_cost: Mapped[Decimal] = mapped_column(MONEY, nullable=False, default=Decimal("0.00"))
@@ -111,7 +111,7 @@ class Purchase(db.Model):
     
     @property
     def display_name(self) -> str:
-        return self.name or self.seller or self.platform or f"Purchase - {self.date}"
+        return self.name or self.seller or self.platform or f"Purchase - {self.date or 'Unassigned date'}"
 
 class Item(db.Model):
     __tablename__ = "items"
@@ -167,10 +167,11 @@ class Item(db.Model):
         return f"I-{self.id:06d}"
 
     @property
-    def days_in_inventory(self) -> int:
+    def days_in_inventory(self) -> Optional[int]:
+        if not self.purchase or self.purchase.date is None:
+            return None
         end = self.sale.sale_date if self.sale else datetime_date.today()
-        start = self.purchase.date if self.purchase.date else end
-        return (end - start).days
+        return (end - self.purchase.date).days
 
     @property
     def available_quantity(self) -> int:

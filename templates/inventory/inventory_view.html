@@ -9,7 +9,7 @@
         <p class="text-muted mb-0">
             <code class="inv-code">{{ item.inventory_code }}</code>
             &middot; <span class="badge status-badge-{{ item.status.value|replace(' ', '-') }}">{{ item.status.value }}</span>
-            &middot; Shelf: {{ item.shelf.name if item.shelf else "Unassigned" }}
+            &middot; Shelf: {{ item.shelf.name if item.shelf else "-" }}
         </p>
     </div>
     <form method="post" action="{{ url_for('delete_item', item_id=item.id) }}" onsubmit="return confirm('Delete this item permanently?');">
@@ -44,11 +44,18 @@
             <div class="kpi-value">{{ item.sale.roi if item.sale.roi is not none else "-" }}% / {{ item.sale.margin if item.sale.margin is not none else "-" }}%</div>
         </div></div>
     </div>
-    {% else %}
+    {% elif item.purchase.date %}
     <div class="col-md-3">
         <div class="card card-kpi"><div class="card-body">
             <div class="kpi-label">Days in Inventory</div>
             <div class="kpi-value">{{ item.days_in_inventory }}</div>
+        </div></div>
+    </div>
+    {% else %}
+    <div class="col-md-3">
+        <div class="card card-kpi"><div class="card-body">
+            <div class="kpi-label">Days in Inventory</div>
+            <div class="kpi-value text-muted">-</div>
         </div></div>
     </div>
     {% endif %}
@@ -204,7 +211,7 @@
                         <div class="col-6">
                             <label class="form-label small">Shelf <span class="text-muted">(optional)</span></label>
                             <select class="form-select" name="shelf_id">
-                                <option value="">Unassigned</option>
+                                <option value="">-</option>
                                 {% for shelf in shelves %}
                                 <option value="{{ shelf.id }}" {% if item.shelf_id == shelf.id %}selected{% endif %}>{{ shelf.name }}</option>
                                 {% endfor %}
@@ -244,7 +251,7 @@
                 <h6 class="card-title">Purchase</h6>
                 <p class="mb-1">
                     From <a href="{{ url_for('view_purchase', purchase_id=item.purchase.id) }}">{{ item.purchase.display_name }}</a>
-                    ({{ item.purchase.date }})
+                    ({{ item.purchase.date or "-" }})
                 </p>
                 <p class="text-muted small mb-0">Seller: {{ item.purchase.seller or "-" }} &middot; <span class="badge purchase-type-badge-{{ item.purchase.purchase_type.value }}">{{ item.purchase.purchase_type.value }}</span></p>
             </div>

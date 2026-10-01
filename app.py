@@ -67,47 +67,7 @@ def create_admin_account():
 def create_database():
     with app.app_context():
         db.create_all()
-        ensure_quantity_columns()
         create_admin_account()
-
-def ensure_quantity_columns():
-    """Add quantity columns to databases created before quantity support.
-
-    This project currently uses ``db.create_all()`` without migrations, so
-    create_all() alone cannot update an existing SQLite database.
-    """
-    inspector = inspect(db.engine)
-    tables = set(inspector.get_table_names())
-    additions = {
-        "items": {
-            "quantity": "INTEGER NOT NULL DEFAULT 1",
-            "quantity_sold": "INTEGER NOT NULL DEFAULT 0",
-            "cost_basis": "NUMERIC(12, 2) NOT NULL DEFAULT 0.00",
-        },
-        "sales": {
-            "quantity": "INTEGER NOT NULL DEFAULT 1",
-        },
-    }
-
-    with db.engine.begin() as connection:
-        for table, columns in additions.items():
-            if table not in tables:
-                continue
-            existing = {column["name"] for column in inspect(connection).get_columns(table)}
-            for column, definition in columns.items():
-                if column not in existing:
-                    connection.execute(text(f"ALTER TABLE {table} ADD COLUMN {column} {definition}"))
-
-        if "items" in tables and "sales" in tables:
-            # Existing sold items predate quantity_sold and must retain their
-            # sold state after the compatibility migration.
-            connection.execute(text(
-                "UPDATE items SET quantity_sold = "
-                "(SELECT quantity FROM sales WHERE sales.item_id = items.id) "
-                "WHERE quantity_sold = 0 AND EXISTS "
-                "(SELECT 1 FROM sales WHERE sales.item_id = items.id)"
-            ))
-
 
 create_database()
 
@@ -481,9 +441,10 @@ def new_purchase():
         purchase_type_label = purchase_type.value.lower()
         print(f'Purchase type is {purchase_type.value}')
 
+        raw_purchase_date = request.form.get('date')
         purchase = Purchase(
             user_id = current_user.id,
-            date = parse_date(request.form.get('date')),
+            date = parse_date(raw_purchase_date) if raw_purchase_date else None,
             name = request.form.get('name', '').strip() or None,
             seller = request.form.get('seller', '').strip(),
             platform = request.form.get('platform', '').strip(),
@@ -611,7 +572,8 @@ def edit_purchase(purchase_id):
         user_id=current_user.id,
     ).first_or_404()
 
-    purchase.date = parse_date(request.form.get('date'), default=purchase.date)
+    raw_purchase_date = request.form.get('date')
+    purchase.date = parse_date(raw_purchase_date) if raw_purchase_date else None
     purchase.name = request.form.get('name', '').strip() or None
     purchase.seller = request.form.get('seller', '').strip() or None
     purchase.platform = request.form.get('platform', '').strip() or None
@@ -1006,12 +968,7 @@ def import_csv():
         f"{result['items_created']} item(s)."
     )
     if result['errors']:
-        flash(message + f" {len(result['errors'])} row(s) were skipped.", 'warning')
-        for error in result['errors'][:5]:
-            flash(error, 'warning')
-        if len(result['errors']) > 5:
-            flash('Only the first five import errors are shown.', 'warning')
-    else:
-        flash(message, 'success')
+        return render_template('user.html', import_result=result)
 
+    flash(message, 'success')
     return redirect(url_for('user'))

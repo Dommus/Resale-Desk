@@ -64,7 +64,7 @@
                 <!-- <tr onclick="window.location='{{ url_for('view_purchase', purchase_id=p.id) }}'" style="cursor:pointer;"> -->
                 <tr class="clickable-row" data-href="{{ url_for('view_purchase', purchase_id=p.id) }}" data-sort-row>
                     <td data-label="#" data-sort-value="{{ p.id }}">{{ p.id }}</td>
-                    <td data-label="Date" data-sort-value="{{ p.date.isoformat() }}">{{ p.date }}</td>
+                    <td data-label="Date" data-sort-value="{{ p.date.isoformat() if p.date else '' }}">{{ p.date or 'Unassigned' }}</td>
                     <td data-label="Name" data-sort-value="{{ p.name or '' }}">{{ p.name or "-" }}</td>
                     <td data-label="Seller" data-sort-value="{{ p.seller or '' }}">{{ p.seller or "-" }}</td>
                     <td data-label="Platform" data-sort-value="{{ p.platform or '' }}">{{ p.platform or "-" }}</td>
