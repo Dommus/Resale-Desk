@@ -80,7 +80,7 @@
                         <tr class="{% if l.status == ListingStatus.REMOVED %}removed-listing{% endif %}">
                             <td data-label="Platform">{{ l.platform }}</td>
                             <td data-label="Listing ID">
-                                {% if l.listing_url %}<a href="{{ l.listing_url }}" target="_blank">{{ l.listing_id }}</a>{% else %}{{ l.listing_id }}{% endif %}
+                                {% if l.listing_url %}<a href="{{ l.listing_url }}" target="_blank">{{ l.listing_id or "Open listing" }}</a>{% else %}{{ l.listing_id or "-" }}{% endif %}
                             </td>
                             <td data-label="Price">€{{ "%.2f"|format(l.listing_price or 0) }}</td>
                             <td data-label="Status">
@@ -127,7 +127,7 @@
                             <select class="form-select" name="listing_id">
                                 <option value="">Not linked to a specific listing</option>
                                 {% for l in item.listings %}
-                                <option value="{{ l.id }}" {% if item.sale.listing_id == l.id %}selected{% endif %}>{{ l.platform }} - {{ l.listing_id }}</option>
+                                <option value="{{ l.id }}" {% if item.sale.listing_id == l.id %}selected{% endif %}>{{ l.platform }}{% if l.listing_id %} - {{ l.listing_id }}{% endif %}</option>
                                 {% endfor %}
                             </select>
                         </div>

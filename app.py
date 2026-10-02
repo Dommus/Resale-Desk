@@ -69,6 +69,59 @@ def create_database():
         db.create_all()
         create_admin_account()
 
+def ensure_listing_id_nullable():
+    """Allow older SQLite databases to store listings without a platform ID."""
+    if db.engine.dialect.name != "sqlite":
+        return
+
+    inspector = inspect(db.engine)
+    if "listings" not in inspector.get_table_names():
+        return
+
+    listing_id_column = next(
+        (column for column in inspector.get_columns("listings") if column["name"] == "listing_id"),
+        None,
+    )
+    if listing_id_column is None or listing_id_column["nullable"]:
+        return
+
+    connection = db.engine.raw_connection()
+    try:
+        connection.execute("PRAGMA foreign_keys=OFF")
+        connection.execute("""
+            CREATE TABLE listings_new (
+                id INTEGER NOT NULL,
+                item_id INTEGER NOT NULL,
+                platform VARCHAR(80) NOT NULL,
+                listing_id VARCHAR(120),
+                listing_url VARCHAR(500),
+                listing_price NUMERIC(12, 2),
+                date_listed DATE NOT NULL,
+                status VARCHAR(7) NOT NULL,
+                PRIMARY KEY (id),
+                FOREIGN KEY(item_id) REFERENCES items (id)
+            )
+        """)
+        connection.execute("""
+            INSERT INTO listings_new
+                (id, item_id, platform, listing_id, listing_url, listing_price,
+                 date_listed, status)
+            SELECT
+                id, item_id, platform, listing_id, listing_url, listing_price,
+                date_listed, status
+            FROM listings
+        """)
+        connection.execute("DROP TABLE listings")
+        connection.execute("ALTER TABLE listings_new RENAME TO listings")
+        connection.commit()
+    except Exception:
+        connection.rollback()
+        raise
+    finally:
+        connection.execute("PRAGMA foreign_keys=ON")
+        connection.close()
+
+
 create_database()
 
 # Delete and recreate the database
@@ -142,7 +195,7 @@ def create_purchase_item(purchase, user_id, name, category=None, brand=None, con
 
 
 def refresh_item_status(item):
-    """Keep the item status consistent with its sold and remaining quantity."""
+    #Keep the item status consistent with its sold and remaining quantity
     if item.quantity_sold >= item.quantity:
         item.quantity_sold = item.quantity
         item.status = ItemStatus.SOLD
@@ -709,15 +762,15 @@ def new_listing(item_id):
         listing = Listing(
             item_id=item.id,
             platform=request.form.get("platform", "").strip(),
-            listing_id=request.form.get("listing_id", "").strip(),
-            listing_url=request.form.get("listing_url", "").strip(),
+            listing_id=request.form.get("listing_id", "").strip() or None,
+            listing_url=request.form.get("listing_url", "").strip() or None,
             listing_price=parse_decimal(request.form.get("listing_price")),
             date_listed=parse_date(request.form.get("date_listed")),
             status=ListingStatus.ACTIVE,
         )
-        if not listing.platform or not listing.listing_id:
-            flash("Platform and listing ID are required.", "danger")
-            return render_template("listings/new.html", item=item)
+        if not listing.platform:
+            flash("Platform is required.", "danger")
+            return render_template("listings/listings_new.html", item=item)
 
         db.session.add(listing)
         if item.status == ItemStatus.IN_STORAGE:

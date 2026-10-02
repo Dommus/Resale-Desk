@@ -15,7 +15,7 @@
                     <select class="form-select" name="listing_id">
                         <option value="">Not linked to a specific listing</option>
                         {% for l in item.listings %}
-                        <option value="{{ l.id }}">{{ l.platform }} - {{ l.listing_id }}</option>
+                        <option value="{{ l.id }}">{{ l.platform }}{% if l.listing_id %} - {{ l.listing_id }}{% endif %}</option>
                         {% endfor %}
                     </select>
                 </div>

@@ -281,8 +281,8 @@ class Listing(db.Model):
     item_id: Mapped[int] = mapped_column(ForeignKey("items.id"), nullable=False)
 
     platform: Mapped[str] = mapped_column(String(80), nullable=False)
-    listing_id: Mapped[str] = mapped_column(String(120))
-    listing_url: Mapped[Optional[str]] = mapped_column(String(500))
+    listing_id: Mapped[Optional[str]] = mapped_column(String(120), nullable=True, default=None)
+    listing_url: Mapped[Optional[str]] = mapped_column(String(500), nullable=True, default=None)
     listing_price: Mapped[Optional[Decimal]] = mapped_column(MONEY, default=None)
     date_listed: Mapped[datetime_date] = mapped_column(default=datetime_date.today)
     # Persist the human-readable enum values (Active, Sold, ...) so they

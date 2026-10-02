@@ -4,7 +4,7 @@ from decimal import Decimal, InvalidOperation
 from flask_login import LoginManager
 from io import StringIO
 
-from models import db, Purchase, Item, Sale, PurchaseType, ItemStatus
+from models import db, Purchase, Item, Sale, Listing, PurchaseType, ItemStatus, ListingStatus
 
 # Login Manager
 # https://flask-login.readthedocs.io/en/latest/
@@ -41,7 +41,7 @@ def parse_quantity(value):
         quantity = int(str(value).strip())
     except (TypeError, ValueError):
         return None
-        
+
     return quantity if quantity > 0 else None
 
 
@@ -195,6 +195,20 @@ def process_csv(file, user_id):
             errors.append(f"Row {row_number}: Invalid purchase date.")
             continue
 
+        raw_sale_date = get_row_clean(row, "Sold date")
+        sale_date = parse_csv_date(raw_sale_date)
+        if raw_sale_date and sale_date is None:
+            errors.append(f"Row {row_number}: Invalid sale date.")
+            continue
+
+        sale_platform = get_row_clean(row, 'Sales platform')
+        if not sale_platform:
+            errors.append(f"Row {row_number}: Sales platform is required for a Listing.")
+            continue
+
+        sale_price = parse_csv_money(row.get('Sold price'))
+        listing_price_total = parse_csv_money(row.get('Sell price (total)'))
+
         purchase_type = (
             PurchaseType.SINGLE
             if normalise_name(bundle_name) == 'individual'
@@ -203,8 +217,8 @@ def process_csv(file, user_id):
 
         if purchase_type is PurchaseType.SINGLE:
             # csv column stores unit price, while Purchase.purchase_price stores the total cost of the purchase.
-            unit_purchase_price = parse_csv_money(row.get('Buy price (unit)'))
-            if unit_purchase_price is None:
+            item_purchase_price = parse_csv_money(row.get('Buy price (unit)'))
+            if item_purchase_price is None:
                 errors.append(f"Row {row_number}: invalid or missing Buy price (unit).")
                 continue
 
@@ -212,10 +226,10 @@ def process_csv(file, user_id):
                 user_id=user_id,
                 name=item_name,
                 seller=None,
-                platform=get_row_clean(row, 'Sales platform'),
+                platform=sale_platform,
                 date=purchase_date,
                 purchase_type=PurchaseType.SINGLE,
-                purchase_price=unit_purchase_price * item_quantity,
+                purchase_price=item_purchase_price * item_quantity,
             )
             db.session.add(purchase)
             purchases_created += 1
@@ -236,13 +250,14 @@ def process_csv(file, user_id):
             bundle_cost = next(iter(bundle_costs))
             bundle_key = (bundle_name_key, bundle_cost)
             purchase = purchases_by_bundle.get(bundle_key)
+
             if purchase is None:
                 bundle = bundles_dict[bundle_key]
                 purchase = Purchase(
                     user_id=user_id,
                     name=bundle["name"],
                     seller=None,
-                    platform=None,
+                    platform=sale_platform,
                     date=purchase_date,
                     purchase_type=PurchaseType.BUNDLE,
                     purchase_price=bundle["cost"],
@@ -260,7 +275,72 @@ def process_csv(file, user_id):
             status=item_status,
             notes=get_row_clean(row, 'Notes') or None,
         )
+
+        # Record listing
+
+        def set_listing_price():
+            if item_quantity_sold > 0:
+                ListingStatus.SOLD
+            else:
+                ListingStatus.ACTIVE
+            # Add support for REMOVED and EXPIRED later
+
+        listing = Listing(
+            platform = sale_platform,
+            listing_price = listing_price_total,
+            status = (
+                # ADD: support for ListingStatus REMOVED and EXPIRED
+                ListingStatus.SOLD
+                if item_quantity_sold == item_quantity
+                else ListingStatus.ACTIVE
+            ),
+            item = item,
+        )
+
+        # LISTING SCHEMA
+        #id: Mapped[int] = mapped_column(primary_key=True)
+        #platform: Mapped[str] = mapped_column(String(80), nullable=False)
+        #listing_id: Mapped[str] = mapped_column(String(120))
+        #listing_url: Mapped[Optional[str]] = mapped_column(String(500))
+        #listing_price: Mapped[Optional[Decimal]] = mapped_column(MONEY, default=None)
+        #date_listed: Mapped[datetime_date] = mapped_column(default=datetime_date.today)
+        #status: Mapped[ListingStatus] = mapped_column(
+        #    SQLEnum(ListingStatus, values_callable=lambda statuses: [status.value for status in statuses]),
+        #    default=ListingStatus.ACTIVE,)
+        #item: Mapped["Item"] = relationship("Item", back_populates="listings")
+        #sale: Mapped[Optional["Sale"]] = relationship("Sale", back_populates="listing", uselist=False)
+
+        # Record sale
+        if item_quantity_sold > 0:
+            sale = Sale(
+                sale_date=sale_date,
+                sale_price=sale_price,
+                quantity=item_quantity_sold,
+                item = item,
+                listing = listing,
+            )
+
+        #    SALE SCHEMA:
+
+        #    id: Mapped[int] = mapped_column(primary_key=True)
+        #    item_id: Mapped[int] = mapped_column(ForeignKey("items.id"), nullable=False, unique=True)
+        #    listing_id: Mapped[Optional[int]] = mapped_column(ForeignKey("listings.id"))
+        #    sale_date: Mapped[datetime_date] = mapped_column(default=datetime_date.today)
+        #    sale_price: Mapped[Decimal] = mapped_column(MONEY, default=Decimal("0.00"))
+        #    shipping_collected: Mapped[Decimal] = mapped_column(MONEY, default=Decimal("0.00"))
+        #    shipping_paid: Mapped[Decimal] = mapped_column(MONEY, default=Decimal("0.00"))
+        #    platform_fee: Mapped[Decimal] = mapped_column(MONEY, default=Decimal("0.00"))
+        #    payment_fee: Mapped[Decimal] = mapped_column(MONEY, default=Decimal("0.00"))
+        #    quantity: Mapped[int] = mapped_column(nullable=False, default=1)
+        #    notes: Mapped[Optional[str]] = mapped_column(Text)
+        #    item: Mapped["Item"] = relationship("Item", back_populates="sale")
+        #    listing: Mapped[Optional["Listing"]] = relationship("Listing", back_populates="sale")
+
         db.session.add(item)
+        db.session.add(listing)
+        if item_quantity_sold > 0:
+            db.session.add(sale)
+
         items_created += 1
 
     # https://stackoverflow.com/a/56305023
