@@ -92,13 +92,13 @@
                     <!-- Status -->
                     <td data-label="Status" data-sort-value="{{ item.status.value }}"><span class="badge status-badge-{{ item.status.value|replace(' ', '-') }}">{{ item.status.value }}</span></td>
                     <!-- Cost -->
-                    <td data-label="Purchase cost" data-sort-value="{{ item.purchase_cost }}">{% if item.unit_cost is not none %}€{{ "%.2f"|format(item.unit_cost) }} / unit{% else %}<span class="text-muted">Unallocated</span>{% endif %}</td>
+                    <td data-label="Purchase cost" data-sort-value="{{ item.purchase_cost }}">{% if item.unit_cost is not none %}€{{ "%.2f"|format(item.unit_cost) }} / unit{% else %}<span class="text-muted">-</span>{% endif %}</td>
                     <!-- Profit -->
                     <td data-label="Profit" data-sort-value="{{ item.sale.profit if item.sale else '' }}">
                         {% if item.sale %}
                             {% if item.sale.profit is not none %}
                             <span class="{{ 'text-success' if item.sale.profit >= 0 else 'text-danger' }}">€{{ "%.2f"|format(item.sale.profit) }}</span>
-                            {% else %}<span class="text-muted">Unallocated</span>{% endif %}
+                            {% else %}<span class="text-muted">-</span>{% endif %}
                         {% else %}
                             <span class="text-muted">-</span>
                         {% endif %}

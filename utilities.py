@@ -278,13 +278,6 @@ def process_csv(file, user_id):
 
         # Record listing
 
-        def set_listing_price():
-            if item_quantity_sold > 0:
-                ListingStatus.SOLD
-            else:
-                ListingStatus.ACTIVE
-            # Add support for REMOVED and EXPIRED later
-
         listing = Listing(
             platform = sale_platform,
             listing_price = listing_price_total,
@@ -297,19 +290,6 @@ def process_csv(file, user_id):
             item = item,
         )
 
-        # LISTING SCHEMA
-        #id: Mapped[int] = mapped_column(primary_key=True)
-        #platform: Mapped[str] = mapped_column(String(80), nullable=False)
-        #listing_id: Mapped[str] = mapped_column(String(120))
-        #listing_url: Mapped[Optional[str]] = mapped_column(String(500))
-        #listing_price: Mapped[Optional[Decimal]] = mapped_column(MONEY, default=None)
-        #date_listed: Mapped[datetime_date] = mapped_column(default=datetime_date.today)
-        #status: Mapped[ListingStatus] = mapped_column(
-        #    SQLEnum(ListingStatus, values_callable=lambda statuses: [status.value for status in statuses]),
-        #    default=ListingStatus.ACTIVE,)
-        #item: Mapped["Item"] = relationship("Item", back_populates="listings")
-        #sale: Mapped[Optional["Sale"]] = relationship("Sale", back_populates="listing", uselist=False)
-
         # Record sale
         if item_quantity_sold > 0:
             sale = Sale(
@@ -319,22 +299,6 @@ def process_csv(file, user_id):
                 item = item,
                 listing = listing,
             )
-
-        #    SALE SCHEMA:
-
-        #    id: Mapped[int] = mapped_column(primary_key=True)
-        #    item_id: Mapped[int] = mapped_column(ForeignKey("items.id"), nullable=False, unique=True)
-        #    listing_id: Mapped[Optional[int]] = mapped_column(ForeignKey("listings.id"))
-        #    sale_date: Mapped[datetime_date] = mapped_column(default=datetime_date.today)
-        #    sale_price: Mapped[Decimal] = mapped_column(MONEY, default=Decimal("0.00"))
-        #    shipping_collected: Mapped[Decimal] = mapped_column(MONEY, default=Decimal("0.00"))
-        #    shipping_paid: Mapped[Decimal] = mapped_column(MONEY, default=Decimal("0.00"))
-        #    platform_fee: Mapped[Decimal] = mapped_column(MONEY, default=Decimal("0.00"))
-        #    payment_fee: Mapped[Decimal] = mapped_column(MONEY, default=Decimal("0.00"))
-        #    quantity: Mapped[int] = mapped_column(nullable=False, default=1)
-        #    notes: Mapped[Optional[str]] = mapped_column(Text)
-        #    item: Mapped["Item"] = relationship("Item", back_populates="sale")
-        #    listing: Mapped[Optional["Listing"]] = relationship("Listing", back_populates="sale")
 
         db.session.add(item)
         db.session.add(listing)
