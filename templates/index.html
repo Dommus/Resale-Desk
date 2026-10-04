@@ -2,94 +2,249 @@
 {% block title %}Dashboard{% endblock %}
 {% block content %}
 
-<div class="row justify-content-center mb-4">
-  <div class="col-lg-10 text-center">
-    <h1 class="mb-2">Welcome, {{ current_user.username }}!</h1>
-    <p class="text-muted">Here's a simple overview:</p>
-  </div>
+<div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-4">
+    <div>
+        <h2 class="mb-1">Dashboard</h2>
+        <p class="text-muted mb-0">A quick view of your resale operation, inventory, and sales.</p>
+    </div>
+    <div class="d-flex flex-wrap gap-2">
+        <a href="{{ url_for('choose_purchase_type') }}" class="btn btn-primary">
+            <i class="bi bi-plus-lg"></i> New Purchase
+        </a>
+        <a href="{{ url_for('inventory') }}" class="btn btn-outline-secondary">
+            <i class="bi bi-box-seam"></i> Inventory
+        </a>
+    </div>
+</div>
+
+<div class="row g-3 mb-3">
+    <div class="col-6 col-xl-3">
+        <div class="card card-kpi h-100">
+            <div class="card-body">
+                <div class="kpi-label">Available Units</div>
+                <div class="kpi-value">{{ available_units }}</div>
+                <div class="small text-muted">{{ total_units }} total units</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-xl-3">
+        <div class="card card-kpi h-100">
+            <div class="card-body">
+                <div class="kpi-label">Units Sold</div>
+                <div class="kpi-value">{{ sold_units }}</div>
+                <div class="small text-muted">{{ sell_through_rate }}% sell-through</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-xl-3">
+        <div class="card card-kpi h-100">
+            <div class="card-body">
+                <div class="kpi-label">Net Revenue</div>
+                <div class="kpi-value">€{{ "%.2f"|format(total_revenue) }}</div>
+                <div class="small text-muted">{{ sales_count }} recorded sale{% if sales_count != 1 %}s{% endif %}</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-xl-3">
+        <div class="card card-kpi h-100">
+            <div class="card-body">
+                <div class="kpi-label">Profit</div>
+                <div class="kpi-value {{ 'text-success' if total_profit >= 0 else 'text-danger' }}">€{{ "%.2f"|format(total_profit) }}</div>
+                <div class="small text-muted">After purchase costs</div>
+            </div>
+        </div>
+    </div>
 </div>
 
 <div class="row g-3 mb-4">
-  <div class="col-md-3">
-    <div class="card card-kpi h-100">
-      <div class="card-body">
-        <div class="kpi-label">Inventory units</div>
-        <div class="kpi-value">{{ item_count }}</div>
-      </div>
+    <div class="col-6 col-lg-3">
+        <div class="card shadow-sm h-100">
+            <div class="card-body">
+                <div class="text-muted small">Total Spent</div>
+                <div class="fs-4 fw-semibold">€{{ "%.2f"|format(total_spend) }}</div>
+                <a href="{{ url_for('purchases') }}" class="small">View purchases</a>
+            </div>
+        </div>
     </div>
-  </div>
-  <div class="col-md-3">
-    <div class="card card-kpi h-100">
-      <div class="card-body">
-        <div class="kpi-label">Units on sale</div>
-        <div class="kpi-value">{{ on_sale_count }}</div>
-      </div>
+    <div class="col-6 col-lg-3">
+        <div class="card shadow-sm h-100">
+            <div class="card-body">
+                <div class="text-muted small">Active Listings</div>
+                <div class="fs-4 fw-semibold">{{ active_listing_count }}</div>
+                <div class="small text-muted">{{ listing_count }} listings total</div>
+            </div>
+        </div>
     </div>
-  </div>
-  <div class="col-md-3">
-    <div class="card card-kpi h-100">
-      <div class="card-body">
-        <div class="kpi-label">Units sold</div>
-        <div class="kpi-value">{{ sold_count }}</div>
-      </div>
+    <div class="col-6 col-lg-3">
+        <div class="card shadow-sm h-100">
+            <div class="card-body">
+                <div class="text-muted small">Purchases</div>
+                <div class="fs-4 fw-semibold">{{ purchase_count }}</div>
+                <div class="small text-muted">Inventory sources</div>
+            </div>
+        </div>
     </div>
-  </div>
-  <div class="col-md-3">
-    <div class="card card-kpi h-100">
-      <div class="card-body">
-        <div class="kpi-label">Total spent</div>
-        <div class="kpi-value">${{ '%.2f'|format(total_spend) }}</div>
-      </div>
+    <div class="col-6 col-lg-3">
+        <div class="card shadow-sm h-100">
+            <div class="card-body">
+                <div class="text-muted small">Average Sale</div>
+                <div class="fs-4 fw-semibold">€{{ "%.2f"|format(average_sale_value) }}</div>
+                <div class="small text-muted">Net proceeds per sale</div>
+            </div>
+        </div>
     </div>
-  </div>
 </div>
 
-<div class="row g-4">
-  <div class="col-lg-6">
-    <div class="card shadow-sm h-100">
-      <div class="card-body">
-        <h6 class="card-title">Recent inventory</h6>
-        <ul class="list-group list-group-flush">
-          {% for item in recent_items %}
-          <li class="list-group-item px-0">
-            <div class="d-flex justify-content-between align-items-center">
-              <div>
-                <strong>{{ item.name }}</strong><br>
-                <small class="text-muted">{{ item.category or 'Uncategorized' }}</small>
-              </div>
-              <span class="badge rounded-pill bg-light text-dark">{{ item.status.value }}</span>
+<div class="row g-4 mb-4">
+    <div class="col-lg-7">
+        <div class="card shadow-sm h-100">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start mb-3">
+                    <div>
+                        <h5 class="card-title mb-1">Sales performance</h5>
+                        <p class="text-muted small mb-0">How much of your inventory has converted into sales.</p>
+                    </div>
+                    <span class="badge bg-primary">{{ sell_through_rate }}%</span>
+                </div>
+                <div class="progress mb-4" role="progressbar" aria-label="Sell-through rate" aria-valuenow="{{ sell_through_rate }}" aria-valuemin="0" aria-valuemax="100" style="height: 0.7rem;">
+                    <div class="progress-bar" style="width: {{ sell_through_rate }}%"></div>
+                </div>
+                <div class="row g-3">
+                    <div class="col-4">
+                        <div class="text-muted small">Available</div>
+                        <div class="fs-5 fw-semibold">{{ available_units }}</div>
+                    </div>
+                    <div class="col-4">
+                        <div class="text-muted small">Sold</div>
+                        <div class="fs-5 fw-semibold">{{ sold_units }}</div>
+                    </div>
+                    <div class="col-4">
+                        <div class="text-muted small">Revenue</div>
+                        <div class="fs-5 fw-semibold">€{{ "%.2f"|format(total_revenue) }}</div>
+                    </div>
+                </div>
             </div>
-          </li>
-          {% else %}
-          <li class="list-group-item px-0 text-muted">No inventory items yet.</li>
-          {% endfor %}
-        </ul>
-      </div>
+        </div>
     </div>
-  </div>
 
-  <div class="col-lg-6">
-    <div class="card shadow-sm h-100">
-      <div class="card-body">
-        <h6 class="card-title">Recent purchases</h6>
-        <ul class="list-group list-group-flush">
-          {% for purchase in recent_purchases %}
-          <li class="list-group-item px-0">
-            <div class="d-flex justify-content-between align-items-center">
-              <div>
-                <strong>{{ purchase.seller or 'Unknown seller' }}</strong><br>
-                <small class="text-muted">{{ purchase.platform or 'No platform' }}</small>
-              </div>
-              <span>${{ '%.2f'|format(purchase.purchase_price + purchase.shipping_cost) }}</span>
+    <div class="col-lg-5">
+        <div class="card shadow-sm h-100">
+            <div class="card-body">
+                <h5 class="card-title mb-3">Inventory status</h5>
+                {% for status, quantity in status_summary %}
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <span><span class="badge status-badge-{{ status.value|replace(' ', '-') }} me-2">{{ status.value }}</span></span>
+                    <strong>{{ quantity }}</strong>
+                </div>
+                {% else %}
+                <p class="text-muted mb-0">No inventory recorded yet.</p>
+                {% endfor %}
             </div>
-          </li>
-          {% else %}
-          <li class="list-group-item px-0 text-muted">No purchases yet.</li>
-          {% endfor %}
-        </ul>
-      </div>
+        </div>
     </div>
-  </div>
+</div>
+
+<div class="row g-4 mb-4">
+    <div class="col-lg-7">
+        <div class="card shadow-sm h-100">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <h5 class="card-title mb-0">Recent sales</h5>
+                    <a href="{{ url_for('inventory') }}" class="small">View inventory</a>
+                </div>
+                {% if recent_sales %}
+                <div class="app-fit-table-wrap">
+                    <table class="table table-sm align-middle app-fit-table mb-0">
+                        <thead>
+                            <tr><th>Date</th><th>Item</th><th>Quantity</th><th>Net proceeds</th><th>Profit</th></tr>
+                        </thead>
+                        <tbody>
+                            {% for sale in recent_sales %}
+                            <tr>
+                                <td data-label="Date">{{ sale.sale_date }}</td>
+                                <td data-label="Item">
+                                    <a href="{{ url_for('view_item', item_id=sale.item.id) }}">{{ sale.item.name }}</a>
+                                    {% if sale.item.is_bundle %}<small class="d-block text-muted">Bundle sale</small>{% endif %}
+                                </td>
+                                <td data-label="Quantity">{{ sale.quantity }}</td>
+                                <td data-label="Net proceeds">€{{ "%.2f"|format(sale.net_proceeds) }}</td>
+                                <td data-label="Profit">
+                                    {% if sale.profit is not none %}
+                                    <span class="{{ 'text-success' if sale.profit >= 0 else 'text-danger' }}">€{{ "%.2f"|format(sale.profit) }}</span>
+                                    {% else %}
+                                    <span class="text-muted">Bundle-level</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <p class="text-muted mb-0">No sales recorded yet.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-5">
+        <div class="card shadow-sm h-100">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <h5 class="card-title mb-0">Needs attention</h5>
+                    {% if attention_count %}<span class="badge bg-warning text-dark">{{ attention_count }}</span>{% endif %}
+                </div>
+                <p class="text-muted small">Available items without an active listing.</p>
+                {% if attention_items %}
+                <ul class="list-group list-group-flush">
+                    {% for item in attention_items %}
+                    <li class="list-group-item px-0 d-flex justify-content-between align-items-center gap-2">
+                        <div class="text-truncate">
+                            <a href="{{ url_for('view_item', item_id=item.id) }}" class="text-decoration-none">{{ item.name }}</a>
+                            <small class="d-block text-muted">{{ item.available_quantity }} available</small>
+                        </div>
+                        <span class="badge status-badge-{{ item.status.value|replace(' ', '-') }}">{{ item.status.value }}</span>
+                    </li>
+                    {% endfor %}
+                </ul>
+                {% else %}
+                <div class="alert alert-success mb-0">All available items have an active listing.</div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card shadow-sm">
+    <div class="card-body">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+            <h5 class="card-title mb-0">Top purchases by profit</h5>
+            <a href="{{ url_for('purchases') }}" class="small">View all purchases</a>
+        </div>
+        {% if top_purchases %}
+        <div class="app-fit-table-wrap">
+            <table class="table table-sm align-middle app-fit-table mb-0">
+                <thead>
+                    <tr><th>Purchase</th><th>Type</th><th>Units sold</th><th>Total cost</th><th>Revenue</th><th>Profit</th></tr>
+                </thead>
+                <tbody>
+                    {% for purchase in top_purchases %}
+                    <tr>
+                        <td data-label="Purchase"><a href="{{ url_for('view_purchase', purchase_id=purchase.id) }}">{{ purchase.display_name }}</a></td>
+                        <td data-label="Type"><span class="badge purchase-type-badge-{{ purchase.purchase_type.value }}">{{ purchase.purchase_type.value }}</span></td>
+                        <td data-label="Units sold">{{ purchase.items|sum(attribute='quantity_sold') }}/{{ purchase.items|sum(attribute='quantity') }}</td>
+                        <td data-label="Total cost">€{{ "%.2f"|format(purchase.total_cost) }}</td>
+                        <td data-label="Revenue">€{{ "%.2f"|format(purchase.total_revenue) }}</td>
+                        <td data-label="Profit"><span class="{{ 'text-success' if purchase.profit >= 0 else 'text-danger' }}">€{{ "%.2f"|format(purchase.profit) }}</span></td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <p class="text-muted mb-0">No purchases recorded yet.</p>
+        {% endif %}
+    </div>
 </div>
 
 {% endblock %}

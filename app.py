@@ -8,7 +8,7 @@ from utilities import login_manager, parse_date, parse_decimal, parse_quantity, 
 
 from flask import Flask, render_template, request, redirect, url_for, flash
 from flask_login import login_user, logout_user, login_required, current_user
-from sqlalchemy import func, or_, cast, String, inspect, text
+from sqlalchemy import or_, cast, String, inspect, text
 from werkzeug.security import generate_password_hash, check_password_hash
 
 from decimal import Decimal
@@ -215,41 +215,92 @@ def inject_today():
 @app.route('/')
 @login_required
 def index():
-    # Queries for dashboard data
-    item_count = (
-        db.session.query(func.coalesce(func.sum(Item.quantity), 0))
+    items = Item.query.filter_by(user_id=current_user.id).all()
+    purchases = Purchase.query.filter_by(user_id=current_user.id).all()
+    sales = (
+        Sale.query.join(Item)
         .filter(Item.user_id == current_user.id)
-        .scalar() or 0
+        .all()
     )
-    on_sale_count = (
-        db.session.query(func.coalesce(func.sum(Item.quantity - Item.quantity_sold), 0))
-        .filter(Item.user_id == current_user.id, Item.status == ItemStatus.ON_SALE)
-        .scalar() or 0
-    )
-    sold_count = (
-        db.session.query(func.coalesce(func.sum(Item.quantity_sold), 0))
+    listings = (
+        Listing.query.join(Item)
         .filter(Item.user_id == current_user.id)
-        .scalar() or 0
+        .all()
     )
-    purchase_count = Purchase.query.filter_by(user_id=current_user.id).count()
-    total_spend = (
-        db.session.query(func.coalesce(func.sum(Purchase.purchase_price + Purchase.shipping_cost), Decimal("0.00")))
-        .filter(Purchase.user_id == current_user.id)
-        .scalar() or Decimal("0.00")
+
+    total_units = sum(item.quantity for item in items)
+    available_units = sum(item.available_quantity for item in items)
+    sold_units = sum(item.quantity_sold for item in items)
+    total_spend = sum((purchase.total_cost for purchase in purchases), Decimal("0.00"))
+    total_revenue = sum((purchase.total_revenue for purchase in purchases), Decimal("0.00"))
+    total_profit = sum((purchase.profit for purchase in purchases), Decimal("0.00"))
+    sell_through_rate = (
+        round((sold_units / total_units) * 100, 1)
+        if total_units
+        else Decimal("0.0")
     )
-    # TODO add total profit?
-    recent_items = Item.query.filter_by(user_id=current_user.id).order_by(Item.created_at.desc()).limit(5).all()
-    recent_purchases = Purchase.query.filter_by(user_id=current_user.id).order_by(Purchase.date.desc()).limit(5).all()
+    average_sale_value = (
+        round(total_revenue / len(sales), 2)
+        if sales
+        else Decimal("0.00")
+    )
+
+    listings_by_item = {}
+    for listing in listings:
+        listings_by_item.setdefault(listing.item_id, []).append(listing)
+
+    items_without_active_listing = [
+        item for item in items
+        if item.available_quantity > 0
+        and not any(
+            listing.status == ListingStatus.ACTIVE
+            for listing in listings_by_item.get(item.id, [])
+        )
+    ]
+    attention_items = sorted(
+        items_without_active_listing,
+        key=lambda item: item.created_at or datetime.min,
+        reverse=True,
+    )[:6]
+
+    status_summary = [
+        (status, sum(item.quantity for item in items if item.status == status))
+        for status in ItemStatus
+    ]
+    status_summary = [(status, quantity) for status, quantity in status_summary if quantity]
+
+    recent_sales = sorted(
+        sales,
+        key=lambda sale: (sale.sale_date or date.min, sale.id or 0),
+        reverse=True,
+    )[:6]
+    top_purchases = sorted(
+        purchases,
+        key=lambda purchase: purchase.profit,
+        reverse=True,
+    )[:5]
 
     return render_template(
         'index.html',
-        item_count=item_count,
-        on_sale_count=on_sale_count,
-        sold_count=sold_count,
-        purchase_count=purchase_count,
+        total_units=total_units,
+        available_units=available_units,
+        sold_units=sold_units,
+        purchase_count=len(purchases),
+        sales_count=len(sales),
         total_spend=round(total_spend, 2),
-        recent_items=recent_items,
-        recent_purchases=recent_purchases,
+        total_revenue=round(total_revenue, 2),
+        total_profit=round(total_profit, 2),
+        active_listing_count=sum(
+            listing.status == ListingStatus.ACTIVE for listing in listings
+        ),
+        listing_count=len(listings),
+        sell_through_rate=sell_through_rate,
+        average_sale_value=average_sale_value,
+        status_summary=status_summary,
+        recent_sales=recent_sales,
+        top_purchases=top_purchases,
+        attention_items=attention_items,
+        attention_count=len(items_without_active_listing),
     )
 
 #########################
