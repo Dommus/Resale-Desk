@@ -20,12 +20,31 @@
 <div class="row g-3 mb-4">
     <div class="col-md-3">
         <div class="card card-kpi"><div class="card-body">
-            <div class="kpi-label">Purchase Cost</div>
-            <div class="kpi-value">{% if item.is_bundle %}Part of bundle{% elif item.total_cost_basis is not none %}€{{ "%.2f"|format(item.total_cost_basis) }}{% else %}-{% endif %}</div>
-            <div class="text-muted small">{% if item.is_bundle %}{{ item.purchase.display_name }} · {% endif %}{{ item.available_quantity }} available of {{ item.quantity }}{% if item.unit_cost is not none %} · €{{ "%.2f"|format(item.unit_cost) }} per unit{% endif %}</div>
+            <div class="kpi-label">{% if item.is_bundle %}Bundle Purchase Cost{% else %}Purchase Cost{% endif %}</div>
+            <div class="kpi-value">{% if item.is_bundle %}€{{ "%.2f"|format(item.purchase.total_cost) }}{% elif item.total_cost_basis is not none %}€{{ "%.2f"|format(item.total_cost_basis) }}{% else %}-{% endif %}</div>
+            <div class="text-muted small">{% if item.is_bundle %}From bundle: {{ item.purchase.display_name }}{% else %}{{ item.available_quantity }} available of {{ item.quantity }}{% if item.unit_cost is not none %} · €{{ "%.2f"|format(item.unit_cost) }} per unit{% endif %}{% endif %}</div>
         </div></div>
     </div>
-    {% if item.sale %}
+    {% if item.is_bundle %}
+    <div class="col-md-3">
+        <div class="card card-kpi"><div class="card-body">
+            <div class="kpi-label">Bundle Net Proceeds</div>
+            <div class="kpi-value">€{{ "%.2f"|format(item.purchase.total_revenue) }}</div>
+        </div></div>
+    </div>
+    <div class="col-md-3">
+        <div class="card card-kpi"><div class="card-body">
+            <div class="kpi-label">Bundle Profit</div>
+            <div class="kpi-value {{ 'text-success' if item.purchase.profit >= 0 else 'text-danger' }}">€{{ "%.2f"|format(item.purchase.profit) }}</div>
+        </div></div>
+    </div>
+    <div class="col-md-3">
+        <div class="card card-kpi"><div class="card-body">
+            <div class="kpi-label">Bundle ROI / Margin</div>
+            <div class="kpi-value">{{ item.purchase.roi if item.purchase.roi is not none else "-" }}% / {{ item.purchase.margin if item.purchase.margin is not none else "-" }}%</div>
+        </div></div>
+    </div>
+    {% elif item.sale %}
     <div class="col-md-3">
         <div class="card card-kpi"><div class="card-body">
             <div class="kpi-label">Net Proceeds</div>
@@ -35,7 +54,7 @@
     <div class="col-md-3">
         <div class="card card-kpi"><div class="card-body">
             <div class="kpi-label">Profit</div>
-            <div class="kpi-value {% if not item.is_bundle and item.sale.profit is not none %}{{ 'text-success' if item.sale.profit >= 0 else 'text-danger' }}{% endif %}">{% if item.is_bundle %}Part of bundle{% elif item.sale.profit is not none %}€{{ "%.2f"|format(item.sale.profit) }}{% else %}-{% endif %}</div>
+            <div class="kpi-value {{ 'text-success' if item.sale.profit >= 0 else 'text-danger' }}">{% if item.sale.profit is not none %}€{{ "%.2f"|format(item.sale.profit) }}{% else %}-{% endif %}</div>
         </div></div>
     </div>
     <div class="col-md-3">

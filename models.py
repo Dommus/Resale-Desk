@@ -114,6 +114,18 @@ class Purchase(db.Model):
             (item.sale.profit for item in self.items if item.sale and item.sale.profit is not None),
             Decimal("0.00"),
         )
+
+    @property
+    def roi(self) -> Optional[Decimal]:
+        if self.total_cost <= 0:
+            return None
+        return round((self.profit / self.total_cost) * 100, 1)
+
+    @property
+    def margin(self) -> Optional[Decimal]:
+        if self.total_revenue <= 0:
+            return None
+        return round((self.profit / self.total_revenue) * 100, 1)
     
     @property
     def display_name(self) -> str:
