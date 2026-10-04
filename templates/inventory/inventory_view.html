@@ -91,17 +91,30 @@
                     {% endif %}
                 </div>
                 {% if item.listings %}
+                {% for l in item.listings %}
+                <form id="edit-listing-{{ l.id }}" method="post" action="{{ url_for('edit_listing', listing_id=l.id) }}"></form>
+                {% endfor %}
                 <div class="app-fit-table-wrap">
                 <table class="table table-sm align-middle app-fit-table">
-                    <thead><tr><th>Platform</th><th>Listing ID</th><th>Price</th><th>Status</th><th></th></tr></thead>
+                    <thead><tr><th>Platform</th><th>Listing ID</th><th>Listing URL</th><th>Price</th><th>Date Listed</th><th>Status</th><th></th></tr></thead>
                     <tbody>
                         {% for l in item.listings %}
                         <tr class="{% if l.status == ListingStatus.REMOVED %}removed-listing{% endif %}">
-                            <td data-label="Platform">{{ l.platform }}</td>
-                            <td data-label="Listing ID">
-                                {% if l.listing_url %}<a href="{{ l.listing_url }}" target="_blank">{{ l.listing_id or "Open listing" }}</a>{% else %}{{ l.listing_id or "-" }}{% endif %}
+                            <td data-label="Platform">
+                                <input form="edit-listing-{{ l.id }}" type="text" class="form-control form-control-sm" name="platform" value="{{ l.platform }}" required>
                             </td>
-                            <td data-label="Price">€{{ "%.2f"|format(l.listing_price or 0) }}</td>
+                            <td data-label="Listing ID">
+                                <input form="edit-listing-{{ l.id }}" type="text" class="form-control form-control-sm" name="listing_id" value="{{ l.listing_id or '' }}">
+                            </td>
+                            <td data-label="Listing URL">
+                                <input form="edit-listing-{{ l.id }}" type="url" class="form-control form-control-sm" name="listing_url" value="{{ l.listing_url or '' }}" placeholder="https://...">
+                            </td>
+                            <td data-label="Price">
+                                <input form="edit-listing-{{ l.id }}" type="number" step="0.01" min="0" class="form-control form-control-sm" name="listing_price" value="{{ l.listing_price if l.listing_price is not none else '' }}">
+                            </td>
+                            <td data-label="Date Listed">
+                                <input form="edit-listing-{{ l.id }}" type="date" class="form-control form-control-sm" name="date_listed" value="{{ l.date_listed.isoformat() if l.date_listed else '' }}">
+                            </td>
                             <td data-label="Status">
                                 {% if l.status == ListingStatus.SOLD %}
                                 <span class="badge bg-success">{{ l.status.value }}</span>
@@ -117,7 +130,9 @@
                                 </form>
                                 {% endif %}
                             </td>
-                            <td data-label="" class="table-action-cell"></td>
+                            <td data-label="" class="table-action-cell">
+                                <button form="edit-listing-{{ l.id }}" type="submit" class="btn btn-sm btn-primary">Save</button>
+                            </td>
                         </tr>
                         {% endfor %}
                     </tbody>

@@ -782,6 +782,29 @@ def new_listing(item_id):
     return render_template("listings/listings_new.html", item=item)
 
 
+@app.route('/listings/<int:listing_id>/edit', methods=["POST"])
+@login_required
+def edit_listing(listing_id):
+    listing = Listing.query.join(Item).filter(
+        Listing.id == listing_id, Item.user_id == current_user.id
+    ).first_or_404()
+
+    platform = request.form.get("platform", "").strip()
+    if not platform:
+        flash("Platform is required.", "danger")
+        return redirect(url_for("view_item", item_id=listing.item_id))
+
+    listing.platform = platform
+    listing.listing_id = request.form.get("listing_id", "").strip() or None
+    listing.listing_url = request.form.get("listing_url", "").strip() or None
+    listing.listing_price = parse_decimal(request.form.get("listing_price"), default=None)
+    listing.date_listed = parse_date(request.form.get("date_listed"), default=listing.date_listed)
+
+    db.session.commit()
+    flash("Listing updated.", "success")
+    return redirect(url_for("view_item", item_id=listing.item_id))
+
+
 @app.route('/listings/<int:listing_id>/status', methods=["POST"])
 @login_required
 def update_listing_status(listing_id):
