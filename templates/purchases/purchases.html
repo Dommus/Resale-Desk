@@ -55,6 +55,7 @@
                     <th class="sortable-header" data-sort-key="platform" data-sort-type="text" tabindex="0" role="button">Platform <span class="sort-indicator" aria-hidden="true"></span></th>
                     <th class="sortable-header" data-sort-key="type" data-sort-type="text" tabindex="0" role="button">Type <span class="sort-indicator" aria-hidden="true"></span></th>
                     <th class="sortable-header" data-sort-key="cost" data-sort-type="number" tabindex="0" role="button">Total Cost <span class="sort-indicator" aria-hidden="true"></span></th>
+                    <th class="sortable-header" data-sort-key="profit" data-sort-type="number" tabindex="0" role="button">Profit <span class="sort-indicator" aria-hidden="true"></span></th>
                     <th class="sortable-header" data-sort-key="items" data-sort-type="number" tabindex="0" role="button"># Units <span class="sort-indicator" aria-hidden="true"></span></th>
                     <th></th>
                 </tr>
@@ -70,16 +71,17 @@
                     <td data-label="Platform" data-sort-value="{{ p.platform or '' }}">{{ p.platform or "-" }}</td>
                     <td data-label="Type" data-sort-value="{{ p.purchase_type.value }}"><span class="badge purchase-type-badge-{{ p.purchase_type.value }}">{{ p.purchase_type.value }}</span></td>
                     <td data-label="Total cost" data-sort-value="{{ p.total_cost }}">€{{ "%.2f"|format(p.total_cost) }}</td>
-                    <td data-label="# Units" data-sort-value="{{ p.items|sum(attribute='quantity') }}">{{ p.items|sum(attribute='quantity') }}</td>
+                    <td data-label="Profit" data-sort-value="{{ p.profit }}"><span class="{{ 'text-success' if p.profit >= 0 else 'text-danger' }}">€{{ "%.2f"|format(p.profit) }}</span></td>
+                    <td data-label="# Units" data-sort-value="{{ p.items|sum(attribute='quantity') }}">{{ p.items|sum(attribute='quantity_sold') }}/{{ p.items|sum(attribute='quantity') }}</td>
                     <td data-label="" class="text-end table-action-cell">
                         <a href="{{ url_for('view_purchase', purchase_id=p.id) }}" class="btn btn-sm btn-outline-primary">View</a>
                     </td>
                 </tr>
                 {% else %}
-                <tr><td colspan="9" class="text-center text-muted py-4">No purchases recorded yet. <a href="{{ url_for('choose_purchase_type') }}">Add your first purchase</a>.</td></tr>
+                <tr><td colspan="10" class="text-center text-muted py-4">No purchases recorded yet. <a href="{{ url_for('choose_purchase_type') }}">Add your first purchase</a>.</td></tr>
                 {% endfor %}
                 <tr id="addPurchaseRow" class="purchase-add-row text-body-secondary" data-sort-pinned-bottom data-href="{{ url_for('choose_purchase_type') }}" role="button" tabindex="0" aria-label="Add a new purchase">
-                    <td colspan="9" class="text-center py-3">
+                    <td colspan="10" class="text-center py-3">
                         <i class="bi bi-plus-lg"></i> Click to add a new purchase
                     </td>
                 </tr>

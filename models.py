@@ -104,6 +104,12 @@ class Purchase(db.Model):
     
     @property
     def profit(self) -> Decimal:
+        # A bundle has one purchase cost shared by all of its items, so its
+        # profit must be calculated at purchase level rather than by adding
+        # item profits (which deliberately have no allocated cost).
+        if self.purchase_type == PurchaseType.BUNDLE:
+            return round(self.total_revenue - self.total_cost, 2)
+
         return sum(
             (item.sale.profit for item in self.items if item.sale and item.sale.profit is not None),
             Decimal("0.00"),
@@ -137,8 +143,8 @@ class Item(db.Model):
     name: Mapped[str] = mapped_column(String(64), nullable=False)
     quantity: Mapped[int] = mapped_column(nullable=False, default=1)
     quantity_sold: Mapped[int] = mapped_column(nullable=False, default=0)
-    # Total cost allocated to this product line. A zero value means that
-    # bundle cost allocation has not been provided yet.
+    # Kept for database compatibility. Bundle costs are not allocated to
+    # individual items; bundle profit is calculated on the Purchase instead.
     cost_basis: Mapped[Decimal] = mapped_column(MONEY, nullable=False, default=Decimal("0.00"))
     category: Mapped[Optional[str]] = mapped_column(String(64))
     condition: Mapped[Optional[str]] = mapped_column(String(32))
@@ -178,6 +184,10 @@ class Item(db.Model):
         return max(self.quantity - self.quantity_sold, 0)
 
     @property
+    def is_bundle(self) -> bool:
+        return bool(self.purchase and self.purchase.purchase_type == PurchaseType.BUNDLE)
+
+    @property
     def unit_cost(self) -> Optional[Decimal]:
 
         # Cost of one unit when the purchase has an unambiguous cost.
@@ -193,17 +203,16 @@ class Item(db.Model):
     def total_cost_basis(self) -> Optional[Decimal]:
         if not self.purchase or self.quantity <= 0:
             return None
-        if self.purchase.purchase_type == PurchaseType.SINGLE:
-            return round(self.purchase.total_cost, 2)
-        allocated_cost = self.cost_basis or Decimal("0.00")
-        if allocated_cost > 0:
-            return round(allocated_cost, 2)
-        return None
+        if self.is_bundle:
+            # Bundle cost belongs to the Purchase as a whole. It is not
+            # assigned to individual items.
+            return None
+        return round(self.purchase.total_cost, 2)
 
     @property
-    def purchase_cost(self) -> Decimal:
-        """Backward-compatible display value for this item's total cost."""
-        return self.total_cost_basis or Decimal("0.00")
+    def purchase_cost(self) -> Optional[Decimal]:
+        """The item's total cost, when it has an unambiguous item cost."""
+        return self.total_cost_basis
 
     def cost_for_quantity(self, quantity: int) -> Optional[Decimal]:
         if self.unit_cost is None or quantity < 0 or quantity > self.quantity:

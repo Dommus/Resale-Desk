@@ -66,10 +66,12 @@
                                 <td data-label="Purchase cost">€{{ "%.2f"|format(item.purchase_cost) }}</td>
                                 {% endif %}
                                 <td data-label="Profit">
-                                    {% if item.sale %}
+                                    {% if purchase.purchase_type.value == 'Bundle' %}
+                                    <span class="text-muted" title="Calculated on the purchase">Bundle</span>
+                                    {% elif item.sale %}
                                     {% if item.sale.profit is not none %}
                                     <span class="{{ 'text-success' if item.sale.profit >= 0 else 'text-danger' }}">€{{ "%.2f"|format(item.sale.profit) }}</span>
-                                    {% else %}<span class="text-muted">Unallocated</span>{% endif %}
+                                    {% else %}<span class="text-muted">-</span>{% endif %}
                                     {% else %}<span class="text-muted">-</span>{% endif %}
                                 </td>
                                 <td data-label="Status">

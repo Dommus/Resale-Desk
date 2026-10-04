@@ -130,26 +130,34 @@
     // Each cell stores its raw sort value in a data attribute, e.g.
     // <td data-sort-value="18.50">€18.50</td> — we sort using that clean
     // value, not the on-screen text (which might have a "€" or commas).
-    function compareCells(cellA, cellB, type) {
+    function compareCells(cellA, cellB, type, direction) {
         const valueA = cellA.dataset.sortValue || '';
         const valueB = cellB.dataset.sortValue || '';
 
-        // Rows with no value for this column (e.g. an unsold item has no
-        // profit) always sink to the bottom, no matter which sort direction
-        // is active.
-        if (!valueA && valueB) return 1;
-        if (valueA && !valueB) return -1;
-        if (!valueA && !valueB) return 0;
+        // For numeric columns, empty and non-numeric values are both invalid.
+        // They always sink to the bottom, regardless of sort direction.
+        const numberA = Number(valueA);
+        const numberB = Number(valueB);
+        const validA = type === 'number'
+            ? valueA.trim() !== '' && Number.isFinite(numberA)
+            : valueA !== '';
+        const validB = type === 'number'
+            ? valueB.trim() !== '' && Number.isFinite(numberB)
+            : valueB !== '';
+
+        if (!validA && validB) return 1;
+        if (validA && !validB) return -1;
+        if (!validA && !validB) return 0;
 
         if (type === 'number') {
-            return Number(valueA) - Number(valueB);
+            return direction * (numberA - numberB);
         }
 
         // Plain text (and dates, which are just formatted text here) are
         // compared with localeCompare, which sorts the way a human expects
         // (case-insensitive, accents handled correctly, etc) rather than
         // by raw character codes.
-        return valueA.localeCompare(valueB, undefined, {
+        return direction * valueA.localeCompare(valueB, undefined, {
             sensitivity: 'base',
             numeric: type === 'date',
         });
@@ -181,10 +189,11 @@
                 // never get shuffled into the middle of the sorted results.
                 const pinnedBottomRow = tableBody.querySelector('[data-sort-pinned-bottom]');
 
-                rows.sort((rowA, rowB) => direction * compareCells(
+                rows.sort((rowA, rowB) => compareCells(
                     rowA.cells[header.cellIndex],
                     rowB.cells[header.cellIndex],
                     header.dataset.sortType || 'text', // default to plain text comparison
+                    direction,
                 ));
 
                 // Re-insert every row in its new sorted order. Moving an

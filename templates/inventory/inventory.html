@@ -70,9 +70,10 @@
                     <th class="sortable-header" data-sort-key="category" data-sort-type="text" tabindex="0" role="button">Category <span class="sort-indicator" aria-hidden="true"></span></th>
                     <th class="sortable-header" data-sort-key="shelf" data-sort-type="text" tabindex="0" role="button">Shelf <span class="sort-indicator" aria-hidden="true"></span></th>
                     <th class="sortable-header" data-sort-key="status" data-sort-type="text" tabindex="0" role="button">Status <span class="sort-indicator" aria-hidden="true"></span></th>
-                    <th class="sortable-header" data-sort-key="cost" data-sort-type="number" tabindex="0" role="button">Purchase Cost <span class="sort-indicator" aria-hidden="true"></span></th>
-                    <th class="sortable-header" data-sort-key="profit" data-sort-type="number" tabindex="0" role="button">Profit <span class="sort-indicator" aria-hidden="true"></span></th>
+                    <th class="sortable-header" data-sort-key="cost" data-sort-type="number" tabindex="0" role="button">Purchase Cost (unit) <span class="sort-indicator" aria-hidden="true"></span></th>
+                    <th class="sortable-header" data-sort-key="profit" data-sort-type="number" tabindex="0" role="button">Profit (total) <span class="sort-indicator" aria-hidden="true"></span></th>
                     <th class="sortable-header" data-sort-key="date" data-sort-type="date" tabindex="0" role="button">Purchase Date <span class="sort-indicator" aria-hidden="true"></span></th>
+                    <th class="sortable-header" data-sort-key="sold_date" data-sort-type="date" tabindex="0" role="button">Sold Date <span class="sort-indicator" aria-hidden="true"></span></th>
                     <th></th>
                 </tr>
             </thead>
@@ -80,7 +81,7 @@
                 {% for item in items %}
                 <tr data-sort-row>
                     <!-- Item Code -->
-                    <td data-label="Item code" data-sort-value="{{ item.code or '' }}"><code class="inv-code">{{ item.inventory_code or 'No Code Assigned' }}</code></td>
+                    <td data-label="Item code" data-sort-value="{{ item.inventory_code or '' }}"><code class="inv-code">{{ item.inventory_code or 'No Code Assigned' }}</code></td>
                     <!-- Name -->
                     <td data-label="Name" data-sort-value="{{ item.name }}">{{ item.name }}</td>
                     <!-- Quantity -->
@@ -92,10 +93,20 @@
                     <!-- Status -->
                     <td data-label="Status" data-sort-value="{{ item.status.value }}"><span class="badge status-badge-{{ item.status.value|replace(' ', '-') }}">{{ item.status.value }}</span></td>
                     <!-- Cost -->
-                    <td data-label="Purchase cost" data-sort-value="{{ item.purchase_cost }}">{% if item.unit_cost is not none %}€{{ "%.2f"|format(item.unit_cost) }} / unit{% else %}<span class="text-muted">-</span>{% endif %}</td>
+                    <td data-label="Purchase cost" data-sort-value="{{ item.purchase_cost if not item.is_bundle and item.purchase_cost is not none else '' }}">
+                        {% if item.is_bundle %}
+                        <span class="text-muted" title="{{ item.purchase.display_name }}">Bundle: {{ item.purchase.display_name }}</span>
+                        {% elif item.unit_cost is not none %}
+                        €{{ "%.2f"|format(item.unit_cost) }}
+                        {% else %}
+                        <span class="text-muted">-</span>
+                        {% endif %}
+                    </td>
                     <!-- Profit -->
-                    <td data-label="Profit" data-sort-value="{{ item.sale.profit if item.sale else '' }}">
-                        {% if item.sale %}
+                    <td data-label="Profit" data-sort-value="{{ item.sale.profit if item.sale and not item.is_bundle and item.sale.profit is not none else '' }}">
+                        {% if item.is_bundle %}
+                            <span class="text-muted" title="Calculated on the purchase">Bundle</span>
+                        {% elif item.sale %}
                             {% if item.sale.profit is not none %}
                             <span class="{{ 'text-success' if item.sale.profit >= 0 else 'text-danger' }}">€{{ "%.2f"|format(item.sale.profit) }}</span>
                             {% else %}<span class="text-muted">-</span>{% endif %}
@@ -105,10 +116,12 @@
                     </td>
                     <!-- Purchase Date -->
                     <td data-label="Purchase date" data-sort-value="{{ item.purchase.date.isoformat() if item.purchase.date else '' }}">{{ item.purchase.date.strftime('%Y-%m-%d') if item.purchase.date else '-' }}</td>
+                    <!-- Sold Date -->
+                    <td data-label="Sold date" data-sort-value="{{ item.sale.sale_date.isoformat() if item.sale and item.sale.sale_date else '' }}">{{ item.sale.sale_date.strftime('%Y-%m-%d') if item.sale and item.sale.sale_date else '-' }}</td>
                     <td data-label="" class="text-end table-action-cell"><a href="{{ url_for('view_item', item_id=item.id) }}" class="btn btn-sm btn-outline-primary">View</a></td>
                 </tr>
                 {% else %}
-                <tr><td colspan="10" class="text-center text-muted py-4">No items match your filters.</td></tr>
+                <tr><td colspan="11" class="text-center text-muted py-4">No items match your filters.</td></tr>
                 {% endfor %}
             </tbody>
         </table>
