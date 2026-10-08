@@ -1,117 +1,68 @@
 // DISCLAIMER: This script was AI generated.
-// The goal was to unify and centralize multiple JS snippets used for building tables in .html files.
+// I chose AI for this because it would require a significant amount of time for a mainly quality-of-life feature.
+// This project's goal is to learn database logic, Python, and how to build a working app.
+// This script was made to unify and centralize multiple JS snippets I had used for building tables in .html files and make it more customizable and dynamic.
 
 /*
- * Shared filtering and sorting behavior for data tables.
+ * Shared controls for the app's data tables.
  *
- * This one file powers every filterable/sortable table in the app (items,
- * purchases, etc). Instead of writing separate JS for each page, every
- * table just needs a `data-sortable-table` attribute plus a few other
- * `data-*` attributes telling this script where to find things.
- *
- * Two unrelated features live here:
- *   1. FILTERING — typing in the search box or changing a dropdown reloads
- *      the page with those values added to the URL (e.g. ?q=pokemon&status=Listed).
- *      The actual filtering happens on the server; this script's job is
- *      just to build that URL and navigate to it.
- *   2. SORTING — clicking a column header re-orders the rows already on
- *      the page, entirely in the browser, with no reload needed.
+ * A table can opt into filtering and header sorting with
+ * `data-sortable-table`. To also get draggable, configurable columns, add
+ * `data-column-preferences-key` to the table and `data-column-id` to every
+ * header. A `data-column-locked` header stays visible and at the end.
  */
-
-// Wrapping the whole file in a function that runs itself immediately (an
-// "IIFE" — Immediately Invoked Function Expression) keeps every variable
-// below private to this file, so it can't accidentally collide with a
-// variable of the same name in some other script on the page.
 (function () {
-    'use strict'; // Opts into stricter error-checking (e.g. using a variable
-                  // you forgot to declare becomes an error instead of a
-                  // silent bug). Good habit in any plain JS file.
+    'use strict';
+
+    const COLUMN_STORAGE_PREFIX = 'resale-desk.table-columns.v1.';
 
     // -------------------------------------------------------------
     // FILTERING
     // -------------------------------------------------------------
 
-    // Reads every filled-in field in a <form> and turns it into a query
-    // string, e.g. "q=pokemon&status=Listed". Empty fields are skipped so
-    // the URL doesn't fill up with "&category=&shelf_id=" for every filter
-    // the user left blank.
     function buildQueryString(form) {
-        const params = new URLSearchParams(); // A built-in helper for building "key=value&key2=value2" strings safely.
-
-        // `FormData(form)` reads every named input inside the form.
-        // `.entries()` gives us each one as a [name, value] pair.
+        const params = new URLSearchParams();
         for (const [key, value] of new FormData(form).entries()) {
-            if (value) {
-                params.set(key, value);
-            }
+            if (value) params.set(key, value);
         }
-
         return params.toString();
     }
 
-    // Navigates the browser to this same page, with the current filters
-    // attached to the URL. This is a full page reload — the server sees
-    // the new URL and re-renders the table already filtered.
     function reloadWithFilters(form) {
         const queryString = buildQueryString(form);
-        const url = queryString
+        window.location.href = queryString
             ? `${window.location.pathname}?${queryString}`
-            : window.location.pathname; // no filters set → plain URL, no "?"
-
-        window.location.href = url;
+            : window.location.pathname;
     }
 
-    // Wires up one table's filter form: typing in the search box or
-    // changing a dropdown triggers `reloadWithFilters`.
     function initializeFiltering(table) {
-        // Each table's HTML says which <form> holds its filters via a
-        // data attribute, e.g. <table data-filter-form="itemFilters">.
         const form = document.getElementById(table.dataset.filterForm);
-        if (!form) return; // this table has no filter form — nothing to do
+        if (!form) return;
 
         const searchInput = form.querySelector('input[name="q"]');
         const resetButton = document.getElementById(table.dataset.resetButton);
 
-        // --- The search box: debounce + keep focus across reloads ---
         if (searchInput) {
             let debounceTimer;
-
-            // sessionStorage lets us leave a small note that survives a full
-            // page reload (unlike a normal JS variable, which would be wiped
-            // out). We use it to remember "the user was just typing in the
-            // search box" so the *new* page, once loaded, can put their
-            // cursor back where it was instead of leaving the box unfocused.
             const focusKey = table.dataset.searchFocusKey;
 
-            // On page load: if our note says the user was mid-typing, restore
-            // focus and put the cursor at the end of the text (rather than
-            // the start, which would feel wrong while typing).
             if (focusKey && sessionStorage.getItem(focusKey) === 'true') {
-                sessionStorage.removeItem(focusKey); // one-time use — clear it
+                sessionStorage.removeItem(focusKey);
                 searchInput.focus();
                 searchInput.setSelectionRange(searchInput.value.length, searchInput.value.length);
             }
 
             searchInput.addEventListener('input', () => {
                 if (focusKey) sessionStorage.setItem(focusKey, 'true');
-
-                // Debounce: every keystroke cancels the previous timer and
-                // starts a new 300ms countdown. The reload only actually
-                // happens once the user pauses typing for 300ms — otherwise
-                // typing "pokemon" would trigger 7 separate page reloads.
                 clearTimeout(debounceTimer);
                 debounceTimer = setTimeout(() => reloadWithFilters(form), 300);
             });
         }
 
-        // --- Dropdowns: reload immediately, no debounce needed ---
-        // Picking an option is already a single, deliberate action (unlike
-        // typing letter by letter), so there's no "wait for a pause" step.
         form.querySelectorAll('select').forEach(select => {
             select.addEventListener('change', () => reloadWithFilters(form));
         });
 
-        // --- Reset button: go back to the plain, unfiltered URL ---
         if (resetButton) {
             resetButton.addEventListener('click', () => {
                 if (table.dataset.searchFocusKey) {
@@ -126,16 +77,9 @@
     // SORTING
     // -------------------------------------------------------------
 
-    // Compares two table cells to decide which comes first when sorting.
-    // Each cell stores its raw sort value in a data attribute, e.g.
-    // <td data-sort-value="18.50">€18.50</td> — we sort using that clean
-    // value, not the on-screen text (which might have a "€" or commas).
     function compareCells(cellA, cellB, type, direction) {
         const valueA = cellA.dataset.sortValue || '';
         const valueB = cellB.dataset.sortValue || '';
-
-        // For numeric columns, empty and non-numeric values are both invalid.
-        // They always sink to the bottom, regardless of sort direction.
         const numberA = Number(valueA);
         const numberB = Number(valueB);
         const validA = type === 'number'
@@ -145,100 +89,329 @@
             ? valueB.trim() !== '' && Number.isFinite(numberB)
             : valueB !== '';
 
+        // Missing and invalid numeric values always stay at the bottom.
         if (!validA && validB) return 1;
         if (validA && !validB) return -1;
         if (!validA && !validB) return 0;
 
-        if (type === 'number') {
-            return direction * (numberA - numberB);
-        }
+        if (type === 'number') return direction * (numberA - numberB);
 
-        // Plain text (and dates, which are just formatted text here) are
-        // compared with localeCompare, which sorts the way a human expects
-        // (case-insensitive, accents handled correctly, etc) rather than
-        // by raw character codes.
         return direction * valueA.localeCompare(valueB, undefined, {
             sensitivity: 'base',
             numeric: type === 'date',
         });
     }
 
-    // Wires up one table's clickable column headers.
     function initializeSorting(table) {
         const tableBody = table.querySelector('tbody');
         const headers = [...table.querySelectorAll('th[data-sort-key]')];
-        // `[...something]` turns a NodeList (what querySelectorAll returns)
-        // into a real Array, so we can use array methods like .forEach on it.
-
-        // These two variables are "remembered" between clicks thanks to
-        // closures — each header's click handler below can still see and
-        // update them, even though this function has already returned.
         let activeHeader = null;
-        let direction = 1; // 1 = ascending, -1 = descending
+        let direction = 1;
 
-        headers.forEach(header => {
-            header.addEventListener('click', () => {
-                // Clicking the same header again flips the direction;
-                // clicking a different header starts fresh at ascending.
-                direction = activeHeader === header ? direction * -1 : 1;
-                activeHeader = header;
+        function sortBy(header) {
+            if (header.dataset.skipNextSort === 'true') {
+                delete header.dataset.skipNextSort;
+                return;
+            }
 
-                const rows = [...tableBody.querySelectorAll('tr[data-sort-row]')];
+            direction = activeHeader === header ? direction * -1 : 1;
+            activeHeader = header;
+            const rows = [...tableBody.querySelectorAll('tr[data-sort-row]')];
+            const pinnedBottomRow = tableBody.querySelector('[data-sort-pinned-bottom]');
 
-                // Some tables have a fixed "no items found" row that should
-                // never get shuffled into the middle of the sorted results.
-                const pinnedBottomRow = tableBody.querySelector('[data-sort-pinned-bottom]');
+            rows.sort((rowA, rowB) => compareCells(
+                rowA.cells[header.cellIndex],
+                rowB.cells[header.cellIndex],
+                header.dataset.sortType || 'text',
+                direction,
+            ));
 
-                rows.sort((rowA, rowB) => compareCells(
-                    rowA.cells[header.cellIndex],
-                    rowB.cells[header.cellIndex],
-                    header.dataset.sortType || 'text', // default to plain text comparison
-                    direction,
-                ));
-
-                // Re-insert every row in its new sorted order. Moving an
-                // element that's already in the document just relocates it
-                // — this doesn't delete and recreate anything.
-                rows.forEach(row => {
-                    if (pinnedBottomRow) {
-                        tableBody.insertBefore(row, pinnedBottomRow);
-                    } else {
-                        tableBody.appendChild(row);
-                    }
-                });
-
-                // Update each header's arrow (↑/↓) and its `aria-sort`
-                // attribute, which screen readers use to announce "this
-                // column is now sorted ascending/descending".
-                headers.forEach(currentHeader => {
-                    const isActive = currentHeader === header;
-                    currentHeader.setAttribute(
-                        'aria-sort',
-                        isActive ? (direction === 1 ? 'ascending' : 'descending') : 'none'
-                    );
-                    currentHeader.querySelector('.sort-indicator').textContent =
-                        isActive ? (direction === 1 ? '↑' : '↓') : '';
-                });
+            rows.forEach(row => {
+                if (pinnedBottomRow) {
+                    tableBody.insertBefore(row, pinnedBottomRow);
+                } else {
+                    tableBody.appendChild(row);
+                }
             });
 
-            // Accessibility: someone navigating by keyboard (not a mouse)
-            // can land on a header with Tab and press Enter or Space to
-            // sort — same as clicking it.
+            headers.forEach(currentHeader => {
+                const isActive = currentHeader === header;
+                currentHeader.setAttribute(
+                    'aria-sort',
+                    isActive ? (direction === 1 ? 'ascending' : 'descending') : 'none',
+                );
+                const indicator = currentHeader.querySelector('.sort-indicator');
+                if (indicator) indicator.textContent = isActive ? (direction === 1 ? '↑' : '↓') : '';
+            });
+        }
+
+        headers.forEach(header => {
+            header.addEventListener('click', () => sortBy(header));
             header.addEventListener('keydown', event => {
                 if (event.key === 'Enter' || event.key === ' ') {
-                    event.preventDefault(); // stop the page from scrolling on Space
-                    header.click();
+                    event.preventDefault();
+                    sortBy(header);
                 }
             });
         });
     }
 
     // -------------------------------------------------------------
-    // Set everything up once the page has finished loading.
+    // COLUMN WORKSPACE
     // -------------------------------------------------------------
+
+    function storageKey(table) {
+        return `${COLUMN_STORAGE_PREFIX}${table.dataset.columnPreferencesKey}`;
+    }
+
+    function readColumnPreferences(table) {
+        try {
+            const stored = localStorage.getItem(storageKey(table));
+            return stored ? JSON.parse(stored) : null;
+        } catch (error) {
+            return null;
+        }
+    }
+
+    function saveColumnPreferences(table, state) {
+        try {
+            localStorage.setItem(storageKey(table), JSON.stringify(state));
+        } catch (error) {
+            // The table still works when browser storage is unavailable.
+        }
+    }
+
+    function columnLabel(header) {
+        const copy = header.cloneNode(true);
+        copy.querySelectorAll('.sort-indicator').forEach(indicator => indicator.remove());
+        return copy.textContent.trim() || 'Actions';
+    }
+
+    function normaliseColumnState(columns, savedState) {
+        const defaultOrder = columns.map(column => column.id);
+        const movableColumns = columns.filter(column => !column.locked);
+        const lockedColumns = columns.filter(column => column.locked);
+        const savedOrder = Array.isArray(savedState?.order) ? savedState.order : [];
+        const savedHidden = Array.isArray(savedState?.hidden) ? savedState.hidden : [];
+        const movableIds = movableColumns.map(column => column.id);
+        const savedMovableIds = savedOrder.filter(
+            (id, index) => movableIds.includes(id) && savedOrder.indexOf(id) === index,
+        );
+        const orderedMovableIds = [
+            ...savedMovableIds,
+            ...movableIds.filter(id => !savedMovableIds.includes(id)),
+        ];
+
+        return {
+            order: [
+                ...orderedMovableIds,
+                ...lockedColumns.map(column => column.id),
+            ],
+            hidden: savedHidden.filter(id => movableIds.includes(id)),
+            defaultOrder,
+        };
+    }
+
+    function updateColspanRows(table, visibleColumnCount) {
+        table.querySelectorAll('tbody tr').forEach(row => {
+            if (row.cells.length === 1 && row.cells[0].hasAttribute('colspan')) {
+                row.cells[0].colSpan = visibleColumnCount;
+            }
+        });
+    }
+
+    function applyColumnState(table, columns, state) {
+        const headerRow = table.tHead?.rows[0];
+        const tableBody = table.tBodies[0];
+        if (!headerRow || !tableBody) return;
+
+        const columnsById = new Map(columns.map(column => [column.id, column]));
+        const currentHeaderIds = [...headerRow.cells].map(header => header.dataset.columnId);
+        const hiddenIds = new Set(state.hidden);
+
+        state.order.forEach(id => headerRow.append(columnsById.get(id).header));
+
+        [...tableBody.rows].forEach(row => {
+            if (row.cells.length !== currentHeaderIds.length) return;
+            const cellsById = new Map(
+                [...row.cells].map((cell, index) => [currentHeaderIds[index], cell]),
+            );
+            state.order.forEach(id => row.append(cellsById.get(id)));
+        });
+
+        state.order.forEach((id, index) => {
+            const column = columnsById.get(id);
+            const hidden = hiddenIds.has(id) && !column.locked;
+            column.header.hidden = hidden;
+
+            [...tableBody.rows].forEach(row => {
+                if (row.cells.length === state.order.length) {
+                    row.cells[index].hidden = hidden;
+                }
+            });
+        });
+
+        updateColspanRows(table, state.order.filter(id => !hiddenIds.has(id)).length);
+    }
+
+    function createColumnPicker(table, columns, state, onChange) {
+        const toolbar = document.createElement('div');
+        toolbar.className = 'table-workspace-toolbar';
+
+        const hint = document.createElement('small');
+        hint.className = 'text-muted';
+        hint.textContent = 'Click a header to sort. Drag a header to reorder columns.';
+        toolbar.append(hint);
+
+        const details = document.createElement('details');
+        details.className = 'table-column-picker';
+        const summary = document.createElement('summary');
+        summary.className = 'btn btn-outline-secondary btn-sm';
+        summary.textContent = 'Columns';
+        details.append(summary);
+
+        const menu = document.createElement('div');
+        menu.className = 'table-column-picker-menu shadow-sm';
+        const title = document.createElement('div');
+        title.className = 'small fw-semibold mb-2';
+        title.textContent = 'Show columns';
+        menu.append(title);
+
+        const checkboxes = new Map();
+        columns.filter(column => !column.locked).forEach(column => {
+            const label = document.createElement('label');
+            label.className = 'form-check table-column-option';
+            const checkbox = document.createElement('input');
+            checkbox.type = 'checkbox';
+            checkbox.className = 'form-check-input';
+            checkbox.checked = !state.hidden.includes(column.id);
+            checkbox.addEventListener('change', () => {
+                state.hidden = checkbox.checked
+                    ? state.hidden.filter(id => id !== column.id)
+                    : [...state.hidden, column.id];
+                onChange();
+            });
+            const labelText = document.createElement('span');
+            labelText.className = 'form-check-label';
+            labelText.textContent = column.label;
+            label.append(checkbox, labelText);
+            menu.append(label);
+            checkboxes.set(column.id, checkbox);
+        });
+
+        const resetButton = document.createElement('button');
+        resetButton.type = 'button';
+        resetButton.className = 'btn btn-link btn-sm px-0 mt-2';
+        resetButton.textContent = 'Reset columns';
+        resetButton.addEventListener('click', () => {
+            state.order = [...state.defaultOrder];
+            state.hidden = [];
+            onChange();
+        });
+        menu.append(resetButton);
+        details.append(menu);
+        toolbar.append(details);
+
+        table.parentElement.before(toolbar);
+
+        return {
+            refresh() {
+                columns.filter(column => !column.locked).forEach(column => {
+                    checkboxes.get(column.id).checked = !state.hidden.includes(column.id);
+                });
+            },
+        };
+    }
+
+    function initializeColumnWorkspace(table) {
+        if (!table.dataset.columnPreferencesKey) return;
+
+        const headerRow = table.tHead?.rows[0];
+        if (!headerRow) return;
+        const columns = [...headerRow.cells].map(header => ({
+            id: header.dataset.columnId,
+            header,
+            label: columnLabel(header),
+            locked: header.hasAttribute('data-column-locked'),
+        }));
+
+        if (columns.some(column => !column.id)) return;
+
+        const state = normaliseColumnState(columns, readColumnPreferences(table));
+        let picker;
+        const saveAndApply = () => {
+            state.hidden = [...new Set(state.hidden)];
+            applyColumnState(table, columns, state);
+            saveColumnPreferences(table, {
+                order: state.order,
+                hidden: state.hidden,
+            });
+            picker.refresh();
+        };
+
+        picker = createColumnPicker(table, columns, state, saveAndApply);
+        saveAndApply();
+
+        let draggedId = null;
+        columns.filter(column => !column.locked).forEach(column => {
+            const { header, id } = column;
+            header.draggable = true;
+            header.classList.add('column-draggable');
+            header.title = 'Click to sort. Drag to reorder.';
+
+            header.addEventListener('dragstart', event => {
+                draggedId = id;
+                header.classList.add('column-dragging');
+                event.dataTransfer.effectAllowed = 'move';
+                event.dataTransfer.setData('text/plain', id);
+            });
+
+            header.addEventListener('dragover', event => {
+                if (!draggedId || draggedId === id) return;
+                event.preventDefault();
+
+                const midpoint = header.getBoundingClientRect().left + header.offsetWidth / 2;
+                const placeAfterTarget = event.clientX > midpoint;
+                header.classList.toggle('column-drop-before', !placeAfterTarget);
+                header.classList.toggle('column-drop-after', placeAfterTarget);
+                event.dataTransfer.dropEffect = 'move';
+            });
+
+            header.addEventListener('dragleave', () => {
+                header.classList.remove('column-drop-before', 'column-drop-after');
+            });
+
+            header.addEventListener('drop', event => {
+                if (!draggedId || draggedId === id) return;
+                event.preventDefault();
+                header.classList.remove('column-drop-before', 'column-drop-after');
+
+                const order = state.order.filter(columnId => columnId !== draggedId);
+                const targetIndex = order.indexOf(id);
+                const midpoint = header.getBoundingClientRect().left + header.offsetWidth / 2;
+                const placeAfterTarget = event.clientX > midpoint;
+                order.splice(targetIndex + (placeAfterTarget ? 1 : 0), 0, draggedId);
+                state.order = order;
+                header.dataset.skipNextSort = 'true';
+                window.setTimeout(() => {
+                    delete header.dataset.skipNextSort;
+                }, 0);
+                saveAndApply();
+            });
+
+            header.addEventListener('dragend', () => {
+                draggedId = null;
+                columns.forEach(({ header: currentHeader }) => {
+                    currentHeader.classList.remove('column-dragging', 'column-drop-before', 'column-drop-after');
+                });
+            });
+        });
+    }
+
     document.addEventListener('DOMContentLoaded', () => {
         document.querySelectorAll('[data-sortable-table]').forEach(table => {
             initializeFiltering(table);
+            initializeColumnWorkspace(table);
             initializeSorting(table);
         });
     });

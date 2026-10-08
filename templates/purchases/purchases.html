@@ -45,19 +45,20 @@
                data-sortable-table
                data-filter-form="purchase-filters"
                data-reset-button="purchase-reset"
-               data-search-focus-key="purchase-restore-search-focus">
+               data-search-focus-key="purchase-restore-search-focus"
+               data-column-preferences-key="purchases-{{ current_user.id }}">
             <thead>
                 <tr>
-                    <th class="sortable-header" data-sort-key="id" data-sort-type="number" tabindex="0" role="button"># <span class="sort-indicator" aria-hidden="true"></span></th>
-                    <th class="sortable-header" data-sort-key="date" data-sort-type="date" tabindex="0" role="button">Date <span class="sort-indicator" aria-hidden="true"></span></th>
-                    <th class="sortable-header" data-sort-key="name" data-sort-type="text" tabindex="0" role="button">Name <span class="sort-indicator" aria-hidden="true"></span></th>
-                    <th class="sortable-header" data-sort-key="seller" data-sort-type="text" tabindex="0" role="button">Seller <span class="sort-indicator" aria-hidden="true"></span></th>
-                    <th class="sortable-header" data-sort-key="platform" data-sort-type="text" tabindex="0" role="button">Platform <span class="sort-indicator" aria-hidden="true"></span></th>
-                    <th class="sortable-header" data-sort-key="type" data-sort-type="text" tabindex="0" role="button">Type <span class="sort-indicator" aria-hidden="true"></span></th>
-                    <th class="sortable-header" data-sort-key="cost" data-sort-type="number" tabindex="0" role="button">Total Cost <span class="sort-indicator" aria-hidden="true"></span></th>
-                    <th class="sortable-header" data-sort-key="profit" data-sort-type="number" tabindex="0" role="button">Profit <span class="sort-indicator" aria-hidden="true"></span></th>
-                    <th class="sortable-header" data-sort-key="items" data-sort-type="number" tabindex="0" role="button"># Units <span class="sort-indicator" aria-hidden="true"></span></th>
-                    <th></th>
+                    <th data-column-id="id" class="sortable-header" data-sort-key="id" data-sort-type="number" tabindex="0" role="button"># <span class="sort-indicator" aria-hidden="true"></span></th>
+                    <th data-column-id="date" class="sortable-header" data-sort-key="date" data-sort-type="date" tabindex="0" role="button">Date <span class="sort-indicator" aria-hidden="true"></span></th>
+                    <th data-column-id="name" class="sortable-header" data-sort-key="name" data-sort-type="text" tabindex="0" role="button">Name <span class="sort-indicator" aria-hidden="true"></span></th>
+                    <th data-column-id="seller" class="sortable-header" data-sort-key="seller" data-sort-type="text" tabindex="0" role="button">Seller <span class="sort-indicator" aria-hidden="true"></span></th>
+                    <th data-column-id="platform" class="sortable-header" data-sort-key="platform" data-sort-type="text" tabindex="0" role="button">Platform <span class="sort-indicator" aria-hidden="true"></span></th>
+                    <th data-column-id="type" class="sortable-header" data-sort-key="type" data-sort-type="text" tabindex="0" role="button">Type <span class="sort-indicator" aria-hidden="true"></span></th>
+                    <th data-column-id="cost" class="sortable-header" data-sort-key="cost" data-sort-type="number" tabindex="0" role="button">Total Cost <span class="sort-indicator" aria-hidden="true"></span></th>
+                    <th data-column-id="profit" class="sortable-header" data-sort-key="profit" data-sort-type="number" tabindex="0" role="button">Profit <span class="sort-indicator" aria-hidden="true"></span></th>
+                    <th data-column-id="units" class="sortable-header" data-sort-key="items" data-sort-type="number" tabindex="0" role="button"># Units <span class="sort-indicator" aria-hidden="true"></span></th>
+                    <th data-column-id="actions" data-column-locked></th>
                 </tr>
             </thead>
             <tbody>

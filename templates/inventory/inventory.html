@@ -61,20 +61,21 @@
                data-sortable-table
                data-filter-form="inventory-filters"
                data-reset-button="inventory-reset"
-               data-search-focus-key="inventory-restore-search-focus">
+               data-search-focus-key="inventory-restore-search-focus"
+               data-column-preferences-key="inventory-{{ current_user.id }}">
             <thead>
                 <tr>
-                    <th class="sortable-header" data-sort-key="code" data-sort-type="text" tabindex="0" role="button">Item Code <span class="sort-indicator" aria-hidden="true"></span></th>
-                    <th class="sortable-header" data-sort-key="name" data-sort-type="text" tabindex="0" role="button">Name <span class="sort-indicator" aria-hidden="true"></span></th>
-                    <th class="sortable-header" data-sort-key="quantity" data-sort-type="number" tabindex="0" role="button">Quantity <span class="sort-indicator" aria-hidden="true"></span></th>
-                    <th class="sortable-header" data-sort-key="category" data-sort-type="text" tabindex="0" role="button">Category <span class="sort-indicator" aria-hidden="true"></span></th>
-                    <th class="sortable-header" data-sort-key="shelf" data-sort-type="text" tabindex="0" role="button">Shelf <span class="sort-indicator" aria-hidden="true"></span></th>
-                    <th class="sortable-header" data-sort-key="status" data-sort-type="text" tabindex="0" role="button">Status <span class="sort-indicator" aria-hidden="true"></span></th>
-                    <th class="sortable-header" data-sort-key="cost" data-sort-type="number" tabindex="0" role="button">Purchase Cost (unit) <span class="sort-indicator" aria-hidden="true"></span></th>
-                    <th class="sortable-header" data-sort-key="profit" data-sort-type="number" tabindex="0" role="button">Profit (total) <span class="sort-indicator" aria-hidden="true"></span></th>
-                    <th class="sortable-header" data-sort-key="date" data-sort-type="date" tabindex="0" role="button">Purchase Date <span class="sort-indicator" aria-hidden="true"></span></th>
-                    <th class="sortable-header" data-sort-key="sold_date" data-sort-type="date" tabindex="0" role="button">Sold Date <span class="sort-indicator" aria-hidden="true"></span></th>
-                    <th></th>
+                    <th data-column-id="code" class="sortable-header" data-sort-key="code" data-sort-type="text" tabindex="0" role="button">Item Code <span class="sort-indicator" aria-hidden="true"></span></th>
+                    <th data-column-id="name" class="sortable-header" data-sort-key="name" data-sort-type="text" tabindex="0" role="button">Name <span class="sort-indicator" aria-hidden="true"></span></th>
+                    <th data-column-id="quantity" class="sortable-header" data-sort-key="quantity" data-sort-type="number" tabindex="0" role="button">Quantity <span class="sort-indicator" aria-hidden="true"></span></th>
+                    <th data-column-id="category" class="sortable-header" data-sort-key="category" data-sort-type="text" tabindex="0" role="button">Category <span class="sort-indicator" aria-hidden="true"></span></th>
+                    <th data-column-id="shelf" class="sortable-header" data-sort-key="shelf" data-sort-type="text" tabindex="0" role="button">Shelf <span class="sort-indicator" aria-hidden="true"></span></th>
+                    <th data-column-id="status" class="sortable-header" data-sort-key="status" data-sort-type="text" tabindex="0" role="button">Status <span class="sort-indicator" aria-hidden="true"></span></th>
+                    <th data-column-id="cost" class="sortable-header" data-sort-key="cost" data-sort-type="number" tabindex="0" role="button">Purchase Cost (unit) <span class="sort-indicator" aria-hidden="true"></span></th>
+                    <th data-column-id="profit" class="sortable-header" data-sort-key="profit" data-sort-type="number" tabindex="0" role="button">Profit (total) <span class="sort-indicator" aria-hidden="true"></span></th>
+                    <th data-column-id="purchase-date" class="sortable-header" data-sort-key="date" data-sort-type="date" tabindex="0" role="button">Purchase Date <span class="sort-indicator" aria-hidden="true"></span></th>
+                    <th data-column-id="sold-date" class="sortable-header" data-sort-key="sold_date" data-sort-type="date" tabindex="0" role="button">Sold Date <span class="sort-indicator" aria-hidden="true"></span></th>
+                    <th data-column-id="actions" data-column-locked></th>
                 </tr>
             </thead>
             <tbody>

@@ -111,6 +111,97 @@ code.inv-code {
     background-color: var(--bs-tertiary-bg);
 }
 
+.table-workspace-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 0.75rem;
+}
+
+.table-column-picker {
+    position: relative;
+    flex: 0 0 auto;
+}
+
+.table-column-picker > summary {
+    list-style: none;
+}
+
+.table-column-picker > summary::-webkit-details-marker {
+    display: none;
+}
+
+.table-column-picker-menu {
+    position: absolute;
+    top: calc(100% + 0.35rem);
+    right: 0;
+    z-index: 1030;
+    min-width: 13rem;
+    padding: 0.75rem;
+    border: 1px solid var(--bs-border-color);
+    border-radius: 0.5rem;
+    background: var(--bs-body-bg);
+}
+
+.table-column-option {
+    margin-bottom: 0.35rem;
+}
+
+.table-column-option:last-of-type {
+    margin-bottom: 0;
+}
+
+.column-draggable {
+    cursor: grab;
+}
+
+.column-draggable:active,
+.column-dragging {
+    cursor: grabbing;
+}
+
+.column-dragging {
+    opacity: 0.45;
+}
+
+.column-drop-before,
+.column-drop-after {
+    position: relative;
+}
+
+.column-drop-before::before,
+.column-drop-after::after {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 3px;
+    border-radius: 999px;
+    background-color: var(--bs-primary);
+    content: "";
+    pointer-events: none;
+}
+
+.column-drop-before::before {
+    left: -1px;
+}
+
+.column-drop-after::after {
+    right: -1px;
+}
+
+@media (max-width: 575.98px) {
+    .table-workspace-toolbar {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+
+    .table-column-picker {
+        align-self: flex-end;
+    }
+}
+
 /* Data tables stay inside their cards. On small screens each row becomes a
    compact card instead of forcing the page to scroll horizontally. */
 .app-fit-table-wrap {
