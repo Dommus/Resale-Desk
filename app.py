@@ -856,6 +856,20 @@ def edit_listing(listing_id):
     return redirect(url_for("view_item", item_id=listing.item_id))
 
 
+@app.route('/listings/<int:listing_id>/delete', methods=["POST"])
+@login_required
+def delete_listing(listing_id):
+    listing = Listing.query.join(Item).filter(
+        Listing.id == listing_id, Item.user_id == current_user.id
+    ).first_or_404()
+    item_id = listing.item_id
+
+    db.session.delete(listing)
+    db.session.commit()
+    flash("Listing deleted.", "success")
+    return redirect(url_for("view_item", item_id=item_id))
+
+
 @app.route('/listings/<int:listing_id>/status', methods=["POST"])
 @login_required
 def update_listing_status(listing_id):
@@ -1179,5 +1193,4 @@ def export_csv():
         f"attachment; filename=resale-desk-export-{date.today().isoformat()}.csv"
     )
     return response
-
 
