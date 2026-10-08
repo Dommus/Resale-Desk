@@ -6,7 +6,7 @@ from urllib.parse import urlparse
 from models import db, User, Shelf, Item, Purchase, ItemStatus, PurchaseType, Listing, ListingStatus, Sale
 from utilities import login_manager, parse_date, parse_decimal, parse_quantity, process_csv
 
-from flask import Flask, render_template, request, redirect, url_for, flash
+from flask import Flask, Response, render_template, request, redirect, url_for, flash
 from flask_login import login_user, logout_user, login_required, current_user
 from sqlalchemy import or_, cast, String, inspect, text
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -1099,3 +1099,85 @@ def import_csv():
 
     flash(message, 'success')
     return redirect(url_for('user'))
+
+@app.route('/user/export-csv')
+@login_required
+def export_csv():
+    purchases = Purchase.query.filter_by(user_id=current_user.id).all()
+    items = Item.query.filter_by(user_id=current_user.id).order_by(Item.id).all()
+
+    def csv_money(value):
+        return f"{value:.2f}" if value is not None else ""
+
+    def csv_date(value):
+        return value.isoformat() if value else ""
+
+    def item_listing(item):
+        if item.sale and item.sale.listing:
+            return item.sale.listing
+        active_listing = next(
+            (listing for listing in item.listings if listing.status == ListingStatus.ACTIVE),
+            None,
+        )
+        return active_listing or (item.listings[0] if item.listings else None)
+
+    output = StringIO(newline="")
+    writer = csv.writer(output, lineterminator="\n")
+    writer.writerow([
+        "Bundle", "Quantity", "Sold Quantity", "Item", "Status",
+        "Sales platform", "Bought date", "Sold date", "Buy price (unit)",
+        "Sell price (total)", "Sold price", "Profit", "Notes", "",
+        "Bundle Name", "Bundle Cost",
+    ])
+
+    for item in items:
+        purchase = item.purchase
+        listing = item_listing(item)
+        platform = (
+            listing.platform if listing else None
+        ) or (purchase.platform if purchase else None) or ""
+        buy_price_unit = ""
+        if purchase and purchase.purchase_type == PurchaseType.SINGLE and item.quantity:
+            buy_price_unit = csv_money(purchase.total_cost / item.quantity)
+
+        writer.writerow([
+            purchase.name if purchase and purchase.purchase_type == PurchaseType.BUNDLE else "Individual",
+            item.quantity,
+            item.quantity_sold,
+            item.name,
+            item.status.value,
+            platform,
+            csv_date(purchase.date if purchase else None),
+            csv_date(item.sale.sale_date if item.sale else None),
+            buy_price_unit,
+            csv_money(listing.listing_price if listing else None),
+            csv_money(item.sale.sale_price if item.sale else None),
+            csv_money(item.sale.profit if item.sale and item.sale.profit is not None else None),
+            item.notes or "",
+            "",
+            "",
+            "",
+        ])
+
+    exported_bundles = set()
+    for purchase in purchases:
+        if purchase.purchase_type != PurchaseType.BUNDLE:
+            continue
+        bundle_name = purchase.name or ""
+        bundle_key = (" ".join(bundle_name.casefold().split()), purchase.total_cost)
+        if bundle_key in exported_bundles:
+            continue
+        exported_bundles.add(bundle_key)
+        writer.writerow([
+            "", "", "", "", "", "", "", "", "", "", "", "", "", "",
+            bundle_name,
+            csv_money(purchase.total_cost),
+        ])
+
+    response = Response("\ufeff" + output.getvalue(), mimetype="text/csv")
+    response.headers["Content-Disposition"] = (
+        f"attachment; filename=resale-desk-export-{date.today().isoformat()}.csv"
+    )
+    return response
+
+

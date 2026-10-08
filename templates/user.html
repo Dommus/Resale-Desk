@@ -40,10 +40,21 @@
         <div class="card shadow-sm">
             <div class="card-body">
                 <h6 class="card-title">Import Database (.csv)</h6>
+                <p class="text-muted small">Restore items and purchases from a Resale Desk CSV export.</p>
                 <form method="post" enctype="multipart/form-data" action="{{ url_for('import_csv') }}">
                     <input type="file" name="csv_file" accept=".csv" required>
-                    <button type="submit">Import CSV</button>
+                    <button type="submit" class="btn btn-primary mt-2">Import CSV</button>
                 </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-6">
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <h6 class="card-title">Export Database (.csv)</h6>
+                <p class="text-muted small">Download your items, sales, listings, and bundle costs in the importable CSV format.</p>
+                <a href="{{ url_for('export_csv') }}" class="btn btn-outline-primary">Export CSV</a>
             </div>
         </div>
     </div>
