@@ -97,7 +97,13 @@
                     <!-- Category -->
                     <td data-label="Category" data-sort-value="{{ item.category or '' }}">{{ item.category or "-" }}</td>
                     <!-- Shelf -->
-                    <td data-label="Shelf" data-sort-value="{{ item.shelf.name if item.shelf else '' }}">{{ item.shelf.name if item.shelf else "-" }}</td>
+                    <td data-label="Shelf" data-sort-value="{{ item.shelf.name if item.shelf else '' }}">
+                        {% if item.shelf %}
+                        <a href="{{ url_for('inventory', shelf_id=item.shelf.id) }}">{{ item.shelf.name }}</a>
+                        {% else %}
+                        -
+                        {% endif %}
+                    </td>
                     <!-- Status -->
                     <td data-label="Status" data-sort-value="{{ item.status.value }}"><span class="badge status-badge-{{ item.status.value|replace(' ', '-') }}">{{ item.status.value }}</span></td>
                     <!-- Cost -->

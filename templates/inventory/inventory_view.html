@@ -9,7 +9,7 @@
         <p class="text-muted mb-0">
             <code class="inv-code">{{ item.inventory_code }}</code>
             &middot; <span class="badge status-badge-{{ item.status.value|replace(' ', '-') }}">{{ item.status.value }}</span>
-            &middot; Shelf: {{ item.shelf.name if item.shelf else "-" }}
+            &middot; Shelf: {% if item.shelf %}<a href="{{ url_for('inventory', shelf_id=item.shelf.id) }}">{{ item.shelf.name }}</a>{% else %}-{% endif %}
         </p>
     </div>
     <form method="post" action="{{ url_for('delete_item', item_id=item.id) }}" onsubmit="return confirm('Delete this item permanently?');">
@@ -94,32 +94,36 @@
                 {% for l in item.listings %}
                 <form id="edit-listing-{{ l.id }}" method="post" action="{{ url_for('edit_listing', listing_id=l.id) }}"></form>
                 {% endfor %}
-                <div class="app-fit-table-wrap">
-                <table class="table table-sm align-middle app-fit-table">
-                    <thead><tr><th>Platform</th><th>Listing ID</th><th>Listing URL</th><th>Price</th><th>Date Listed</th><th>Status</th><th></th></tr></thead>
-                    <tbody>
-                        {% for l in item.listings %}
-                        <tr class="{% if l.status == ListingStatus.REMOVED %}removed-listing{% endif %}">
-                            <td data-label="Platform">
+                {% for l in item.listings %}
+                <div class="card listing-edit-card mb-3{% if l.status == ListingStatus.REMOVED %} removed-listing{% endif %}">
+                    <div class="card-body">
+                        <div class="row g-2">
+                            <div class="col-12 col-sm-6 col-xl-4">
+                                <label class="form-label small mb-1">Platform</label>
                                 <input form="edit-listing-{{ l.id }}" type="text" class="form-control form-control-sm" name="platform" value="{{ l.platform }}" required>
-                            </td>
-                            <td data-label="Listing ID">
+                            </div>
+                            <div class="col-12 col-sm-6 col-xl-4">
+                                <label class="form-label small mb-1">Listing ID</label>
                                 <input form="edit-listing-{{ l.id }}" type="text" class="form-control form-control-sm" name="listing_id" value="{{ l.listing_id or '' }}">
-                            </td>
-                            <td data-label="Listing URL">
-                                <input form="edit-listing-{{ l.id }}" type="url" class="form-control form-control-sm" name="listing_url" value="{{ l.listing_url or '' }}" placeholder="https://...">
-                            </td>
-                            <td data-label="Price">
+                            </div>
+                            <div class="col-12 col-sm-6 col-xl-4">
+                                <label class="form-label small mb-1">Price (€)</label>
                                 <input form="edit-listing-{{ l.id }}" type="number" step="0.01" min="0" class="form-control form-control-sm" name="listing_price" value="{{ l.listing_price if l.listing_price is not none else '' }}">
-                            </td>
-                            <td data-label="Date Listed">
+                            </div>
+                            <div class="col-12 col-sm-6 col-xl-4">
+                                <label class="form-label small mb-1">Listing URL</label>
+                                <input form="edit-listing-{{ l.id }}" type="url" class="form-control form-control-sm" name="listing_url" value="{{ l.listing_url or '' }}" placeholder="https://...">
+                            </div>
+                            <div class="col-12 col-sm-6 col-xl-4">
+                                <label class="form-label small mb-1">Date Listed</label>
                                 <input form="edit-listing-{{ l.id }}" type="date" class="form-control form-control-sm" name="date_listed" value="{{ l.date_listed.isoformat() if l.date_listed else '' }}">
-                            </td>
-                            <td data-label="Status">
+                            </div>
+                            <div class="col-12 col-sm-6 col-xl-4">
+                                <label class="form-label small mb-1">Status</label>
                                 {% if l.status == ListingStatus.SOLD %}
                                 <span class="badge bg-success">{{ l.status.value }}</span>
                                 {% else %}
-                                <form method="post" action="{{ url_for('update_listing_status', listing_id=l.id) }}" class="d-flex gap-1">
+                                <form method="post" action="{{ url_for('update_listing_status', listing_id=l.id) }}">
                                     <select name="status" class="form-select form-select-sm" onchange="this.form.submit()">
                                         {% for status in ListingStatus %}
                                         {% if status != ListingStatus.SOLD %}
@@ -129,24 +133,21 @@
                                     </select>
                                 </form>
                                 {% endif %}
-                            </td>
-                            <td data-label="" class="table-action-cell">
-                                <div class="d-flex gap-1">
-                                    <button form="edit-listing-{{ l.id }}" type="submit" class="btn btn-sm btn-primary">Save</button>
-                                    <form method="post" action="{{ url_for('delete_listing', listing_id=l.id) }}"
-                                          onsubmit="return confirm('Delete this marketplace listing?');">
-                                        <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete listing">
-                                            <i class="bi bi-trash" aria-hidden="true"></i>
-                                            <span class="visually-hidden">Delete</span>
-                                        </button>
-                                    </form>
-                                </div>
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card-footer d-flex flex-wrap justify-content-end gap-1">
+                        <button form="edit-listing-{{ l.id }}" type="submit" class="btn btn-sm btn-primary">Save</button>
+                        <form method="post" action="{{ url_for('delete_listing', listing_id=l.id) }}"
+                              onsubmit="return confirm('Delete this marketplace listing?');">
+                            <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete listing">
+                                <i class="bi bi-trash" aria-hidden="true"></i>
+                                <span class="visually-hidden">Delete</span>
+                            </button>
+                        </form>
+                    </div>
                 </div>
+                {% endfor %}
                 {% else %}
                 <p class="text-muted mb-0">No listings yet.</p>
                 {% endif %}

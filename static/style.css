@@ -702,6 +702,21 @@ code.inv-code {
     color: inherit;
 }
 
+/* Editable listing cards used for Marketplace Listings on the item page.
+   The card footer keeps Save/Delete visible at every screen width. */
+.listing-edit-card .card-footer {
+    background-color: transparent;
+    border-top-style: dashed;
+}
+
+.listing-edit-card.removed-listing {
+    border-style: dashed;
+}
+
+.listing-edit-card.removed-listing .card-body {
+    opacity: 0.7;
+}
+
 .bundle-add-row,
 .purchase-add-row {
     cursor: pointer;
