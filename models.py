@@ -54,6 +54,10 @@ class User(UserMixin, db.Model):
     username: Mapped[str] = mapped_column(String(64), unique=True, nullable=False)
     password_hash: Mapped[str] = mapped_column(String(128), nullable=False)
 
+    # Currency display preference (e.g. "USD", "EUR").
+    # Keep in sync with CURRENCY_SYMBOLS / DEFAULT_CURRENCY_CODE in utilities.py
+    currency: Mapped[str] = mapped_column(String(3), default="EUR", nullable=False)
+
     shelves: Mapped[List["Shelf"]] = relationship("Shelf", back_populates="owner", cascade="all, delete-orphan", lazy=True)
     purchases: Mapped[List["Purchase"]] = relationship("Purchase", back_populates="owner", cascade="all, delete-orphan", lazy=True)
     items: Mapped[List["Item"]] = relationship("Item", back_populates="owner", cascade="all, delete-orphan", lazy=True)

@@ -11,21 +11,24 @@
         <div class="card shadow-sm h-100">
             <div class="card-body">
                 <h6 class="card-title">Display preferences</h6>
-                <label class="form-label" for="currencySelect">Currency</label>
-                {# Keep the symbols in sync with CURRENCY_SYMBOLS in utilities.py #}
-                <select class="form-select" id="currencySelect">
-                    <option value="USD" {% if currency_code == 'USD' %}selected{% endif %}>US Dollar ($)</option>
-                    <option value="EUR" {% if currency_code == 'EUR' %}selected{% endif %}>Euro (€)</option>
-                    <option value="GBP" {% if currency_code == 'GBP' %}selected{% endif %}>British Pound (£)</option>
-                    <option value="JPY" {% if currency_code == 'JPY' %}selected{% endif %}>Japanese Yen (¥)</option>
-                    <option value="CNY" {% if currency_code == 'CNY' %}selected{% endif %}>Chinese Yuan (CN¥)</option>
-                    <option value="CAD" {% if currency_code == 'CAD' %}selected{% endif %}>Canadian Dollar (C$)</option>
-                    <option value="HKD" {% if currency_code == 'HKD' %}selected{% endif %}>Hong Kong Dollar (HK$)</option>
-                    <option value="AUD" {% if currency_code == 'AUD' %}selected{% endif %}>Australian Dollar (A$)</option>
-                    <option value="SGD" {% if currency_code == 'SGD' %}selected{% endif %}>Singapore Dollar (S$)</option>
-                    <option value="CHF" {% if currency_code == 'CHF' %}selected{% endif %}>Swiss Franc (CHF)</option>
-                </select>
-                <p class="text-muted small mt-2 mb-0">Saved on this device. This is purely cosmetic and won't convert currencies.</p>
+                <form method="post" action="{{ url_for('user') }}">
+                    <label class="form-label" for="currencySelect">Currency</label>
+                    {# Keep the symbols in sync with CURRENCY_SYMBOLS in utilities.py #}
+                    <select class="form-select" id="currencySelect" name="currency">
+                        <option value="USD" {% if currency_code == 'USD' %}selected{% endif %}>US Dollar ($)</option>
+                        <option value="EUR" {% if currency_code == 'EUR' %}selected{% endif %}>Euro (€)</option>
+                        <option value="GBP" {% if currency_code == 'GBP' %}selected{% endif %}>British Pound (£)</option>
+                        <option value="JPY" {% if currency_code == 'JPY' %}selected{% endif %}>Japanese Yen (¥)</option>
+                        <option value="CNY" {% if currency_code == 'CNY' %}selected{% endif %}>Chinese Yuan (CN¥)</option>
+                        <option value="CAD" {% if currency_code == 'CAD' %}selected{% endif %}>Canadian Dollar (C$)</option>
+                        <option value="HKD" {% if currency_code == 'HKD' %}selected{% endif %}>Hong Kong Dollar (HK$)</option>
+                        <option value="AUD" {% if currency_code == 'AUD' %}selected{% endif %}>Australian Dollar (A$)</option>
+                        <option value="SGD" {% if currency_code == 'SGD' %}selected{% endif %}>Singapore Dollar (S$)</option>
+                        <option value="CHF" {% if currency_code == 'CHF' %}selected{% endif %}>Swiss Franc (CHF)</option>
+                    </select>
+                    <p class="text-muted small mt-2">Saved to your account. This is purely cosmetic and won't convert currencies.</p>
+                    <button type="submit" class="btn btn-primary mt-2">Save preference</button>
+                </form>
             </div>
         </div>
     </div>

@@ -4,7 +4,7 @@ from urllib.parse import urlparse
 
 # Imports from local python files
 from models import db, User, Shelf, Item, Purchase, ItemStatus, PurchaseType, Listing, ListingStatus, Sale
-from utilities import login_manager, parse_date, parse_decimal, parse_quantity, process_csv, currency_display
+from utilities import login_manager, parse_date, parse_decimal, parse_quantity, process_csv, currency_display, CURRENCY_SYMBOLS
 
 from flask import Flask, Response, render_template, request, redirect, url_for, flash
 from flask_login import login_user, logout_user, login_required, current_user
@@ -210,7 +210,7 @@ def inject_today():
 def inject_currency():
     # Every template renders money signs via {{ currency_symbol }}, so
     # user-entered text (item names, bundle names, ...) is never rewritten.
-    symbol, code = currency_display(request)
+    symbol, code = currency_display()
     return {"currency_symbol": symbol, "currency_code": code}
 
 
@@ -1080,6 +1080,15 @@ def register():
 @app.route('/user', methods=['GET', 'POST'])
 @login_required
 def user():
+    if request.method == 'POST':
+        # Persist the chosen cosmetic currency to the user's account.
+        currency = request.form.get('currency', '').strip().upper()
+        if currency in CURRENCY_SYMBOLS:
+            current_user.currency = currency
+            db.session.commit()
+            flash('Currency preference saved.', 'success')
+        else:
+            flash('Please choose a valid currency.', 'danger')
     return render_template('user.html')
 
 @app.route('/user/delete-database', methods=['POST'])

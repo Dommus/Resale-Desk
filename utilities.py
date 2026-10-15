@@ -1,7 +1,7 @@
 import csv
 from datetime import datetime, date
 from decimal import Decimal, InvalidOperation
-from flask_login import LoginManager
+from flask_login import LoginManager, current_user
 from io import StringIO
 
 from models import db, Purchase, Item, Sale, Shelf, Listing, PurchaseType, ItemStatus, ListingStatus
@@ -30,10 +30,12 @@ CURRENCY_SYMBOLS = {
 }
 DEFAULT_CURRENCY_CODE = "EUR" # Because I'm European :)
 
-def currency_display(request):
-    # Resolve the cosmetic currency sign from the device cookie.
+def currency_display():
+    # Resolve the cosmetic currency sign from the signed-in user's preference.
     # Unknown or missing values fall back to EUR.
-    code = request.cookies.get("resale-desk.currency", DEFAULT_CURRENCY_CODE)
+    code = DEFAULT_CURRENCY_CODE
+    if current_user.is_authenticated and current_user.currency:
+        code = current_user.currency
     if code not in CURRENCY_SYMBOLS:
         code = DEFAULT_CURRENCY_CODE
     return CURRENCY_SYMBOLS[code], code
