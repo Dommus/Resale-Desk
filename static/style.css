@@ -401,6 +401,17 @@ code.inv-code {
     margin-left: auto;
 }
 
+.table-actions-header {
+    min-width: 7rem;
+    text-align: right;
+    vertical-align: middle;
+}
+
+.table-column-picker-inline {
+    display: inline-block;
+    margin-left: 0;
+}
+
 .table-column-picker > summary {
     list-style: none;
 }

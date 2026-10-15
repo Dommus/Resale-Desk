@@ -255,14 +255,11 @@
     }
 
     function createColumnPicker(table, columns, state, onChange) {
-        const toolbar = document.createElement('div');
-        toolbar.className = 'table-workspace-toolbar';
-
         const details = document.createElement('details');
-        details.className = 'table-column-picker';
+        details.className = 'table-column-picker table-column-picker-inline';
         const summary = document.createElement('summary');
         summary.className = 'btn btn-outline-secondary btn-sm';
-        summary.textContent = 'Edit columns';
+        summary.textContent = 'Columns';
         details.append(summary);
 
         const menu = document.createElement('div');
@@ -305,9 +302,11 @@
         });
         menu.append(resetButton);
         details.append(menu);
-        toolbar.append(details);
-
-        table.parentElement.before(toolbar);
+        const actionsHeader = table.querySelector('thead th[data-column-id="actions"]');
+        if (actionsHeader) {
+            actionsHeader.classList.add('table-actions-header');
+            actionsHeader.append(details);
+        }
 
         return {
             refresh() {

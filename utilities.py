@@ -4,7 +4,7 @@ from decimal import Decimal, InvalidOperation
 from flask_login import LoginManager
 from io import StringIO
 
-from models import db, Purchase, Item, Sale, Listing, PurchaseType, ItemStatus, ListingStatus
+from models import db, Purchase, Item, Sale, Shelf, Listing, PurchaseType, ItemStatus, ListingStatus
 
 # Login Manager
 # https://flask-login.readthedocs.io/en/latest/
@@ -108,6 +108,7 @@ def process_csv(file, user_id):
     errors = [] # Store any errors when processing each row
     purchases_created = 0
     items_created = 0
+    shelves_created = 0
 
     # bundles_dict stores bundle metadata. purchases_by_bundle stores the actual
     # SQLAlchemy Purchase object, so all item rows can point to the same purchase.
@@ -121,13 +122,19 @@ def process_csv(file, user_id):
     def normalise_name(value):
         return " ".join(str(value).strip().casefold().split())
 
+    # store Shelf objects with normalised name.
+    shelves = {
+        normalise_name(shelf.name): shelf
+        for shelf in Shelf.query.filter_by(user_id=user_id).all()
+    }
+
     def has_extra_columns(row):
         return bool(row.get(None))
 
     def get_row_clean(row, name):
         return str(row.get(name) or '').strip()
 
-    # Catalogue bundles on the second table.
+    # Gather bundles on the Bundles table.
     for row_number, row in enumerate(rows, start=2):
         bundle_name = get_row_clean(row, 'Bundle Name')
         if not bundle_name:
@@ -147,7 +154,7 @@ def process_csv(file, user_id):
         bundles_dict[bundle_key] = {"name": bundle_name, "cost": bundle_cost}
         bundle_costs_by_name.setdefault(bundle_name_key, set()).add(bundle_cost)
 
-    # Catalogue items from the first table.
+    # Gather items from the Items table.
     for row_number, row in enumerate(rows, start=2):
         bundle_name = get_row_clean(row, 'Bundle')
         item_name = get_row_clean(row, 'Item')
@@ -209,12 +216,15 @@ def process_csv(file, user_id):
         sale_price = parse_csv_money(row.get('Sold price'))
         listing_price_total = parse_csv_money(row.get('Sell price (total)'))
 
+
+
         purchase_type = (
             PurchaseType.SINGLE
             if normalise_name(bundle_name) == 'individual'
             else PurchaseType.BUNDLE
         )
 
+        # Record purchase
         if purchase_type is PurchaseType.SINGLE:
             # csv column stores unit price, while Purchase.purchase_price stores the total cost of the purchase.
             item_purchase_price = parse_csv_money(row.get('Buy price (unit)'))
@@ -266,9 +276,23 @@ def process_csv(file, user_id):
                 purchases_by_bundle[bundle_key] = purchase
                 purchases_created += 1
 
+
+        # Shelf
+        shelf = None
+        shelf_name = get_row_clean(row, 'Location')
+        if shelf_name:
+            shelf_key = normalise_name(shelf_name)
+            shelf = shelves.get(shelf_key)
+            if shelf is None:   # Continues if shelf has not been seen yet
+                shelf = Shelf(user_id=user_id, name=shelf_name)
+                db.session.add(shelf)
+                shelves[shelf_key] = shelf
+                shelves_created += 1
+
         item = Item(
             user_id=user_id,
             purchase=purchase,
+            shelf=shelf,
             name=item_name,
             quantity=item_quantity,
             quantity_sold=item_quantity_sold,
@@ -277,7 +301,6 @@ def process_csv(file, user_id):
         )
 
         # Record listing
-
         listing = Listing(
             platform = sale_platform,
             listing_price = listing_price_total,
@@ -317,5 +340,6 @@ def process_csv(file, user_id):
     return {
         "purchases_created": purchases_created,
         "items_created": items_created,
+        "shelves_created": shelves_created,
         "errors": errors,
     }

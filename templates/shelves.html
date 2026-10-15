@@ -33,14 +33,14 @@
                 <div class="app-fit-table-wrap">
                 <table class="table table-sm align-middle app-fit-table">
                     <thead>
-                        <tr><th>Name</th><th>Description</th><th># Items</th><th></th></tr>
+                        <tr><th>Name</th><th># Items</th><th>Description</th><th></th></tr>
                     </thead>
                     <tbody>
                         {% for shelf in shelves %}
                         <tr>
                             <td data-label="Name"><a href="{{ url_for('inventory', shelf_id=shelf.id) }}">{{ shelf.name }}</a></td>
-                            <td data-label="Description" class="text-muted">{{ shelf.description or "" }}</td>
                             <td data-label="# Items">{{ shelf.items|length }}</td>
+                            <td data-label="Description" class="text-muted">{{ shelf.description or "" }}</td>
                             <td data-label="" class="text-end table-action-cell">
                                 <form method="post" action="{{ url_for('delete_shelf', shelf_id=shelf.id) }}"
                                       onsubmit="return confirm('Delete this shelf?');">
