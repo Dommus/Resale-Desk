@@ -267,7 +267,6 @@ def index():
         (status, sum(item.quantity for item in items if item.status == status))
         for status in ItemStatus
     ]
-    status_summary = [(status, quantity) for status, quantity in status_summary if quantity]
 
     recent_sales = sorted(
         sales,
@@ -1193,4 +1192,3 @@ def export_csv():
         f"attachment; filename=resale-desk-export-{date.today().isoformat()}.csv"
     )
     return response
-

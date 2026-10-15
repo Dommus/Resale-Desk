@@ -11,134 +11,96 @@
         <a href="{{ url_for('choose_purchase_type') }}" class="btn btn-primary">
             <i class="bi bi-plus-lg"></i> New Purchase
         </a>
-        <a href="{{ url_for('inventory') }}" class="btn btn-outline-secondary">
-            <i class="bi bi-box-seam"></i> Inventory
-        </a>
-    </div>
-</div>
-
-<div class="row g-3 mb-3">
-    <div class="col-6 col-xl-3">
-        <div class="card card-kpi h-100">
-            <div class="card-body">
-                <div class="kpi-label">Available Units</div>
-                <div class="kpi-value">{{ available_units }}</div>
-                <div class="small text-muted">{{ total_units }} total units</div>
-            </div>
-        </div>
-    </div>
-    <div class="col-6 col-xl-3">
-        <div class="card card-kpi h-100">
-            <div class="card-body">
-                <div class="kpi-label">Units Sold</div>
-                <div class="kpi-value">{{ sold_units }}</div>
-                <div class="small text-muted">{{ sell_through_rate }}% sell-through</div>
-            </div>
-        </div>
-    </div>
-    <div class="col-6 col-xl-3">
-        <div class="card card-kpi h-100">
-            <div class="card-body">
-                <div class="kpi-label">Net Revenue</div>
-                <div class="kpi-value">€{{ "%.2f"|format(total_revenue) }}</div>
-                <div class="small text-muted">{{ sales_count }} recorded sale{% if sales_count != 1 %}s{% endif %}</div>
-            </div>
-        </div>
-    </div>
-    <div class="col-6 col-xl-3">
-        <div class="card card-kpi h-100">
-            <div class="card-body">
-                <div class="kpi-label">Profit</div>
-                <div class="kpi-value {{ 'text-success' if total_profit >= 0 else 'text-danger' }}">€{{ "%.2f"|format(total_profit) }}</div>
-                <div class="small text-muted">After purchase costs</div>
-            </div>
-        </div>
     </div>
 </div>
 
 <div class="row g-3 mb-4">
-    <div class="col-6 col-lg-3">
-        <div class="card shadow-sm h-100">
-            <div class="card-body">
-                <div class="text-muted small">Total Spent</div>
-                <div class="fs-4 fw-semibold">€{{ "%.2f"|format(total_spend) }}</div>
-                <a href="{{ url_for('purchases') }}" class="small">View purchases</a>
+    <div class="col-lg-7">
+        <section class="dashboard-hero h-100">
+            <div class="dashboard-eyebrow">Business overview</div>
+                <div class="d-flex flex-wrap justify-content-between align-items-end gap-3">
+                <div>
+                    <div class="dashboard-hero-label">Realized profit</div>
+                    <div class="dashboard-hero-value {{ 'text-success' if total_profit >= 0 else 'text-danger' }}">€{{ "%.2f"|format(total_profit) }}</div>
+                    <p class="dashboard-hero-note mb-0">Net result after purchase costs and sale fees.</p>
+                </div>
+                <a href="{{ url_for('purchases') }}" class="btn btn-light btn-sm">Review purchases <i class="bi bi-arrow-up-right"></i></a>
             </div>
-        </div>
+            <div class="dashboard-hero-stats">
+                <div><span>Net revenue</span><strong>€{{ "%.2f"|format(total_revenue) }}</strong></div>
+                <div><span>Total invested</span><strong>€{{ "%.2f"|format(total_spend) }}</strong></div>
+                <div><span>Recorded sales</span><strong>{{ sales_count }}</strong></div>
+                <div><span>Sell-through rate</span><strong>{{ sell_through_rate }}%</strong></div>
+            </div>
+        </section>
     </div>
-    <div class="col-6 col-lg-3">
-        <div class="card shadow-sm h-100">
-            <div class="card-body">
-                <div class="text-muted small">Active Listings</div>
-                <div class="fs-4 fw-semibold">{{ active_listing_count }}</div>
-                <div class="small text-muted">{{ listing_count }} listings total</div>
+    <div class="col-lg-5">
+        <section class="dashboard-panel dashboard-quick-panel h-100">
+            <div class="dashboard-panel-heading">
+                <div>
+                    <div class="dashboard-eyebrow">Workspace</div>
+                    <h5 class="mb-0">At a glance</h5>
+                </div>
+                <i class="bi bi-grid-1x2" aria-hidden="true"></i>
             </div>
-        </div>
-    </div>
-    <div class="col-6 col-lg-3">
-        <div class="card shadow-sm h-100">
-            <div class="card-body">
-                <div class="text-muted small">Purchases</div>
-                <div class="fs-4 fw-semibold">{{ purchase_count }}</div>
-                <div class="small text-muted">Inventory sources</div>
-            </div>
-        </div>
-    </div>
-    <div class="col-6 col-lg-3">
-        <div class="card shadow-sm h-100">
-            <div class="card-body">
-                <div class="text-muted small">Average Sale</div>
-                <div class="fs-4 fw-semibold">€{{ "%.2f"|format(average_sale_value) }}</div>
-                <div class="small text-muted">Net proceeds per sale</div>
-            </div>
-        </div>
+            <div class="quick-stat"><span>Available inventory</span><strong>{{ available_units }} <small>/ {{ total_units }} units</small></strong></div>
+            <div class="quick-stat"><span>Active listings</span><strong>{{ active_listing_count }} <small>/ {{ listing_count }} total</small></strong></div>
+            <div class="quick-stat"><span>Average sale</span><strong>€{{ "%.2f"|format(average_sale_value) }}</strong></div>
+            <div class="quick-stat"><span>Purchases</span><strong>{{ purchase_count }}</strong></div>
+        </section>
     </div>
 </div>
 
 <div class="row g-4 mb-4">
     <div class="col-lg-7">
-        <div class="card shadow-sm h-100">
+        <div class="dashboard-panel h-100">
             <div class="card-body">
                 <div class="d-flex justify-content-between align-items-start mb-3">
                     <div>
                         <h5 class="card-title mb-1">Sales performance</h5>
-                        <p class="text-muted small mb-0">How much of your inventory has converted into sales.</p>
+                        <p class="text-muted small mb-0">Inventory mix by current status.</p>
                     </div>
-                    <span class="badge bg-primary">{{ sell_through_rate }}%</span>
                 </div>
-                <div class="progress mb-4" role="progressbar" aria-label="Sell-through rate" aria-valuenow="{{ sell_through_rate }}" aria-valuemin="0" aria-valuemax="100" style="height: 0.7rem;">
-                    <div class="progress-bar" style="width: {{ sell_through_rate }}%"></div>
+                <div class="progress dashboard-status-progress mb-3" role="img" aria-label="Inventory by status" style="height: 0.9rem;">
+                    {% for status, quantity in status_summary %}
+                    <span class="dashboard-status-segment status-progress-{{ status.value|replace(' ', '-') }}" style="width: {{ ((quantity / total_units) * 100) if total_units else 0 }}%" title="{{ status.value }}: {{ quantity }}"></span>
+                    {% endfor %}
                 </div>
-                <div class="row g-3">
-                    <div class="col-4">
-                        <div class="text-muted small">Available</div>
-                        <div class="fs-5 fw-semibold">{{ available_units }}</div>
-                    </div>
-                    <div class="col-4">
-                        <div class="text-muted small">Sold</div>
-                        <div class="fs-5 fw-semibold">{{ sold_units }}</div>
-                    </div>
-                    <div class="col-4">
-                        <div class="text-muted small">Revenue</div>
-                        <div class="fs-5 fw-semibold">€{{ "%.2f"|format(total_revenue) }}</div>
-                    </div>
+                <div class="dashboard-status-legend">
+                    {% for status, quantity in status_summary %}
+                    <a href="{{ url_for('inventory', status=status.value) }}" class="dashboard-status-legend-item text-decoration-none">
+                        <span class="dashboard-status-dot status-progress-{{ status.value|replace(' ', '-') }}"></span>
+                        <span>{{ status.value }}</span>
+                        <strong>{{ quantity }} <small>{{ "%.1f"|format((quantity / total_units * 100) if total_units else 0) }}%</small></strong>
+                    </a>
+                    {% endfor %}
                 </div>
             </div>
         </div>
     </div>
-
     <div class="col-lg-5">
-        <div class="card shadow-sm h-100">
+        <div class="dashboard-panel h-100">
             <div class="card-body">
-                <h5 class="card-title mb-3">Inventory status</h5>
-                {% for status, quantity in status_summary %}
                 <div class="d-flex justify-content-between align-items-center mb-2">
-                    <span><span class="badge status-badge-{{ status.value|replace(' ', '-') }} me-2">{{ status.value }}</span></span>
-                    <strong>{{ quantity }}</strong>
+                    <h5 class="card-title mb-0">Needs attention</h5>
+                    {% if attention_count %}<span class="badge bg-warning text-dark">{{ attention_count }}</span>{% endif %}
                 </div>
+                <p class="text-muted small">Available items without an active listing.</p>
+                {% if attention_items %}
+                <ul class="list-group list-group-flush">
+                    {% for item in attention_items %}
+                    <li class="list-group-item px-0 d-flex justify-content-between align-items-center gap-2">
+                        <div class="text-truncate">
+                            <a href="{{ url_for('view_item', item_id=item.id) }}" class="text-decoration-none">{{ item.name }}</a>
+                            <small class="d-block text-muted">{{ item.available_quantity }} available</small>
+                        </div>
+                        <span class="badge status-badge-{{ item.status.value|replace(' ', '-') }}">{{ item.status.value }}</span>
+                    </li>
+                    {% endfor %}
+                </ul>
                 {% else %}
-                <p class="text-muted mb-0">No inventory recorded yet.</p>
-                {% endfor %}
+                <div class="alert alert-success mb-0">All available items have an active listing.</div>
+                {% endif %}
             </div>
         </div>
     </div>
@@ -146,7 +108,7 @@
 
 <div class="row g-4 mb-4">
     <div class="col-lg-7">
-        <div class="card shadow-sm h-100">
+        <div class="dashboard-panel h-100">
             <div class="card-body">
                 <div class="d-flex justify-content-between align-items-center mb-2">
                     <h5 class="card-title mb-0">Recent sales</h5>
@@ -186,36 +148,9 @@
             </div>
         </div>
     </div>
-
-    <div class="col-lg-5">
-        <div class="card shadow-sm h-100">
-            <div class="card-body">
-                <div class="d-flex justify-content-between align-items-center mb-2">
-                    <h5 class="card-title mb-0">Needs attention</h5>
-                    {% if attention_count %}<span class="badge bg-warning text-dark">{{ attention_count }}</span>{% endif %}
-                </div>
-                <p class="text-muted small">Available items without an active listing.</p>
-                {% if attention_items %}
-                <ul class="list-group list-group-flush">
-                    {% for item in attention_items %}
-                    <li class="list-group-item px-0 d-flex justify-content-between align-items-center gap-2">
-                        <div class="text-truncate">
-                            <a href="{{ url_for('view_item', item_id=item.id) }}" class="text-decoration-none">{{ item.name }}</a>
-                            <small class="d-block text-muted">{{ item.available_quantity }} available</small>
-                        </div>
-                        <span class="badge status-badge-{{ item.status.value|replace(' ', '-') }}">{{ item.status.value }}</span>
-                    </li>
-                    {% endfor %}
-                </ul>
-                {% else %}
-                <div class="alert alert-success mb-0">All available items have an active listing.</div>
-                {% endif %}
-            </div>
-        </div>
-    </div>
 </div>
 
-<div class="card shadow-sm">
+<div class="dashboard-panel">
     <div class="card-body">
         <div class="d-flex justify-content-between align-items-center mb-2">
             <h5 class="card-title mb-0">Top purchases by profit</h5>
