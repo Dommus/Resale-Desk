@@ -258,23 +258,18 @@
         const toolbar = document.createElement('div');
         toolbar.className = 'table-workspace-toolbar';
 
-        const hint = document.createElement('small');
-        hint.className = 'text-muted';
-        hint.textContent = 'Click a header to sort. Drag a header to reorder columns.';
-        toolbar.append(hint);
-
         const details = document.createElement('details');
         details.className = 'table-column-picker';
         const summary = document.createElement('summary');
         summary.className = 'btn btn-outline-secondary btn-sm';
-        summary.textContent = 'Columns';
+        summary.textContent = 'Edit columns';
         details.append(summary);
 
         const menu = document.createElement('div');
         menu.className = 'table-column-picker-menu shadow-sm';
         const title = document.createElement('div');
         title.className = 'small fw-semibold mb-2';
-        title.textContent = 'Show columns';
+        title.textContent = 'Toggle columns';
         menu.append(title);
 
         const checkboxes = new Map();

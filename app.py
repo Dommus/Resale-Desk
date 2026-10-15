@@ -46,7 +46,6 @@ db.init_app(app)
 
 ###################
 # FUTURE FEATURES:
-# CSV import & export feature
 # Change currency symbol all throughout the app
 # Translate (at least English & Portuguese)
 ##########################

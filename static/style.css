@@ -3,6 +3,23 @@ body {
     transition: background-color 0.2s ease, color 0.2s ease;
 }
 
+.header-search {
+    min-width: 12rem;
+}
+
+.header-search input {
+    width: 100%;
+}
+
+@media (max-width: 991.98px) {
+    .header-search {
+        flex-basis: 100%;
+        margin-left: 0 !important;
+        margin-right: 0 !important;
+        margin-top: 0.75rem;
+    }
+}
+
 .flash-alert {
     position: fixed;
     bottom: 1rem;
@@ -381,6 +398,7 @@ code.inv-code {
 .table-column-picker {
     position: relative;
     flex: 0 0 auto;
+    margin-left: auto;
 }
 
 .table-column-picker > summary {

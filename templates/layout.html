@@ -33,7 +33,7 @@
                     <li class="nav-item"><a class="nav-link" href="{{ url_for('purchases') }}">Purchases</a></li>
                     <li class="nav-item"><a class="nav-link" href="{{ url_for('shelves') }}">Shelves</a></li>
                 </ul>
-                <form class="d-flex me-3" role="search" action="{{ url_for('inventory') }}" method="get">
+                <form class="d-flex flex-grow-1 header-search ms-3 me-3" role="search" action="{{ url_for('inventory') }}" method="get">
                     <input class="form-control form-control-sm" type="search" name="q" placeholder="Search inventory or listing ID" value="{{ request.args.get('q', '') }}">
                 </form>
                 <button class="btn btn-outline-secondary me-2 theme-toggle" type="button" id="themeToggle"
