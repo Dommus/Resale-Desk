@@ -84,7 +84,14 @@
                     <!-- Item Code -->
                     <td data-label="Item code" data-sort-value="{{ item.inventory_code or '' }}"><code class="inv-code">{{ item.inventory_code or 'No Code Assigned' }}</code></td>
                     <!-- Name -->
-                    <td data-label="Name" data-sort-value="{{ item.name }}">{{ item.name }}</td>
+                    <td data-label="Name" data-sort-value="{{ item.name }}">
+                        {% set first_listing_url = (item.listings | selectattr('listing_url') | first) %}
+                        {% if first_listing_url %}
+                        <a href="{{ first_listing_url.listing_url }}" target="_blank" rel="noopener noreferrer">{{ item.name }}</a>
+                        {% else %}
+                        {{ item.name }}
+                        {% endif %}
+                    </td>
                     <!-- Quantity -->
                     <td data-label="Quantity" data-sort-value="{{ item.quantity }}">{{ item.available_quantity }} / {{ item.quantity }}</td>
                     <!-- Category -->

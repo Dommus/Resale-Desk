@@ -303,6 +303,7 @@ def process_csv(file, user_id):
         # Record listing
         listing = Listing(
             platform = sale_platform,
+            listing_url = get_row_clean(row, 'URL'),
             listing_price = listing_price_total,
             status = (
                 # ADD: support for ListingStatus REMOVED and EXPIRED
