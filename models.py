@@ -135,7 +135,7 @@ class Item(db.Model):
     __tablename__ = "items"
 
     __table_args__ = (
-        # Ensure quantity is positive
+        # Cant have negative items on a shelf
         CheckConstraint("quantity > 0", name="ck_items_quantity_positive"),
 
         # Sold quantity must be between 0 and total quantity
@@ -155,9 +155,6 @@ class Item(db.Model):
     name: Mapped[str] = mapped_column(String(64), nullable=False)
     quantity: Mapped[int] = mapped_column(nullable=False, default=1)
     quantity_sold: Mapped[int] = mapped_column(nullable=False, default=0)
-    # Kept for database compatibility. Bundle costs are not allocated to
-    # individual items; bundle profit is calculated on the Purchase instead.
-    cost_basis: Mapped[Decimal] = mapped_column(MONEY, nullable=False, default=Decimal("0.00"))
     category: Mapped[Optional[str]] = mapped_column(String(64))
     condition: Mapped[Optional[str]] = mapped_column(String(32))
     brand: Mapped[Optional[str]] = mapped_column(String(64))
@@ -237,7 +234,7 @@ class Sale(db.Model):
     __tablename__ = "sales"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    item_id: Mapped[int] = mapped_column(ForeignKey("items.id"), nullable=False, unique=True)
+    item_id: Mapped[int] = mapped_column(ForeignKey("items.id"), nullable=False)
     listing_id: Mapped[Optional[int]] = mapped_column(ForeignKey("listings.id"))
 
     sale_date: Mapped[datetime_date] = mapped_column(default=datetime_date.today)

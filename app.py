@@ -185,7 +185,6 @@ def create_purchase_item(purchase, user_id, name, category=None, brand=None, con
         name=name.strip(),
         quantity=quantity,
         quantity_sold=0,
-        cost_basis=Decimal("0.00"),
         category=category.strip() or None if category else None,
         condition=condition.strip() or None if condition else None,
         brand=brand.strip() or None if brand else None,
