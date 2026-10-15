@@ -56,7 +56,7 @@
                         </thead>
                         <tbody>
                             {% for item in purchase.items %}
-                            <tr>
+                            <tr{% if loop.index > 5 %} class="d-none purchase-item-extra"{% endif %}>
                                 <td data-label="ID"><code class="inv-code">{{ item.id }}</code></td>
                                 <td data-label="Code"><code class="inv-code">INV-{{ "%06d"|format(item.id) }}</code></td>
                                 <td data-label="Name">{{ item.name }}</td>
@@ -94,6 +94,11 @@
                         </tbody>
                     </table>
                 </div>
+                {% if purchase.items|length > 5 %}
+                <button type="button" class="btn btn-link w-100 mt-2 p-0" id="toggle-purchase-items" aria-expanded="false">
+                    Show all {{ purchase.items|length }} items
+                </button>
+                {% endif %}
                 {% else %}
                 <p class="text-muted mb-3">No items have been added to this purchase yet.</p>
                 {% if purchase.purchase_type.value == 'Bundle' %}
@@ -174,5 +179,22 @@
 {% endblock %}
 
 {% block scripts %}
+{% if purchase.items|length > 5 %}
+<script>
+    (() => {
+        const toggle = document.getElementById("toggle-purchase-items");
+        const extraItems = document.querySelectorAll(".purchase-item-extra");
+
+        toggle.addEventListener("click", () => {
+            const expanded = toggle.getAttribute("aria-expanded") === "true";
+            extraItems.forEach((item) => item.classList.toggle("d-none", expanded));
+            toggle.setAttribute("aria-expanded", String(!expanded));
+            toggle.textContent = expanded
+                ? "Show all {{ purchase.items|length }} items"
+                : "Show fewer items";
+        });
+    })();
+</script>
+{% endif %}
 <script src="{{ url_for('static', filename='js/suggestions.js') }}"></script>
 {% endblock %}
