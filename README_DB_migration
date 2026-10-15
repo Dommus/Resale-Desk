@@ -1,0 +1,20 @@
+# First launch:
+pip install Flask-Migrate
+flask db init
+flask db migrate -m "Describe schema changes"
+flask db upgrade
+
+# Future changes:
+flask db migrate -m "Add brand column"
+flask db upgrade
+
+# For a renamed column or removed column, review the generated migration manually
+# because the system may interpret a rename as “drop old column + create new column,”
+# which could lose data. A migration should explicitly rename it, for example:
+
+op.alter_column("items", "old_name", new_column_name="new_name")
+
+# You should back up instance/database.db before applying migrations.
+
+# One important caveat: db.create_all() should generally be replaced or limited once migrations are set up. 
+# Migrations become the authoritative way to update the schema.
