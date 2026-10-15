@@ -85,6 +85,39 @@ body:has(.navbar) .theme-toggle {
     border-color: #193d35;
 }
 
+.dashboard-profit-negative {
+    background: #8f3030;
+    border-color: #8f3030;
+}
+
+.dashboard-profit-neutral {
+    color: var(--bs-body-color);
+    background: var(--bs-secondary-bg);
+    border-color: var(--bs-border-color);
+}
+
+.dashboard-profit-neutral .dashboard-eyebrow,
+.dashboard-profit-neutral .dashboard-hero-label,
+.dashboard-profit-neutral .dashboard-hero-note,
+.dashboard-profit-neutral .dashboard-hero-stats span {
+    color: var(--bs-secondary-color);
+}
+
+.dashboard-profit-neutral .dashboard-hero-value {
+    color: var(--bs-body-color) !important;
+}
+
+.dashboard-profit-neutral .dashboard-hero-stats {
+    border-top-color: var(--bs-border-color);
+}
+
+.dashboard-profit-neutral .dashboard-hero .btn-light,
+.dashboard-profit-neutral .btn-light {
+    color: var(--bs-body-color);
+    background: var(--bs-body-bg);
+    border: 1px solid var(--bs-border-color);
+}
+
 .dashboard-eyebrow {
     margin-bottom: 0.65rem;
     color: var(--bs-secondary-color);

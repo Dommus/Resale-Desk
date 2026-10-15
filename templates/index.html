@@ -16,7 +16,7 @@
 
 <div class="row g-3 mb-4">
     <div class="col-lg-7">
-        <section class="dashboard-hero h-100">
+        <section class="dashboard-hero dashboard-profit-{{ 'positive' if total_profit > 0 else 'negative' if total_profit < 0 else 'neutral' }} h-100">
             <div class="dashboard-eyebrow">Business overview</div>
                 <div class="d-flex flex-wrap justify-content-between align-items-end gap-3">
                 <div>
