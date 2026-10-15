@@ -4,7 +4,7 @@ from urllib.parse import urlparse
 
 # Imports from local python files
 from models import db, User, Shelf, Item, Purchase, ItemStatus, PurchaseType, Listing, ListingStatus, Sale
-from utilities import login_manager, parse_date, parse_decimal, parse_quantity, process_csv
+from utilities import login_manager, parse_date, parse_decimal, parse_quantity, process_csv, currency_display
 
 from flask import Flask, Response, render_template, request, redirect, url_for, flash
 from flask_login import login_user, logout_user, login_required, current_user
@@ -43,6 +43,7 @@ def load_user(user_id):
 
 # Bind db object to this app instance
 db.init_app(app)
+
 
 ###################
 # FUTURE FEATURES:
@@ -205,6 +206,13 @@ def refresh_item_status(item):
 @app.context_processor
 def inject_today():
     return {"today": date.today().isoformat()}
+
+@app.context_processor
+def inject_currency():
+    # Every template renders money signs via {{ currency_symbol }}, so
+    # user-entered text (item names, bundle names, ...) is never rewritten.
+    symbol, code = currency_display(request)
+    return {"currency_symbol": symbol, "currency_code": code}
 
 
 ##########################

@@ -20,13 +20,13 @@
                 <div class="d-flex flex-wrap justify-content-between align-items-end gap-3">
                 <div>
                     <div class="dashboard-hero-label">Realized profit</div>
-                    <div class="dashboard-hero-value {{ 'text-success' if total_profit >= 0 else 'text-danger' }}">€{{ "%.2f"|format(total_profit) }}</div>
+                    <div class="dashboard-hero-value {{ 'text-success' if total_profit >= 0 else 'text-danger' }}">{{ currency_symbol }}{{ "%.2f"|format(total_profit) }}</div>
                     <p class="dashboard-hero-note mb-0">Net result after purchase costs and sale fees.</p>
                 </div>
             </div>
             <div class="dashboard-hero-stats">
-                <div><span>Net revenue</span><strong>€{{ "%.2f"|format(total_revenue) }}</strong></div>
-                <div><span>Total invested</span><strong>€{{ "%.2f"|format(total_spend) }}</strong></div>
+                <div><span>Net revenue</span><strong>{{ currency_symbol }}{{ "%.2f"|format(total_revenue) }}</strong></div>
+                <div><span>Total invested</span><strong>{{ currency_symbol }}{{ "%.2f"|format(total_spend) }}</strong></div>
                 <div><span>Recorded sales</span><strong>{{ sales_count }}</strong></div>
                 <div><span>Sell-through rate</span><strong>{{ sell_through_rate }}%</strong></div>
             </div>
@@ -43,7 +43,7 @@
             </div>
             <div class="quick-stat"><span>Available inventory</span><strong>{{ available_units }} <small>/ {{ total_units }} units</small></strong></div>
             <div class="quick-stat"><span>Active listings</span><strong>{{ active_listing_count }} <small>/ {{ listing_count }} total</small></strong></div>
-            <div class="quick-stat"><span>Average sale</span><strong>€{{ "%.2f"|format(average_sale_value) }}</strong></div>
+            <div class="quick-stat"><span>Average sale</span><strong>{{ currency_symbol }}{{ "%.2f"|format(average_sale_value) }}</strong></div>
             <div class="quick-stat"><span>Purchases</span><strong>{{ purchase_count }}</strong></div>
         </section>
     </div>
@@ -127,10 +127,10 @@
                                     {% if sale.item.is_bundle %}<small class="d-block text-muted">Bundle sale</small>{% endif %}
                                 </td>
                                 <td data-label="Quantity">{{ sale.quantity }}</td>
-                                <td data-label="Net proceeds">€{{ "%.2f"|format(sale.net_proceeds) }}</td>
+                                <td data-label="Net proceeds">{{ currency_symbol }}{{ "%.2f"|format(sale.net_proceeds) }}</td>
                                 <td data-label="Profit">
                                     {% if sale.profit is not none %}
-                                    <span class="{{ 'text-success' if sale.profit >= 0 else 'text-danger' }}">€{{ "%.2f"|format(sale.profit) }}</span>
+                                    <span class="{{ 'text-success' if sale.profit >= 0 else 'text-danger' }}">{{ currency_symbol }}{{ "%.2f"|format(sale.profit) }}</span>
                                     {% else %}
                                     <span class="text-muted">Bundle-level</span>
                                     {% endif %}
@@ -166,9 +166,9 @@
                         <td data-label="Purchase"><a href="{{ url_for('view_purchase', purchase_id=purchase.id) }}">{{ purchase.display_name }}</a></td>
                         <td data-label="Type"><span class="badge purchase-type-badge-{{ purchase.purchase_type.value }}">{{ purchase.purchase_type.value }}</span></td>
                         <td data-label="Units sold">{{ purchase.items|sum(attribute='quantity_sold') }}/{{ purchase.items|sum(attribute='quantity') }}</td>
-                        <td data-label="Total cost">€{{ "%.2f"|format(purchase.total_cost) }}</td>
-                        <td data-label="Revenue">€{{ "%.2f"|format(purchase.total_revenue) }}</td>
-                        <td data-label="Profit"><span class="{{ 'text-success' if purchase.profit >= 0 else 'text-danger' }}">€{{ "%.2f"|format(purchase.profit) }}</span></td>
+                        <td data-label="Total cost">{{ currency_symbol }}{{ "%.2f"|format(purchase.total_cost) }}</td>
+                        <td data-label="Revenue">{{ currency_symbol }}{{ "%.2f"|format(purchase.total_revenue) }}</td>
+                        <td data-label="Profit"><span class="{{ 'text-success' if purchase.profit >= 0 else 'text-danger' }}">{{ currency_symbol }}{{ "%.2f"|format(purchase.profit) }}</span></td>
                     </tr>
                     {% endfor %}
                 </tbody>

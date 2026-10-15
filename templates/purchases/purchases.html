@@ -71,8 +71,8 @@
                     <td data-label="Seller" data-sort-value="{{ p.seller or '' }}">{{ p.seller or "-" }}</td>
                     <td data-label="Platform" data-sort-value="{{ p.platform or '' }}">{{ p.platform or "-" }}</td>
                     <td data-label="Type" data-sort-value="{{ p.purchase_type.value }}"><span class="badge purchase-type-badge-{{ p.purchase_type.value }}">{{ p.purchase_type.value }}</span></td>
-                    <td data-label="Total cost" data-sort-value="{{ p.total_cost }}">€{{ "%.2f"|format(p.total_cost) }}</td>
-                    <td data-label="Profit" data-sort-value="{{ p.profit }}"><span class="{{ 'text-success' if p.profit >= 0 else 'text-danger' }}">€{{ "%.2f"|format(p.profit) }}</span></td>
+                    <td data-label="Total cost" data-sort-value="{{ p.total_cost }}">{{ currency_symbol }}{{ "%.2f"|format(p.total_cost) }}</td>
+                    <td data-label="Profit" data-sort-value="{{ p.profit }}"><span class="{{ 'text-success' if p.profit >= 0 else 'text-danger' }}">{{ currency_symbol }}{{ "%.2f"|format(p.profit) }}</span></td>
                     <td data-label="# Units" data-sort-value="{{ p.items|sum(attribute='quantity') }}">{{ p.items|sum(attribute='quantity_sold') }}/{{ p.items|sum(attribute='quantity') }}</td>
                     <td data-label="" class="text-end table-action-cell">
                         <a href="{{ url_for('view_purchase', purchase_id=p.id) }}" class="btn btn-sm btn-outline-primary">View</a>

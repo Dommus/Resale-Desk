@@ -111,7 +111,7 @@
                         {% if item.is_bundle %}
                         <span class="text-muted" title="{{ item.purchase.display_name }}">Bundle: {{ item.purchase.display_name }}</span>
                         {% elif item.unit_cost is not none %}
-                        €{{ "%.2f"|format(item.unit_cost) }}
+                        {{ currency_symbol }}{{ "%.2f"|format(item.unit_cost) }}
                         {% else %}
                         <span class="text-muted">-</span>
                         {% endif %}
@@ -122,7 +122,7 @@
                             <span class="text-muted" title="Calculated on the purchase">Bundle</span>
                         {% elif item.sale %}
                             {% if item.sale.profit is not none %}
-                            <span class="{{ 'text-success' if item.sale.profit >= 0 else 'text-danger' }}">€{{ "%.2f"|format(item.sale.profit) }}</span>
+                            <span class="{{ 'text-success' if item.sale.profit >= 0 else 'text-danger' }}">{{ currency_symbol }}{{ "%.2f"|format(item.sale.profit) }}</span>
                             {% else %}<span class="text-muted">-</span>{% endif %}
                         {% else %}
                             <span class="text-muted">-</span>

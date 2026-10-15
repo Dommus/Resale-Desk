@@ -14,6 +14,31 @@ login_manager.login_message = 'Please log in to continue.'
 login_manager.login_message_category = 'warning'
 
 
+# Currency display preference. Cosmetic only.
+# Keep the symbols synced with the options in templates/user.html.
+CURRENCY_SYMBOLS = {
+    "USD": "$",
+    "EUR": "€",
+    "GBP": "£",
+    "JPY": "¥",
+    "CNY": "CN¥",
+    "CAD": "C$",
+    "HKD": "HK$",
+    "AUD": "A$",
+    "SGD": "S$",
+    "CHF": "CHF",
+}
+DEFAULT_CURRENCY_CODE = "EUR" # Because I'm European :)
+
+def currency_display(request):
+    # Resolve the cosmetic currency sign from the device cookie.
+    # Unknown or missing values fall back to EUR.
+    code = request.cookies.get("resale-desk.currency", DEFAULT_CURRENCY_CODE)
+    if code not in CURRENCY_SYMBOLS:
+        code = DEFAULT_CURRENCY_CODE
+    return CURRENCY_SYMBOLS[code], code
+
+
 # Proccess and format dates
 def parse_date(value, default=None):
     if value is None or str(value).strip() == "":
@@ -95,14 +120,23 @@ def parse_non_negative_quantity(value):
 
     return quantity if quantity >= 0 else None
 
+# Functions created for process_csv but placed outside because could be useful later
+def get_row_clean(row, name):
+    return str(row.get(name) or '').strip()
 
+def normalise_name(value):
+    return " ".join(str(value).strip().casefold().split())
+
+
+##############################################################################
 # Process and save csv files
 # Currently this only works with my own Google Sheet table's layout
 # This sheet contains two tables, one for items and another for bundle info
+##############################################################################
 def process_csv(file, user_id):
     # Decode into text
     stream = StringIO(file.read().decode('utf-8-sig'))
-    reader = csv.DictReader(stream) # Could instead use TextIOWrapper? Need to search which would be better
+    reader = csv.DictReader(stream)
     rows = list(reader)
 
     errors = [] # Store any errors when processing each row
@@ -119,9 +153,6 @@ def process_csv(file, user_id):
         status.value.casefold(): status for status in ItemStatus
     }
 
-    def normalise_name(value):
-        return " ".join(str(value).strip().casefold().split())
-
     # store Shelf objects with normalised name.
     shelves = {
         normalise_name(shelf.name): shelf
@@ -131,8 +162,6 @@ def process_csv(file, user_id):
     def has_extra_columns(row):
         return bool(row.get(None))
 
-    def get_row_clean(row, name):
-        return str(row.get(name) or '').strip()
 
     # Gather bundles on the Bundles table.
     for row_number, row in enumerate(rows, start=2):
@@ -214,6 +243,11 @@ def process_csv(file, user_id):
             continue
 
         sale_price = parse_csv_money(row.get('Sold price'))
+        if item_quantity_sold > 0:
+            if sale_price is None:
+                errors.append(f"Row {row_number}: Sold price is required when quantity is sold.")
+                continue
+
         listing_price_total = parse_csv_money(row.get('Sell price (total)'))
 
 
@@ -236,7 +270,7 @@ def process_csv(file, user_id):
                 user_id=user_id,
                 name=item_name,
                 seller=None,
-                platform=sale_platform,
+                # platform=   CSV currently doesnt have purchase origin
                 date=purchase_date,
                 purchase_type=PurchaseType.SINGLE,
                 purchase_price=item_purchase_price * item_quantity,
@@ -267,7 +301,7 @@ def process_csv(file, user_id):
                     user_id=user_id,
                     name=bundle["name"],
                     seller=None,
-                    platform=sale_platform,
+                    # platform=   CSV currently doesnt have purchase origin
                     date=purchase_date,
                     purchase_type=PurchaseType.BUNDLE,
                     purchase_price=bundle["cost"],
@@ -301,18 +335,22 @@ def process_csv(file, user_id):
         )
 
         # Record listing
-        listing = Listing(
-            platform = sale_platform,
-            listing_url = get_row_clean(row, 'URL'),
-            listing_price = listing_price_total,
-            status = (
-                # ADD: support for ListingStatus REMOVED and EXPIRED
-                ListingStatus.SOLD
-                if item_quantity_sold == item_quantity
-                else ListingStatus.ACTIVE
-            ),
-            item = item,
-        )
+        listing_url = get_row_clean(row, 'URL')
+
+        if listing_url:
+            listing = Listing(
+                platform = sale_platform,
+                listing_url = listing_url,
+                listing_price = listing_price_total,
+                date_listed = purchase_date or date.today(),
+                status = (
+                    # ADD: support for ListingStatus REMOVED and EXPIRED
+                    ListingStatus.SOLD
+                    if item_quantity_sold == item_quantity
+                    else ListingStatus.ACTIVE
+                ),
+                item = item,
+            )
 
         # Record sale
         if item_quantity_sold > 0:

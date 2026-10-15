@@ -22,13 +22,13 @@
     <div class="col-md-3">
         <div class="card card-kpi"><div class="card-body">
             <div class="kpi-label">Total Cost</div>
-            <div class="kpi-value">€{{ "%.2f"|format(purchase.total_cost or 0) }}</div>
+            <div class="kpi-value">{{ currency_symbol }}{{ "%.2f"|format(purchase.total_cost or 0) }}</div>
         </div></div>
     </div>
     <div class="col-md-3">
         <div class="card card-kpi"><div class="card-body">
             <div class="kpi-label">Realized Profit</div>
-            <div class="kpi-value {{ 'text-success' if purchase.profit >= 0 else 'text-danger' }}">€{{ "%.2f"|format(purchase.profit) }}</div>
+            <div class="kpi-value {{ 'text-success' if purchase.profit >= 0 else 'text-danger' }}">{{ currency_symbol }}{{ "%.2f"|format(purchase.profit) }}</div>
         </div></div>
     </div>
 </div>
@@ -63,14 +63,14 @@
                                 <td data-label="Quantity">{{ item.available_quantity }} / {{ item.quantity }}{% if item.quantity_sold %} sold{% endif %}</td>
                                 <td data-label="Category">{{ item.category or "-" }}</td>
                                 {% if purchase.purchase_type.value == 'Single' %}               
-                                <td data-label="Purchase cost">€{{ "%.2f"|format(item.purchase_cost) }}</td>
+                                <td data-label="Purchase cost">{{ currency_symbol }}{{ "%.2f"|format(item.purchase_cost) }}</td>
                                 {% endif %}
                                 <td data-label="Profit">
                                     {% if purchase.purchase_type.value == 'Bundle' %}
                                     <span class="text-muted" title="Calculated on the purchase">Bundle</span>
                                     {% elif item.sale %}
                                     {% if item.sale.profit is not none %}
-                                    <span class="{{ 'text-success' if item.sale.profit >= 0 else 'text-danger' }}">€{{ "%.2f"|format(item.sale.profit) }}</span>
+                                    <span class="{{ 'text-success' if item.sale.profit >= 0 else 'text-danger' }}">{{ currency_symbol }}{{ "%.2f"|format(item.sale.profit) }}</span>
                                     {% else %}<span class="text-muted">-</span>{% endif %}
                                     {% else %}<span class="text-muted">-</span>{% endif %}
                                 </td>
@@ -122,7 +122,7 @@
                     </div>
                     <div class="mb-2">
                         <label class="form-label small">Purchase Name <span class="text-muted">(optional)</span></label>
-                        <input type="text" class="form-control" name="name" value="{{ purchase.name or '' }}" maxlength="128" placeholder="e.g. 50€ Box">
+                        <input type="text" class="form-control" name="name" value="{{ purchase.name or '' }}" maxlength="128" placeholder="e.g. 50{{ currency_symbol }} Box">
                     </div>
                     <div class="mb-2">
                         <label class="form-label small">Seller <span class="text-muted">(optional)</span></label>
@@ -134,11 +134,11 @@
                     </div>
                     <div class="row g-2 mb-2">
                         <div class="col-6">
-                            <label class="form-label small">Purchase Price (€)</label>
+                            <label class="form-label small">Purchase Price ({{ currency_symbol }})</label>
                             <input type="number" step="0.01" min="0" class="form-control" name="purchase_price" value="{{ purchase.purchase_price or 0 }}" required>
                         </div>
                         <div class="col-6">
-                            <label class="form-label small">Shipping Cost (€) <span class="text-muted">(optional)</span></label>
+                            <label class="form-label small">Shipping Cost ({{ currency_symbol }}) <span class="text-muted">(optional)</span></label>
                             <input type="number" step="0.01" min="0" class="form-control" name="shipping_cost" value="{{ purchase.shipping_cost or 0 }}">
                         </div>
                     </div>
@@ -158,11 +158,11 @@
             <div class="card-body">
                 <h6 class="card-title">Cost Summary</h6>
                 <table class="table table-sm mb-0">
-                    <tr><th>Purchase price</th><td class="text-end">€{{ "%.2f"|format(purchase.purchase_price or 0) }}</td></tr>
-                    <tr><th>Shipping</th><td class="text-end">€{{ "%.2f"|format(purchase.shipping_cost or 0) }}</td></tr>
-                    <tr class="fw-bold"><th>Total cost</th><td class="text-end">€{{ "%.2f"|format(purchase.total_cost or 0) }}</td></tr>
-                    <tr><th>Total revenue</th><td class="text-end">€{{ "%.2f"|format(purchase.total_revenue) }}</td></tr>
-                    <tr class="fw-bold"><th>Profit</th><td class="text-end">€{{ "%.2f"|format(purchase.profit) }}</td></tr>
+                    <tr><th>Purchase price</th><td class="text-end">{{ currency_symbol }}{{ "%.2f"|format(purchase.purchase_price or 0) }}</td></tr>
+                    <tr><th>Shipping</th><td class="text-end">{{ currency_symbol }}{{ "%.2f"|format(purchase.shipping_cost or 0) }}</td></tr>
+                    <tr class="fw-bold"><th>Total cost</th><td class="text-end">{{ currency_symbol }}{{ "%.2f"|format(purchase.total_cost or 0) }}</td></tr>
+                    <tr><th>Total revenue</th><td class="text-end">{{ currency_symbol }}{{ "%.2f"|format(purchase.total_revenue) }}</td></tr>
+                    <tr class="fw-bold"><th>Profit</th><td class="text-end">{{ currency_symbol }}{{ "%.2f"|format(purchase.profit) }}</td></tr>
                 </table>
             </div>
         </div>

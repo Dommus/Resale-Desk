@@ -19,7 +19,7 @@
 
 <div class="alert alert-info d-flex justify-content-between align-items-center mb-4" role="status">
     <span>Purchase cost</span>
-    <strong>€{{ "%.2f"|format(purchase.total_cost or 0) }}</strong>
+    <strong>{{ currency_symbol }}{{ "%.2f"|format(purchase.total_cost or 0) }}</strong>
 </div>
 
 <div class="card shadow-sm">
