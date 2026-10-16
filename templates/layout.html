@@ -42,15 +42,44 @@
                 <form class="d-flex flex-grow-1 header-search ms-3 me-3" role="search" action="{{ url_for('inventory') }}" method="get">
                     <input class="form-control form-control-sm" type="search" name="q" placeholder="Search inventory or listing ID" value="{{ request.args.get('q', '') }}">
                 </form>
-                <button class="btn btn-outline-secondary me-2 theme-toggle" type="button" id="themeToggle"
-                        aria-label="Switch to dark mode" aria-pressed="false" title="Switch to dark mode">
-                    <i class="bi bi-moon-stars-fill" aria-hidden="true"></i>
-                    <span class="visually-hidden">Toggle dark mode</span>
-                </button>
-                <a href = "{{ url_for('user') }}">
-                    <span class="navbar-text me-3 small">{{ current_user.username }}</span>
-                </a>
-                <a class="btn btn-outline-light btn-sm" href="{{ url_for('logout') }}">Logout</a>
+                <div class="dropdown header-new-purchase">
+                    <button class="btn btn-primary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="bi bi-plus-lg" aria-hidden="true"></i> New purchase
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end">
+                        <li>
+                            <a class="dropdown-item" href="{{ url_for('new_purchase', purchase_type='single') }}">
+                                <i class="bi bi-box-seam" aria-hidden="true"></i> Single
+                                <small>One item</small>
+                            </a>
+                        </li>
+                        <li>
+                            <a class="dropdown-item" href="{{ url_for('new_purchase', purchase_type='bundle') }}">
+                                <i class="bi bi-boxes" aria-hidden="true"></i> Bundle
+                                <small>Several items, one price</small>
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+                <div class="dropdown header-account">
+                    <button class="btn header-account-toggle dropdown-toggle" type="button" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false">
+                        <span class="header-avatar" aria-hidden="true">{{ current_user.username[:1]|upper }}</span>
+                        <span class="header-account-name">{{ current_user.username }}</span>
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end">
+                        <li class="dropdown-header">Signed in as <strong>{{ current_user.username }}</strong></li>
+                        <li><a class="dropdown-item" href="{{ url_for('user') }}"><i class="bi bi-gear" aria-hidden="true"></i> Account settings</a></li>
+                        <li>
+                            <button class="dropdown-item" type="button" id="themeToggle"
+                                    aria-pressed="false">
+                                <i class="bi bi-moon-stars-fill" aria-hidden="true"></i>
+                                <span id="themeToggleLabel">Dark mode</span>
+                            </button>
+                        </li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item" href="{{ url_for('logout') }}"><i class="bi bi-box-arrow-right" aria-hidden="true"></i> Log out</a></li>
+                    </ul>
+                </div>
             </div>
         </div>
     </nav>
@@ -97,6 +126,10 @@
             themeToggle.setAttribute("aria-label", isDark ? "Switch to light mode" : "Switch to dark mode");
             themeToggle.title = isDark ? "Switch to light mode" : "Switch to dark mode";
             themeToggle.querySelector("i").className = isDark ? "bi bi-sun-fill" : "bi bi-moon-stars-fill";
+            const themeLabel = document.getElementById("themeToggleLabel");
+            if (themeLabel) {
+                themeLabel.textContent = isDark ? "Light mode" : "Dark mode";
+            }
         };
 
         updateThemeToggle();

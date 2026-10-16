@@ -1,28 +1,28 @@
-@import url("https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible+Next:wght@400;500;600;700&family=Atkinson+Hyperlegible+Mono:wght@400;500&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;500;600;700&display=swap");
 
 /* ---------- Tokens: "ledger" palette on top of Bootstrap variables ---------- */
 :root,
 [data-bs-theme="light"] {
     --ink: #1c1d1f;
-    --paper: #fafaf7;
-    --sheet: #ffffff;
-    --rule: #dcdcd6;
-    --rule-strong: #c4c4bc;
-    --head: #f0f0ea;
-    --hover: #f3f6fa;
+    --paper: #e9e8e2;
+    --sheet: #f5f4ef;
+    --rule: #d3d2ca;
+    --rule-strong: #b8b7ad;
+    --head: #e3e2da;
+    --hover: #e6eaee;
     --accent: #1f4e79;
     --accent-rgb: 31, 78, 121;
     --pos: #1e6b3a;
     --neg: #a8322d;
 
-    --bs-body-font-family: "Atkinson Hyperlegible Next", system-ui, -apple-system, "Segoe UI", sans-serif;
-    --bs-font-monospace: "Atkinson Hyperlegible Mono", ui-monospace, Menlo, Consolas, monospace;
-    --bs-body-font-size: 0.9375rem;
+    --bs-body-font-family: "Source Sans 3", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --bs-font-monospace: "Source Sans 3", system-ui, sans-serif;
+    --bs-body-font-size: 1rem;
     --bs-body-line-height: 1.55;
     --bs-body-color: var(--ink);
     --bs-body-bg: var(--sheet);
     --bs-secondary-color: #55564f;
-    --bs-secondary-bg: #ecece6;
+    --bs-secondary-bg: #dddcd3;
     --bs-tertiary-bg: var(--head);
     --bs-border-color: var(--rule);
     --bs-border-color-translucent: var(--rule);
@@ -137,21 +137,6 @@ h5, .h5, .card-title { font-size: 0.95rem; }
     border-bottom-color: var(--accent);
 }
 
-.navbar a:has(> .navbar-text) {
-    color: var(--bs-secondary-color);
-    text-decoration: none;
-}
-
-.navbar .btn-outline-light {
-    color: var(--ink);
-    border-color: var(--rule-strong);
-}
-
-.navbar .btn-outline-light:hover {
-    background: var(--head);
-    color: var(--ink);
-}
-
 .header-search {
     min-width: 12rem;
     max-width: 26rem;
@@ -183,18 +168,6 @@ h5, .h5, .card-title { font-size: 0.95rem; }
     border-radius: 3px;
     border-color: var(--rule-strong);
     color: var(--bs-secondary-color);
-}
-
-body:has(.navbar) .theme-toggle {
-    position: static;
-    top: auto;
-    right: auto;
-}
-
-@media (max-width: 991.98px) {
-    body:has(.navbar) .theme-toggle {
-        right: 4.5rem;
-    }
 }
 
 /* ---------- Flash messages ---------- */
@@ -1077,5 +1050,161 @@ code.inv-code {
 
     .table tr {
         break-inside: avoid;
+    }
+}
+
+/* ---------- Header "New purchase" dropdown ---------- */
+.header-new-purchase .btn {
+    white-space: nowrap;
+}
+
+.header-new-purchase .dropdown-menu {
+    min-width: 14rem;
+    padding: 0.25rem 0;
+    border-color: var(--rule-strong);
+    border-radius: 3px;
+    background: var(--sheet);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.header-new-purchase .dropdown-item {
+    display: grid;
+    grid-template-columns: 1.25rem 1fr;
+    column-gap: 0.5rem;
+    padding: 0.45rem 0.85rem;
+    color: var(--ink);
+    font-weight: 500;
+}
+
+.header-new-purchase .dropdown-item .bi {
+    grid-row: span 2;
+    align-self: center;
+    color: var(--accent);
+}
+
+.header-new-purchase .dropdown-item small {
+    color: var(--bs-secondary-color);
+    font-weight: 400;
+}
+
+.header-new-purchase .dropdown-item:hover,
+.header-new-purchase .dropdown-item:focus {
+    background: var(--hover);
+    color: var(--accent);
+}
+
+@media (max-width: 991.98px) {
+    .header-new-purchase {
+        margin: 0.75rem 0 0.5rem;
+    }
+}
+
+@media print {
+    .header-new-purchase {
+        display: none !important;
+    }
+}
+
+/* ---------- Header right side: primary action | account menu ---------- */
+.header-new-purchase {
+    margin-right: 1rem;
+    padding-right: 1rem;
+    border-right: 1px solid var(--rule);
+}
+
+.header-account-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.2rem 0.5rem 0.2rem 0.25rem;
+    border: 1px solid transparent;
+    color: var(--ink);
+}
+
+.header-account-toggle:hover,
+.header-account-toggle[aria-expanded="true"] {
+    border-color: var(--rule);
+    background: var(--head);
+    color: var(--ink);
+}
+
+.header-avatar {
+    display: inline-grid;
+    place-items: center;
+    width: 1.75rem;
+    height: 1.75rem;
+    border-radius: 50%;
+    background: var(--accent);
+    color: var(--sheet);
+    font-size: 0.8rem;
+    font-weight: 600;
+}
+
+.header-account-name {
+    max-width: 9rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-weight: 500;
+}
+
+.header-account .dropdown-menu {
+    min-width: 13rem;
+    padding: 0.25rem 0;
+    border-color: var(--rule-strong);
+    border-radius: 3px;
+    background: var(--sheet);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.header-account .dropdown-header {
+    padding: 0.45rem 0.85rem;
+    color: var(--bs-secondary-color);
+    font-size: 0.8rem;
+}
+
+.header-account .dropdown-header strong {
+    color: var(--ink);
+}
+
+.header-account .dropdown-item {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.45rem 0.85rem;
+    color: var(--ink);
+}
+
+.header-account .dropdown-item .bi {
+    width: 1rem;
+    color: var(--bs-secondary-color);
+}
+
+.header-account .dropdown-item:hover,
+.header-account .dropdown-item:focus {
+    background: var(--hover);
+    color: var(--accent);
+}
+
+.header-account .dropdown-divider {
+    border-color: var(--rule);
+}
+
+@media (max-width: 991.98px) {
+    .header-new-purchase {
+        margin-right: 0;
+        padding-right: 0;
+        border-right: 0;
+    }
+
+    .header-account {
+        padding: 0.5rem 0;
+        border-top: 1px solid var(--rule);
+    }
+}
+
+@media print {
+    .header-account {
+        display: none !important;
     }
 }
