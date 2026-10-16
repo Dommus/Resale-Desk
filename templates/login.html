@@ -1,23 +1,23 @@
 {% extends "layout.html" %}
-{% block title %}Log In{% endblock %}
+{% block title %}{{ _('Log In') }}{% endblock %}
 {% block content %}
 <div class="card auth-card shadow-sm">
     <div class="card-body p-4">
-        <h3 class="mb-3 text-center"><i class="bi bi-box-seam"></i> Resale Desk</h3>
-        <h5 class="mb-3 text-center text-muted">Log In</h5>
+        <h3 class="mb-3 text-center"><i class="bi bi-box-seam"></i> {{ _('Resale Desk') }}</h3>
+        <h5 class="mb-3 text-center text-muted">{{ _('Log In') }}</h5>
         <form method="post">
             <div class="mb-3">
-                <label class="form-label">Username</label>
+                <label class="form-label">{{ _('Username') }}</label>
                 <input type="text" class="form-control" name="username" required autofocus>
             </div>
             <div class="mb-3">
-                <label class="form-label">Password</label>
+                <label class="form-label">{{ _('Password') }}</label>
                 <input type="password" class="form-control" name="password" required>
             </div>
-            <button type="submit" class="btn btn-primary w-100">Log In</button>
+            <button type="submit" class="btn btn-primary w-100">{{ _('Log In') }}</button>
         </form>
         <p class="text-center mt-3 mb-0 small">
-            No account yet? <a href="{{ url_for('register') }}">Register here</a>
+            {{ _('No account yet?') }} <a href="{{ url_for('register') }}">{{ _('Register here') }}</a>
         </p>
     </div>
 </div>

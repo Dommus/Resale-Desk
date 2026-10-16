@@ -1,30 +1,30 @@
 {% extends "layout.html" %}
-{% block title %}Dashboard{% endblock %}
+{% block title %}{{ _('Dashboard') }}{% endblock %}
 {% block content %}
 
 <div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-4">
     <div>
-        <h3 class="mb-1">Dashboard</h3>
+        <h3 class="mb-1">{{ _('Dashboard') }}</h3>
     </div>
 </div>
 
 <div class="row g-3 mb-4">
     <div class="col-lg-7">
         <section class="dashboard-hero dashboard-profit-{{ 'positive' if total_profit > 0 else 'negative' if total_profit < 0 else 'neutral' }} h-100">
-            <div class="dashboard-eyebrow">Business overview</div>
+            <div class="dashboard-eyebrow">{{ _('Business overview') }}</div>
                 <div class="d-flex flex-wrap justify-content-between align-items-end gap-3">
                 <div>
-                    <div class="dashboard-hero-label">Realized profit</div>
+                    <div class="dashboard-hero-label">{{ _('Realized profit') }}</div>
                     <div class="dashboard-hero-value {{ 'text-success' if total_profit >= 0 else 'text-danger' }}">{{ currency_symbol }}{{ "%.2f"|format(total_profit) }}</div>
-                    <p class="dashboard-hero-note mb-0">Net result after purchase costs, sale fees, refunds and write-offs.</p>
+                    <p class="dashboard-hero-note mb-0">{{ _('Net result after purchase costs, sale fees, refunds and write-offs.') }}</p>
                 </div>
             </div>
             <div class="dashboard-hero-stats">
-                <div><span>Last 30 days profit</span><strong class="{{ 'text-success' if last_month_profit >= 0 else 'text-danger' }}">{{ currency_symbol }}{{ "%.2f"|format(last_month_profit) }}</strong></div>
-                <div><span>Net revenue</span><strong>{{ currency_symbol }}{{ "%.2f"|format(total_revenue) }}</strong></div>
-                <div><span>Total invested</span><strong>{{ currency_symbol }}{{ "%.2f"|format(total_spend) }}</strong></div>
-                <div><span>Recorded sales</span><strong>{{ sales_count }}</strong></div>
-                <div><span>Sell-through rate</span><strong>{{ sell_through_rate }}%</strong></div>
+                <div><span>{{ _('Last 30 days profit') }}</span><strong class="{{ 'text-success' if last_month_profit >= 0 else 'text-danger' }}">{{ currency_symbol }}{{ "%.2f"|format(last_month_profit) }}</strong></div>
+                <div><span>{{ _('Net revenue') }}</span><strong>{{ currency_symbol }}{{ "%.2f"|format(total_revenue) }}</strong></div>
+                <div><span>{{ _('Total invested') }}</span><strong>{{ currency_symbol }}{{ "%.2f"|format(total_spend) }}</strong></div>
+                <div><span>{{ _('Recorded sales') }}</span><strong>{{ sales_count }}</strong></div>
+                <div><span>{{ _('Sell-through rate') }}</span><strong>{{ sell_through_rate }}%</strong></div>
             </div>
         </section>
     </div>
@@ -32,16 +32,16 @@
         <section class="dashboard-panel dashboard-quick-panel h-100">
             <div class="dashboard-panel-heading">
                 <div>
-                    <div class="dashboard-eyebrow">Workspace</div>
-                    <h5 class="mb-0">At a glance</h5>
+                    <div class="dashboard-eyebrow">{{ _('Workspace') }}</div>
+                    <h5 class="mb-0">{{ _('At a glance') }}</h5>
                 </div>
                 <i class="bi bi-grid-1x2" aria-hidden="true"></i>
             </div>
-            <div class="quick-stat"><span>Available inventory</span><strong>{{ available_units }} <small>/ {{ total_units }} units</small></strong></div>
-            <div class="quick-stat"><span>Active listings</span><strong>{{ active_listing_count }} <small>/ {{ listing_count }} total</small></strong></div>
-            <div class="quick-stat"><span>Average sale</span><strong>{{ currency_symbol }}{{ "%.2f"|format(average_sale_value) }}</strong></div>
-            <div class="quick-stat"><span>Purchases</span><strong>{{ purchase_count }}</strong></div>
-            <div class="quick-stat"><span>Write-off losses</span><strong class="{{ 'text-danger' if write_off_loss > 0 }}">{{ currency_symbol }}{{ "%.2f"|format(write_off_loss) }} <small>/ {{ write_off_units }} unit{{ '' if write_off_units == 1 else 's' }}</small></strong></div>
+            <div class="quick-stat"><span>{{ _('Available inventory') }}</span><strong>{{ available_units }} <small>/ {{ total_units }} {{ _('unit') if total_units == 1 else _('units') }}</small></strong></div>
+            <div class="quick-stat"><span>{{ _('Active listings') }}</span><strong>{{ active_listing_count }} <small>/ {{ listing_count }} {{ _('total') }}</small></strong></div>
+            <div class="quick-stat"><span>{{ _('Average sale') }}</span><strong>{{ currency_symbol }}{{ "%.2f"|format(average_sale_value) }}</strong></div>
+            <div class="quick-stat"><span>{{ _('Purchases') }}</span><strong>{{ purchase_count }}</strong></div>
+            <div class="quick-stat"><span>{{ _('Write-off losses') }}</span><strong class="{{ 'text-danger' if write_off_loss > 0 }}">{{ currency_symbol }}{{ "%.2f"|format(write_off_loss) }} <small>/ {{ write_off_units }} {{ _('unit') if write_off_units == 1 else _('units') }}</small></strong></div>
         </section>
     </div>
 </div>
@@ -52,20 +52,20 @@
             <div class="card-body">
                 <div class="d-flex justify-content-between align-items-start mb-3">
                     <div>
-                        <h5 class="card-title mb-1">Sales performance</h5>
-                        <p class="text-muted small mb-0">Inventory mix by current status.</p>
+                        <h5 class="card-title mb-1">{{ _('Sales performance') }}</h5>
+                        <p class="text-muted small mb-0">{{ _('Inventory mix by current status.') }}</p>
                     </div>
                 </div>
-                <div class="progress dashboard-status-progress mb-3" role="img" aria-label="Inventory by status" style="height: 0.9rem;">
+                <div class="progress dashboard-status-progress mb-3" role="img" aria-label="{{ _('Inventory by status') }}" style="height: 0.9rem;">
                     {% for status, quantity in status_summary %}
-                    <span class="dashboard-status-segment status-progress-{{ status.value|replace(' ', '-') }}" style="width: {{ ((quantity / total_units) * 100) if total_units else 0 }}%" title="{{ status.value }}: {{ quantity }}"></span>
+                    <span class="dashboard-status-segment status-progress-{{ status.value|replace(' ', '-') }}" style="width: {{ ((quantity / total_units) * 100) if total_units else 0 }}%" title="{{ _(status.value) }}: {{ quantity }}"></span>
                     {% endfor %}
                 </div>
                 <div class="dashboard-status-legend">
                     {% for status, quantity in status_summary %}
                     <a href="{{ url_for('inventory', status=status.value) }}" class="dashboard-status-legend-item text-decoration-none">
                         <span class="dashboard-status-dot status-progress-{{ status.value|replace(' ', '-') }}"></span>
-                        <span>{{ status.value }}</span>
+                        <span>{{ _(status.value) }}</span>
                         <strong>{{ quantity }} <small>{{ "%.1f"|format((quantity / total_units * 100) if total_units else 0) }}%</small></strong>
                     </a>
                     {% endfor %}
@@ -77,24 +77,24 @@
         <div class="dashboard-panel h-100">
             <div class="card-body">
                 <div class="d-flex justify-content-between align-items-center mb-2">
-                    <h5 class="card-title mb-0">Needs attention</h5>
+                    <h5 class="card-title mb-0">{{ _('Needs attention') }}</h5>
                     {% if attention_count %}<span class="badge bg-warning text-dark">{{ attention_count }}</span>{% endif %}
                 </div>
-                <p class="text-muted small">Available items without an active listing.</p>
+                <p class="text-muted small">{{ _('Available items without an active listing.') }}</p>
                 {% if attention_items %}
                 <ul class="list-group list-group-flush">
                     {% for item in attention_items %}
                     <li class="list-group-item px-0 d-flex justify-content-between align-items-center gap-2">
                         <div class="text-truncate">
                             <a href="{{ url_for('view_item', item_id=item.id) }}" class="text-decoration-none">{{ item.name }}</a>
-                            <small class="d-block text-muted">{{ item.available_quantity }} available</small>
+                            <small class="d-block text-muted">{{ _('{count} available', count=item.available_quantity) }}</small>
                         </div>
-                        <span class="badge status-badge-{{ item.status.value|replace(' ', '-') }}">{{ item.status.value }}</span>
+                        <span class="badge status-badge-{{ item.status.value|replace(' ', '-') }}">{{ _(item.status.value) }}</span>
                     </li>
                     {% endfor %}
                 </ul>
                 {% else %}
-                <div class="alert alert-success mb-0">All available items have an active listing.</div>
+                <div class="alert alert-success mb-0">{{ _('All available items have an active listing.') }}</div>
                 {% endif %}
             </div>
         </div>
@@ -103,18 +103,18 @@
 
 <div class="dashboard-panel mb-4">
     <div class="d-flex justify-content-between align-items-center mb-3">
-        <h5 class="card-title mb-0">Monthly profit</h5>
+        <h5 class="card-title mb-0">{{ _('Monthly profit') }}</h5>
         <form method="get" action="{{ url_for('index') }}">
-            <label for="months" class="visually-hidden">Months to show</label>
+            <label for="months" class="visually-hidden">{{ _('Months to show') }}</label>
             <select id="months" name="months" class="form-select form-select-sm" onchange="this.form.submit()">
                 {% for option in [3, 6, 12] %}
-                <option value="{{ option }}" {{ 'selected' if option == months }}>Last {{ option }} months</option>
+                <option value="{{ option }}" {{ 'selected' if option == months }}>{{ _('Last {count} months', count=option) }}</option>
                 {% endfor %}
             </select>
         </form>
     </div>
     <div class="profit-chart-wrap">
-        <canvas id="profitChart" aria-label="Profit per month" role="img"></canvas>
+        <canvas id="profitChart" aria-label="{{ _('Profit per month') }}" role="img"></canvas>
     </div>
 </div>
 
@@ -123,30 +123,30 @@
         <div class="dashboard-panel h-100">
             <div class="card-body">
                 <div class="d-flex justify-content-between align-items-center mb-2">
-                    <h5 class="card-title mb-0">Recent sales</h5>
-                    <a href="{{ url_for('inventory') }}" class="small">View inventory</a>
+                    <h5 class="card-title mb-0">{{ _('Recent sales') }}</h5>
+                    <a href="{{ url_for('inventory') }}" class="small">{{ _('View inventory') }}</a>
                 </div>
                 {% if recent_sales %}
                 <div class="app-fit-table-wrap">
                     <table class="table table-sm align-middle app-fit-table mb-0">
                         <thead>
-                            <tr><th>Date</th><th>Item</th><th>Quantity</th><th>Net proceeds</th><th>Profit</th></tr>
+                            <tr><th>{{ _('Date') }}</th><th>{{ _('Item') }}</th><th>{{ _('Quantity') }}</th><th>{{ _('Net proceeds') }}</th><th>{{ _('Profit') }}</th></tr>
                         </thead>
                         <tbody>
                             {% for sale in recent_sales %}
                             <tr>
-                                <td data-label="Date">{{ sale.sale_date or '-' }}</td>
-                                <td data-label="Item">
+                                <td data-label="{{ _('Date') }}">{{ sale.sale_date or '-' }}</td>
+                                <td data-label="{{ _('Item') }}">
                                     <a href="{{ url_for('view_item', item_id=sale.item.id) }}">{{ sale.item.name }}</a>
-                                    {% if sale.item.is_bundle %}<small class="d-block text-muted">Bundle sale</small>{% endif %}
+                                    {% if sale.item.is_bundle %}<small class="d-block text-muted">{{ _('Bundle sale') }}</small>{% endif %}
                                 </td>
-                                <td data-label="Quantity">{{ sale.quantity }}</td>
-                                <td data-label="Net proceeds">{{ currency_symbol }}{{ "%.2f"|format(sale.net_proceeds) }}</td>
-                                <td data-label="Profit">
+                                <td data-label="{{ _('Quantity') }}">{{ sale.quantity }}</td>
+                                <td data-label="{{ _('Net proceeds') }}">{{ currency_symbol }}{{ "%.2f"|format(sale.net_proceeds) }}</td>
+                                <td data-label="{{ _('Profit') }}">
                                     {% if sale.profit is not none %}
                                     <span class="{{ 'text-success' if sale.profit >= 0 else 'text-danger' }}">{{ currency_symbol }}{{ "%.2f"|format(sale.profit) }}</span>
                                     {% else %}
-                                    <span class="text-muted">Bundle-level</span>
+                                    <span class="text-muted">{{ _('Bundle-level') }}</span>
                                     {% endif %}
                                 </td>
                             </tr>
@@ -155,7 +155,7 @@
                     </table>
                 </div>
                 {% else %}
-                <p class="text-muted mb-0">No sales recorded yet.</p>
+                <p class="text-muted mb-0">{{ _('No sales recorded yet.') }}</p>
                 {% endif %}
             </div>
         </div>
@@ -165,31 +165,31 @@
 <div class="dashboard-panel">
     <div class="card-body">
         <div class="d-flex justify-content-between align-items-center mb-2">
-            <h5 class="card-title mb-0">Top purchases by profit</h5>
-            <a href="{{ url_for('purchases') }}" class="small">View all purchases</a>
+            <h5 class="card-title mb-0">{{ _('Top purchases by profit') }}</h5>
+            <a href="{{ url_for('purchases') }}" class="small">{{ _('View all purchases') }}</a>
         </div>
         {% if top_purchases %}
         <div class="app-fit-table-wrap">
             <table class="table table-sm align-middle app-fit-table mb-0">
                 <thead>
-                    <tr><th>Purchase</th><th>Type</th><th>Units sold</th><th>Total cost</th><th>Revenue</th><th>Profit</th></tr>
+                    <tr><th>{{ _('Purchase') }}</th><th>{{ _('Type') }}</th><th>{{ _('Units sold') }}</th><th>{{ _('Total cost') }}</th><th>{{ _('Revenue') }}</th><th>{{ _('Profit') }}</th></tr>
                 </thead>
                 <tbody>
                     {% for purchase in top_purchases %}
                     <tr>
-                        <td data-label="Purchase"><a href="{{ url_for('view_purchase', purchase_id=purchase.id) }}">{{ purchase.display_name }}</a></td>
-                        <td data-label="Type"><span class="badge purchase-type-badge-{{ purchase.purchase_type.value }}">{{ purchase.purchase_type.value }}</span></td>
-                        <td data-label="Units sold">{{ purchase.items|sum(attribute='quantity_sold') }}/{{ purchase.items|sum(attribute='quantity') }}</td>
-                        <td data-label="Total cost">{{ currency_symbol }}{{ "%.2f"|format(purchase.total_cost) }}</td>
-                        <td data-label="Revenue">{{ currency_symbol }}{{ "%.2f"|format(purchase.total_revenue) }}</td>
-                        <td data-label="Profit"><span class="{{ 'text-success' if purchase.profit >= 0 else 'text-danger' }}">{{ currency_symbol }}{{ "%.2f"|format(purchase.profit) }}</span></td>
+                        <td data-label="{{ _('Purchase') }}"><a href="{{ url_for('view_purchase', purchase_id=purchase.id) }}">{{ purchase.display_name }}</a></td>
+                        <td data-label="{{ _('Type') }}"><span class="badge purchase-type-badge-{{ purchase.purchase_type.value }}">{{ _(purchase.purchase_type.value) }}</span></td>
+                        <td data-label="{{ _('Units sold') }}">{{ purchase.items|sum(attribute='quantity_sold') }}/{{ purchase.items|sum(attribute='quantity') }}</td>
+                        <td data-label="{{ _('Total cost') }}">{{ currency_symbol }}{{ "%.2f"|format(purchase.total_cost) }}</td>
+                        <td data-label="{{ _('Revenue') }}">{{ currency_symbol }}{{ "%.2f"|format(purchase.total_revenue) }}</td>
+                        <td data-label="{{ _('Profit') }}"><span class="{{ 'text-success' if purchase.profit >= 0 else 'text-danger' }}">{{ currency_symbol }}{{ "%.2f"|format(purchase.profit) }}</span></td>
                     </tr>
                     {% endfor %}
                 </tbody>
             </table>
         </div>
         {% else %}
-        <p class="text-muted mb-0">No purchases recorded yet.</p>
+        <p class="text-muted mb-0">{{ _('No purchases recorded yet.') }}</p>
         {% endif %}
     </div>
 </div>
@@ -208,7 +208,7 @@
         data: {
             labels: labels,
             datasets: [{
-                label: "Profit",
+                label: {{ _('Profit')|tojson }},
                 data: values,
                 // Green bars for profit, red bars for loss
                 backgroundColor: values.map(v => v >= 0 ? styles.getPropertyValue("--pos") : styles.getPropertyValue("--neg")),

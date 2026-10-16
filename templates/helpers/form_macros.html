@@ -5,7 +5,7 @@
                value="{{ value or '' }}" list="{{ option_id }}" data-options="{{ option_id }}"
                {% if placeholder %}placeholder="{{ placeholder }}"{% endif %}>
         <button type="button" class="btn btn-outline-secondary suggestion-toggle"
-                aria-label="Show previous values">&#9662;</button>
+                aria-label="{{ _('Show previous values') }}">&#9662;</button>
     </div>
     <div class="dropdown-menu w-100 suggestion-menu"></div>
 </div>

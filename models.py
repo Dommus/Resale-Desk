@@ -8,6 +8,7 @@ from datetime import date as datetime_date, datetime
 from enum import Enum
 from typing import List, Optional
 from decimal import Decimal
+from translations import _
 
 
 # Using SQLAlchemy as an ORM (Object Relational Mapping) to interact with the database by writing  Python instead of SQL queries.
@@ -132,7 +133,7 @@ class Purchase(db.Model):
     
     @property
     def display_name(self) -> str:
-        return self.name or self.seller or self.platform or f"Purchase - {self.date or 'Unassigned date'}"
+        return self.name or self.seller or self.platform or _("Purchase - {date}", date=self.date or _("Unassigned date"))
 
 class Item(db.Model):
     __tablename__ = "items"
