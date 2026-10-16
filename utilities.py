@@ -239,9 +239,10 @@ def process_csv(file, user_id):
             errors.append(f"Row {row_number}: Invalid sale date.")
             continue
 
-        sale_platform = get_row_clean(row, 'Sales platform')
-        if not sale_platform:
-            errors.append(f"Row {row_number}: Sales platform is required for a Listing.")
+        raw_refund_amount = get_row_clean(row, "Refund amount")
+        refund_amount = parse_csv_money(raw_refund_amount) if raw_refund_amount else Decimal("0.00")
+        if refund_amount is None:
+            errors.append(f"Row {row_number}: Invalid refund amount.")
             continue
 
         sale_price = parse_csv_money(row.get('Sold price'))
@@ -332,14 +333,28 @@ def process_csv(file, user_id):
             name=item_name,
             quantity=item_quantity,
             quantity_sold=item_quantity_sold,
+            # A written-off item loses all of its unsold units
+            # Could expand this later too be able to discriminate how many were refunded
+            quantity_written_off=(
+                item_quantity - item_quantity_sold
+                if item_status == ItemStatus.WRITTEN_OFF
+                else 0
+            ),
             status=item_status,
             notes=get_row_clean(row, 'Notes') or None,
         )
 
         # Record listing
+        listing = None
         listing_url = get_row_clean(row, 'URL')
 
         if listing_url:
+
+            sale_platform = get_row_clean(row, 'Sales platform')
+            if not sale_platform:
+                errors.append(f"Row {row_number}: Sales platform is required for a Listing.")
+                continue
+
             listing = Listing(
                 platform = sale_platform,
                 listing_url = listing_url,
@@ -360,12 +375,18 @@ def process_csv(file, user_id):
                 sale_date=sale_date,
                 sale_price=sale_price,
                 quantity=item_quantity_sold,
+                refund_amount=(
+                    (refund_amount if raw_refund_amount else sale_price)
+                    if item_status == ItemStatus.WRITTEN_OFF
+                    else Decimal("0.00")
+                ),
                 item = item,
                 listing = listing,
             )
 
         db.session.add(item)
-        db.session.add(listing)
+        if listing is not None:
+            db.session.add(listing)
         if item_quantity_sold > 0:
             db.session.add(sale)
 

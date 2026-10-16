@@ -142,11 +142,12 @@ def create_purchase_item(purchase, user_id, name, category=None, brand=None, con
 
 
 def refresh_item_status(item):
-    #Keep the item status consistent with its sold and remaining quantity
-    if item.quantity_sold >= item.quantity:
-        item.quantity_sold = item.quantity
-        item.status = ItemStatus.SOLD
-    elif item.status == ItemStatus.SOLD:
+    # Keep the item status consistent with its sold, written-off and remaining quantity
+    if item.quantity_sold + item.quantity_written_off > item.quantity:
+        item.quantity_sold = max(item.quantity - item.quantity_written_off, 0)
+    if item.available_quantity == 0:
+        item.status = ItemStatus.WRITTEN_OFF if item.is_written_off else ItemStatus.SOLD
+    elif item.status in (ItemStatus.SOLD, ItemStatus.WRITTEN_OFF):
         has_active_listing = any(l.status == ListingStatus.ACTIVE for l in item.listings)
         item.status = ItemStatus.ON_SALE if has_active_listing else ItemStatus.IN_STORAGE
 
@@ -188,14 +189,22 @@ def index():
     total_spend = sum((purchase.total_cost for purchase in purchases), Decimal("0.00"))
     total_revenue = sum((purchase.total_revenue for purchase in purchases), Decimal("0.00"))
     total_profit = sum((purchase.profit for purchase in purchases), Decimal("0.00"))
+    written_off_items = [item for item in items if item.is_written_off]
+    write_off_units = sum(item.quantity_written_off for item in written_off_items)
+    # Bundle items have no item cost; their loss is already in the bundle profit
+    write_off_loss = sum(
+        (item.write_off_loss for item in written_off_items if item.write_off_loss is not None),
+        Decimal("0.00"),
+    )
+    kept_sales = [sale for sale in sales if not sale.item_returned]
     sell_through_rate = (
         round((sold_units / total_units) * 100, 1)
         if total_units
         else Decimal("0.0")
     )
     average_sale_value = (
-        round(total_revenue / len(sales), 2)
-        if sales
+        round(sum((sale.net_proceeds for sale in kept_sales), Decimal("0.00")) / len(kept_sales), 2)
+        if kept_sales
         else Decimal("0.00")
     )
 
@@ -275,7 +284,10 @@ def index():
         available_units=available_units,
         sold_units=sold_units,
         purchase_count=len(purchases),
-        sales_count=len(sales),
+        sales_count=len(kept_sales),
+        write_off_count=len(written_off_items),
+        write_off_units=write_off_units,
+        write_off_loss=round(write_off_loss, 2),
         total_spend=round(total_spend, 2),
         total_revenue=round(total_revenue, 2),
         total_profit=round(total_profit, 2),
@@ -342,8 +354,8 @@ def inventory():
     if sort == "highest_profit":
         results.sort(
             key=lambda i: (
-                i.sale.profit
-                if i.sale and i.sale.profit is not None
+                i.realized_profit
+                if i.realized_profit is not None
                 else Decimal("-Infinity")
             ),
             reverse=True,
@@ -351,8 +363,8 @@ def inventory():
     elif sort == "lowest_profit":
         results.sort(
             key=lambda i: (
-                i.sale.profit
-                if i.sale and i.sale.profit is not None
+                i.realized_profit
+                if i.realized_profit is not None
                 else Decimal("Infinity")
             )
         )
@@ -402,8 +414,9 @@ def edit_item(item_id):
     item.name = request.form.get('name', item.name).strip()
     raw_quantity = request.form.get('quantity')
     quantity = item.quantity if raw_quantity is None else parse_quantity(raw_quantity)
-    if quantity is None or quantity < item.quantity_sold:
-        flash(f'Quantity must be a whole number of at least {item.quantity_sold}.', 'danger')
+    minimum_quantity = max(item.quantity_sold + item.quantity_written_off, 1)
+    if quantity is None or quantity < minimum_quantity:
+        flash(f'Quantity must be a whole number of at least {minimum_quantity}.', 'danger')
         return redirect(url_for('view_item', item_id=item.id))
     item.quantity = quantity
     item.category = request.form.get('category', '').strip() or None
@@ -413,17 +426,21 @@ def edit_item(item_id):
     item.shelf_id = int(shelf_id) if shelf_id else None
     status = request.form.get('status')
 
-    # Change item status
-    try:
-        # Item should only being set as Sold when recording a sale
-        new_status = ItemStatus(status)
+    # Change item status. The field is absent when the status is automatic.
+    if status is not None:
+        try:
+            new_status = ItemStatus(status)
+        except ValueError:
+            flash(f"Invalid status: {status!r}", "danger")
+            return redirect(url_for('view_item', item_id=item.id))
+        # Sold and Written Off only come from recording a sale or a write-off
         if new_status == ItemStatus.SOLD:
             flash('Items are marked Sold automatically when a sale is recorded.', 'warning')
             return redirect(url_for('view_item', item_id=item.id))
+        if new_status == ItemStatus.WRITTEN_OFF:
+            flash('Use "Write off" on the item to record it as a loss.', 'warning')
+            return redirect(url_for('view_item', item_id=item.id))
         item.status = new_status
-    except (ValueError, TypeError):
-        flash(f"Invalid status: {status!r}", "error")
-        pass
 
     item.notes = request.form.get('notes', '').strip()
     refresh_item_status(item)
@@ -917,7 +934,7 @@ def new_sale(item_id):
                 return render_template("sales/sales_new.html", item=item)
 
         sale = Sale(
-            item_id=item.id,
+            item=item,
             listing_id=listing.id if listing else None,
             sale_date=parse_date(request.form.get("sale_date")),
             sale_price=parse_decimal(request.form.get("sale_price")),
@@ -929,7 +946,7 @@ def new_sale(item_id):
             notes=request.form.get("notes", "").strip(),
         )
         db.session.add(sale)
-        item.quantity_sold = sale.quantity
+        item.quantity_sold += sale.quantity
         refresh_item_status(item)
         if listing:
             listing.status = ListingStatus.SOLD if item.available_quantity == 0 else ListingStatus.ACTIVE
@@ -974,11 +991,22 @@ def edit_sale(sale_id):
         sale_quantity = sale.quantity
     else:
         sale_quantity = parse_quantity(raw_quantity)
-    if sale_quantity is None or sale_quantity > item.quantity:
-        flash(f"Sale quantity must be between 1 and {item.quantity}.", "danger")
+    # Units held by this sale plus the ones still available
+    if sale.item_returned:
+        max_quantity = sale.quantity
+    else:
+        max_quantity = item.available_quantity + sale.quantity
+    if sale_quantity is None or sale_quantity > max_quantity:
+        flash(f"Sale quantity must be between 1 and {max_quantity}.", "danger")
         return redirect(url_for("view_item", item_id=item.id))
+    if sale.item_returned:
+        # A returned sale doesn't hold any stock, so it can't change quantities
+        sale.quantity = sale_quantity
+        db.session.commit()
+        flash("Sale updated.", "success")
+        return redirect(url_for("view_item", item_id=item.id))
+    item.quantity_sold += sale_quantity - sale.quantity
     sale.quantity = sale_quantity
-    item.quantity_sold = sale.quantity
     refresh_item_status(item)
 
     for listing in item.listings:
@@ -989,6 +1017,68 @@ def edit_sale(sale_id):
 
     db.session.commit()
     flash("Sale updated.", "success")
+    return redirect(url_for("view_item", item_id=item.id))
+
+
+@app.route("/sales/<int:sale_id>/refund", methods=["POST"])
+@login_required
+def refund_sale(sale_id):
+    sale = Sale.query.join(Item).filter(Sale.id == sale_id, Item.user_id == current_user.id).first_or_404()
+    item = sale.item
+
+    refund_amount = parse_decimal(request.form.get("refund_amount"))
+    if refund_amount < 0:
+        flash("Refund amount can't be negative.", "danger")
+        return redirect(url_for("view_item", item_id=item.id))
+    item_returned = request.form.get("item_returned") == "on"
+
+    if item_returned and not sale.item_returned:
+        # The units come back into stock and can be sold again
+        item.quantity_sold = max(item.quantity_sold - sale.quantity, 0)
+        if sale.listing and sale.listing.status == ListingStatus.SOLD:
+            sale.listing.status = ListingStatus.REMOVED
+    elif sale.item_returned and not item_returned:
+        # Undo return
+        if item.sale is not None or item.available_quantity < sale.quantity:
+            flash("The returned units have been sold or written off since, so this return can't be undone.", "danger")
+            return redirect(url_for("view_item", item_id=item.id))
+        item.quantity_sold += sale.quantity
+
+    sale.refund_amount = refund_amount
+    sale.item_returned = item_returned
+    refresh_item_status(item)
+    db.session.commit()
+    flash("Refund saved." if sale.is_refunded else "Refund removed.", "success")
+    return redirect(url_for("view_item", item_id=item.id))
+
+
+@app.route("/items/<int:item_id>/write-off", methods=["POST"])
+@login_required
+def write_off_item(item_id):
+    item = Item.query.filter_by(id=item_id, user_id=current_user.id).first_or_404()
+    if item.available_quantity <= 0:
+        flash("There are no available units to write off.", "warning")
+        return redirect(url_for("view_item", item_id=item.id))
+
+    # Whole item only: every remaining unit is written off
+    item.quantity_written_off += item.available_quantity
+    for listing in item.listings:
+        if listing.status == ListingStatus.ACTIVE:
+            listing.status = ListingStatus.REMOVED
+    refresh_item_status(item)
+    db.session.commit()
+    flash("Item written off. Its cost now counts as a loss.", "success")
+    return redirect(url_for("view_item", item_id=item.id))
+
+
+@app.route("/items/<int:item_id>/write-off/undo", methods=["POST"])
+@login_required
+def undo_write_off(item_id):
+    item = Item.query.filter_by(id=item_id, user_id=current_user.id).first_or_404()
+    item.quantity_written_off = 0
+    refresh_item_status(item)
+    db.session.commit()
+    flash("Write-off undone. The units are back in inventory.", "success")
     return redirect(url_for("view_item", item_id=item.id))
 
 
@@ -1138,7 +1228,7 @@ def export_csv():
     writer.writerow([
         "Bundle", "Quantity", "Sold Quantity", "Item", "Status",
         "Sales platform", "Bought date", "Sold date", "Buy price (unit)",
-        "Sell price (total)", "Sold price", "Profit", "Notes", "",
+        "Sell price (total)", "Sold price", "Profit", "Refund amount", "Notes", "",
         "Bundle Name", "Bundle Cost",
     ])
 
@@ -1164,7 +1254,8 @@ def export_csv():
             buy_price_unit,
             csv_money(listing.listing_price if listing else None),
             csv_money(item.sale.sale_price if item.sale else None),
-            csv_money(item.sale.profit if item.sale and item.sale.profit is not None else None),
+            csv_money(item.realized_profit),
+            csv_money(item.sale.refund_amount if item.sale and item.sale.refund_amount else None),
             item.notes or "",
             "",
             "",
@@ -1181,7 +1272,7 @@ def export_csv():
             continue
         exported_bundles.add(bundle_key)
         writer.writerow([
-            "", "", "", "", "", "", "", "", "", "", "", "", "", "",
+            "", "", "", "", "", "", "", "", "", "", "", "", "", "", "",
             bundle_name,
             csv_money(purchase.total_cost),
         ])

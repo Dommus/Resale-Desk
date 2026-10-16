@@ -16,7 +16,7 @@
                 <div>
                     <div class="dashboard-hero-label">Realized profit</div>
                     <div class="dashboard-hero-value {{ 'text-success' if total_profit >= 0 else 'text-danger' }}">{{ currency_symbol }}{{ "%.2f"|format(total_profit) }}</div>
-                    <p class="dashboard-hero-note mb-0">Net result after purchase costs and sale fees.</p>
+                    <p class="dashboard-hero-note mb-0">Net result after purchase costs, sale fees, refunds and write-offs.</p>
                 </div>
             </div>
             <div class="dashboard-hero-stats">
@@ -41,6 +41,7 @@
             <div class="quick-stat"><span>Active listings</span><strong>{{ active_listing_count }} <small>/ {{ listing_count }} total</small></strong></div>
             <div class="quick-stat"><span>Average sale</span><strong>{{ currency_symbol }}{{ "%.2f"|format(average_sale_value) }}</strong></div>
             <div class="quick-stat"><span>Purchases</span><strong>{{ purchase_count }}</strong></div>
+            <div class="quick-stat"><span>Write-off losses</span><strong class="{{ 'text-danger' if write_off_loss > 0 }}">{{ currency_symbol }}{{ "%.2f"|format(write_off_loss) }} <small>/ {{ write_off_units }} unit{{ '' if write_off_units == 1 else 's' }}</small></strong></div>
         </section>
     </div>
 </div>

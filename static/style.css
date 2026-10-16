@@ -524,18 +524,16 @@ h5, .h5, .card-title { font-size: 0.95rem; }
     --st-storage: #7a7a72;
     --st-reserved: #c0782a;
     --st-sold: #2e7d4f;
-    --st-notsold: #a3a39a;
     --st-waiting: #7357a6;
-    --st-refunded: #b5443e;
+    --st-writtenoff: #b5443e;
 }
 
 .status-progress-On-Sale { background-color: var(--st-sale); }
 .status-progress-In-Storage { background-color: var(--st-storage); }
 .status-progress-Reserved { background-color: var(--st-reserved); }
 .status-progress-Sold { background-color: var(--st-sold); }
-.status-progress-Not-Sold { background-color: var(--st-notsold); }
 .status-progress-Waiting { background-color: var(--st-waiting); }
-.status-progress-Refunded { background-color: var(--st-refunded); }
+.status-progress-Written-Off { background-color: var(--st-writtenoff); }
 
 [class*="status-badge-"],
 [class*="purchase-type-badge-"] {
@@ -564,9 +562,8 @@ h5, .h5, .card-title { font-size: 0.95rem; }
 .status-badge-In-Storage { --chip: var(--st-storage); }
 .status-badge-Reserved { --chip: var(--st-reserved); }
 .status-badge-Sold { --chip: var(--st-sold); }
-.status-badge-Not-Sold { --chip: var(--st-notsold); }
 .status-badge-Waiting { --chip: var(--st-waiting); }
-.status-badge-Refunded { --chip: var(--st-refunded); }
+.status-badge-Written-Off { --chip: var(--st-writtenoff); }
 .purchase-type-badge-Single { --chip: var(--st-sold); }
 .purchase-type-badge-Bundle { --chip: var(--st-waiting); }
 
