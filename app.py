@@ -1,5 +1,5 @@
 import os, csv
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 from urllib.parse import urlparse
 
 # Imports from local python files
@@ -8,7 +8,7 @@ from utilities import login_manager, parse_date, parse_decimal, parse_quantity, 
 
 from flask import Flask, Response, render_template, request, redirect, url_for, flash
 from flask_login import login_user, logout_user, login_required, current_user
-from sqlalchemy import or_, cast, String, inspect, text
+from sqlalchemy import or_, cast, String
 from werkzeug.security import generate_password_hash, check_password_hash
 
 from decimal import Decimal
@@ -68,58 +68,6 @@ def create_database():
     with app.app_context():
         db.create_all()
         create_admin_account()
-
-def ensure_listing_id_nullable():
-    """Allow older SQLite databases to store listings without a platform ID."""
-    if db.engine.dialect.name != "sqlite":
-        return
-
-    inspector = inspect(db.engine)
-    if "listings" not in inspector.get_table_names():
-        return
-
-    listing_id_column = next(
-        (column for column in inspector.get_columns("listings") if column["name"] == "listing_id"),
-        None,
-    )
-    if listing_id_column is None or listing_id_column["nullable"]:
-        return
-
-    connection = db.engine.raw_connection()
-    try:
-        connection.execute("PRAGMA foreign_keys=OFF")
-        connection.execute("""
-            CREATE TABLE listings_new (
-                id INTEGER NOT NULL,
-                item_id INTEGER NOT NULL,
-                platform VARCHAR(80) NOT NULL,
-                listing_id VARCHAR(120),
-                listing_url VARCHAR(500),
-                listing_price NUMERIC(12, 2),
-                date_listed DATE NOT NULL,
-                status VARCHAR(7) NOT NULL,
-                PRIMARY KEY (id),
-                FOREIGN KEY(item_id) REFERENCES items (id)
-            )
-        """)
-        connection.execute("""
-            INSERT INTO listings_new
-                (id, item_id, platform, listing_id, listing_url, listing_price,
-                 date_listed, status)
-            SELECT
-                id, item_id, platform, listing_id, listing_url, listing_price,
-                date_listed, status
-            FROM listings
-        """)
-        connection.execute("DROP TABLE listings")
-        connection.execute("ALTER TABLE listings_new RENAME TO listings")
-        connection.commit()
-    except Exception:
-        connection.rollback()
-        raise
-    finally:
-        connection.execute("PRAGMA foreign_keys=ON")
-        connection.close()
 
 
 create_database()
@@ -285,8 +233,44 @@ def index():
         reverse=True,
     )[:5]
 
+    # Profit from sales in the last 30 days
+    month_ago = date.today() - timedelta(days=30)
+    last_month_profit = Decimal("0.00")
+    for sale in sales:
+        if sale.sale_date and sale.sale_date >= month_ago and sale.profit is not None:
+            last_month_profit += sale.profit
+
+    # Profit per month for the chart (the user picks how many months)
+    months = request.args.get("months", 6, type=int)
+    if months not in (3, 6, 12):
+        months = 6
+
+    # Build the list of month labels, oldest first, e.g. ["2026-05", "2026-06", ...]
+    year = date.today().year
+    month = date.today().month
+    chart_labels = []
+    for i in range(months):
+        chart_labels.insert(0, f"{year}-{month:02d}")
+        month -= 1
+        if month == 0:
+            month = 12
+            year -= 1
+
+    # Add up the profit of each sale into its month
+    monthly_profit = {label: 0 for label in chart_labels}
+    for sale in sales:
+        if sale.sale_date and sale.profit is not None:
+            label = sale.sale_date.strftime("%Y-%m")
+            if label in monthly_profit:
+                monthly_profit[label] += float(sale.profit)
+    chart_values = [round(monthly_profit[label], 2) for label in chart_labels]
+
     return render_template(
         'index.html',
+        last_month_profit=round(last_month_profit, 2),
+        months=months,
+        chart_labels=chart_labels,
+        chart_values=chart_values,
         total_units=total_units,
         available_units=available_units,
         sold_units=sold_units,

@@ -20,6 +20,7 @@
                 </div>
             </div>
             <div class="dashboard-hero-stats">
+                <div><span>Last 30 days profit</span><strong class="{{ 'text-success' if last_month_profit >= 0 else 'text-danger' }}">{{ currency_symbol }}{{ "%.2f"|format(last_month_profit) }}</strong></div>
                 <div><span>Net revenue</span><strong>{{ currency_symbol }}{{ "%.2f"|format(total_revenue) }}</strong></div>
                 <div><span>Total invested</span><strong>{{ currency_symbol }}{{ "%.2f"|format(total_spend) }}</strong></div>
                 <div><span>Recorded sales</span><strong>{{ sales_count }}</strong></div>
@@ -99,6 +100,23 @@
     </div>
 </div>
 
+<div class="dashboard-panel mb-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h5 class="card-title mb-0">Monthly profit</h5>
+        <form method="get" action="{{ url_for('index') }}">
+            <label for="months" class="visually-hidden">Months to show</label>
+            <select id="months" name="months" class="form-select form-select-sm" onchange="this.form.submit()">
+                {% for option in [3, 6, 12] %}
+                <option value="{{ option }}" {{ 'selected' if option == months }}>Last {{ option }} months</option>
+                {% endfor %}
+            </select>
+        </form>
+    </div>
+    <div class="profit-chart-wrap">
+        <canvas id="profitChart" aria-label="Profit per month" role="img"></canvas>
+    </div>
+</div>
+
 <div class="row g-4 mb-4">
     <div class="col-12">
         <div class="dashboard-panel h-100">
@@ -116,7 +134,7 @@
                         <tbody>
                             {% for sale in recent_sales %}
                             <tr>
-                                <td data-label="Date">{{ sale.sale_date }}</td>
+                                <td data-label="Date">{{ sale.sale_date or '-' }}</td>
                                 <td data-label="Item">
                                     <a href="{{ url_for('view_item', item_id=sale.item.id) }}">{{ sale.item.name }}</a>
                                     {% if sale.item.is_bundle %}<small class="d-block text-muted">Bundle sale</small>{% endif %}
@@ -175,4 +193,34 @@
     </div>
 </div>
 
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script>
+    const labels = {{ chart_labels|tojson }};
+    const values = {{ chart_values|tojson }};
+    const styles = getComputedStyle(document.documentElement);
+
+    new Chart(document.getElementById("profitChart"), {
+        type: "bar",
+        data: {
+            labels: labels,
+            datasets: [{
+                label: "Profit",
+                data: values,
+                // Green bars for profit, red bars for loss
+                backgroundColor: values.map(v => v >= 0 ? styles.getPropertyValue("--pos") : styles.getPropertyValue("--neg")),
+                borderRadius: 2
+            }]
+        },
+        options: {
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: {
+                y: { ticks: { callback: value => "{{ currency_symbol }}" + value } }
+            }
+        }
+    });
+</script>
 {% endblock %}

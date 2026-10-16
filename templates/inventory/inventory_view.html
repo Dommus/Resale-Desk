@@ -178,7 +178,7 @@
                         {% endif %}
                         <div class="col-md-6">
                             <label class="form-label small">Sale Date</label>
-                            <input type="date" class="form-control" name="sale_date" value="{{ item.sale.sale_date }}" required>
+                            <input type="date" class="form-control" name="sale_date" value="{{ item.sale.sale_date or '' }}" required>
                         </div>
                         <div class="col-md-4">
                             <label class="form-label small">Quantity Sold</label>

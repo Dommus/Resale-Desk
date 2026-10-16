@@ -241,7 +241,8 @@ class Sale(db.Model):
     item_id: Mapped[int] = mapped_column(ForeignKey("items.id"), nullable=False)
     listing_id: Mapped[Optional[int]] = mapped_column(ForeignKey("listings.id"))
 
-    sale_date: Mapped[datetime_date] = mapped_column(default=datetime_date.today)
+    # Left empty when the sale date is unknown (e.g. a CSV row without "Sold date")
+    sale_date: Mapped[Optional[datetime_date]] = mapped_column()
     sale_price: Mapped[Decimal] = mapped_column(MONEY, default=Decimal("0.00"))
     shipping_collected: Mapped[Decimal] = mapped_column(MONEY, default=Decimal("0.00"))
     shipping_paid: Mapped[Decimal] = mapped_column(MONEY, default=Decimal("0.00"))
