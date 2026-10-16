@@ -1,4 +1,4 @@
-@import url("https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible+Next:wght@400;500;600;700&family=Atkinson+Hyperlegible+Mono:wght@400;500&display=swap");
 
 /* ---------- Tokens: "ledger" palette on top of Bootstrap variables ---------- */
 :root,
@@ -15,12 +15,13 @@
     --pos: #1e6b3a;
     --neg: #a8322d;
 
-    --bs-body-font-family: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
-    --bs-font-monospace: "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
-    --bs-body-font-size: 0.875rem;
+    --bs-body-font-family: "Atkinson Hyperlegible Next", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --bs-font-monospace: "Atkinson Hyperlegible Mono", ui-monospace, Menlo, Consolas, monospace;
+    --bs-body-font-size: 0.9375rem;
+    --bs-body-line-height: 1.55;
     --bs-body-color: var(--ink);
     --bs-body-bg: var(--sheet);
-    --bs-secondary-color: #6b6c68;
+    --bs-secondary-color: #55564f;
     --bs-secondary-bg: #ecece6;
     --bs-tertiary-bg: var(--head);
     --bs-border-color: var(--rule);
@@ -127,6 +128,12 @@ h5, .h5, .card-title { font-size: 0.95rem; }
 }
 
 .navbar .nav-link:hover {
+    border-bottom-color: var(--rule-strong);
+}
+
+.navbar .nav-link.active {
+    color: var(--accent) !important;
+    font-weight: 600;
     border-bottom-color: var(--accent);
 }
 
@@ -330,7 +337,7 @@ body:has(.navbar) .theme-toggle {
 }
 
 .card-kpi .kpi-label {
-    font-size: 0.75rem;
+    font-size: 0.8rem;
     font-weight: 500;
     color: var(--bs-secondary-color);
 }
@@ -403,7 +410,7 @@ body:has(.navbar) .theme-toggle {
 .dashboard-hero-stats span,
 .quick-stat span {
     color: var(--bs-secondary-color);
-    font-size: 0.75rem;
+    font-size: 0.8rem;
 }
 
 .dashboard-hero-stats strong,
@@ -453,7 +460,7 @@ body:has(.navbar) .theme-toggle {
 .quick-stat small,
 .dashboard-status-legend-item strong small {
     color: var(--bs-secondary-color);
-    font-size: 0.72rem;
+    font-size: 0.78rem;
     font-weight: 400;
 }
 
@@ -568,7 +575,7 @@ body:has(.navbar) .theme-toggle {
     border-radius: 2px;
     background: color-mix(in srgb, var(--chip) 10%, transparent);
     color: color-mix(in srgb, var(--chip) 80%, var(--ink));
-    font-size: 0.75rem;
+    font-size: 0.8rem;
     font-weight: 500;
 }
 
@@ -608,7 +615,7 @@ code.inv-code {
     --bs-table-hover-color: var(--ink);
     --bs-table-striped-bg: var(--paper);
     margin-bottom: 0;
-    font-size: 0.85rem;
+    font-size: 0.9rem;
     border: 1px solid var(--rule);
 }
 
@@ -627,7 +634,7 @@ code.inv-code {
     z-index: 2;
     background: var(--head);
     color: var(--bs-secondary-color);
-    font-size: 0.75rem;
+    font-size: 0.8rem;
     font-weight: 600;
     border-bottom: 1px solid var(--rule-strong);
     white-space: nowrap;
@@ -885,7 +892,7 @@ code.inv-code {
         color: var(--bs-secondary-color);
         content: attr(data-label);
         font-family: var(--bs-body-font-family);
-        font-size: 0.75rem;
+        font-size: 0.8rem;
         font-weight: 500;
         text-align: left;
     }
@@ -913,7 +920,7 @@ code.inv-code {
         margin-bottom: 0.2rem;
         color: var(--bs-secondary-color);
         content: attr(data-label);
-        font-size: 0.75rem;
+        font-size: 0.8rem;
         font-weight: 500;
     }
 
