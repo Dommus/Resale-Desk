@@ -655,8 +655,7 @@ code.inv-code {
 }
 
 .table-actions-header {
-    min-width: 7rem;
-    text-align: right;
+    text-align: center;
     vertical-align: middle;
 }
 
@@ -770,8 +769,12 @@ code.inv-code {
     vertical-align: middle;
 }
 
+/* With table-layout: fixed the header row sets column widths, so the
+   actions column must be sized on its th to stop it taking an equal share. */
+.app-fit-table .table-actions-header,
 .app-fit-table .table-action-cell {
-    width: 7rem;
+    width: 4.5rem;
+    text-align: center !important;
 }
 
 .app-fit-table .d-inline-flex {

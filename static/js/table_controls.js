@@ -259,7 +259,9 @@
         details.className = 'table-column-picker table-column-picker-inline';
         const summary = document.createElement('summary');
         summary.className = 'btn btn-outline-secondary btn-sm';
-        summary.textContent = 'Columns';
+        summary.title = 'Columns';
+        summary.setAttribute('aria-label', 'Columns');
+        summary.innerHTML = '<i class="bi bi-layout-three-columns" aria-hidden="true"></i>';
         details.append(summary);
 
         const menu = document.createElement('div');
