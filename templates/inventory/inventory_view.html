@@ -3,6 +3,26 @@
 {% block title %}{{ item.name }}{% endblock %}
 {% block content %}
 
+{% macro refund_form(sale) %}
+<form method="post" action="{{ url_for('refund_sale', sale_id=sale.id) }}" class="border-top pt-3 mt-3">
+    <div class="small fw-semibold mb-2">Refund</div>
+    <div class="row g-2 align-items-end">
+        <div class="col-md-6">
+            <label class="form-label small">Amount refunded ({{ currency_symbol }})</label>
+            <input type="number" step="0.01" min="0" class="form-control" name="refund_amount" value="{{ sale.refund_amount if sale.refund_amount else '' }}" placeholder="0.00">
+        </div>
+        <div class="col-md-6">
+            <div class="form-check mb-2">
+                <input class="form-check-input" type="checkbox" name="item_returned" id="item-returned-{{ sale.id }}" {% if sale.item_returned %}checked{% endif %}>
+                <label class="form-check-label small" for="item-returned-{{ sale.id }}">Item came back</label>
+            </div>
+        </div>
+    </div>
+    <div class="form-text">If the item came back, it goes back into stock and this sale keeps only the money lost (fees, shipping). If it didn't, the refund lowers this sale's profit.</div>
+    <button type="submit" class="btn btn-outline-danger btn-sm mt-2">Save Refund</button>
+</form>
+{% endmacro %}
+
 <div class="d-flex justify-content-between align-items-start mb-3">
     <div>
         <h3 class="mb-1">{{ item.name }}</h3>
@@ -54,13 +74,21 @@
     <div class="col-md-3">
         <div class="card card-kpi"><div class="card-body">
             <div class="kpi-label">Profit</div>
-            <div class="kpi-value {{ 'text-success' if item.sale.profit >= 0 else 'text-danger' }}">{% if item.sale.profit is not none %}{{ currency_symbol }}{{ "%.2f"|format(item.sale.profit) }}{% else %}-{% endif %}</div>
+            <div class="kpi-value {{ 'text-success' if item.realized_profit is not none and item.realized_profit >= 0 else 'text-danger' }}">{% if item.realized_profit is not none %}{{ currency_symbol }}{{ "%.2f"|format(item.realized_profit) }}{% else %}-{% endif %}</div>
+            {% if item.sale.is_refunded or item.returned_sales or item.is_written_off %}<div class="text-muted small">Includes refunds{% if item.is_written_off %} and write-offs{% endif %}</div>{% endif %}
         </div></div>
     </div>
     <div class="col-md-3">
         <div class="card card-kpi"><div class="card-body">
             <div class="kpi-label">ROI / Margin</div>
             <div class="kpi-value">{{ item.sale.roi if item.sale.roi is not none else "-" }}% / {{ item.sale.margin if item.sale.margin is not none else "-" }}%</div>
+        </div></div>
+    </div>
+    {% elif item.is_written_off %}
+    <div class="col-md-3">
+        <div class="card card-kpi"><div class="card-body">
+            <div class="kpi-label">Write-off Loss</div>
+            <div class="kpi-value text-danger">{% if item.realized_profit is not none %}{{ currency_symbol }}{{ "%.2f"|format(item.realized_profit) }}{% else %}-{% endif %}</div>
         </div></div>
     </div>
     {% elif item.purchase.date %}
@@ -86,7 +114,7 @@
             <div class="card-body">
                 <div class="d-flex justify-content-between align-items-center mb-2">
                     <h6 class="card-title mb-0">Marketplace Listings</h6>
-                    {% if item.status.value != "Sold" %}
+                    {% if item.available_quantity > 0 %}
                     <a href="{{ url_for('new_listing', item_id=item.id) }}" class="btn btn-sm btn-outline-primary"><i class="bi bi-plus-lg"></i> Add Listing</a>
                     {% endif %}
                 </div>
@@ -178,7 +206,7 @@
                         {% endif %}
                         <div class="col-md-6">
                             <label class="form-label small">Sale Date</label>
-                            <input type="date" class="form-control" name="sale_date" value="{{ item.sale.sale_date }}" required>
+                            <input type="date" class="form-control" name="sale_date" value="{{ item.sale.sale_date or '' }}" required>
                         </div>
                         <div class="col-md-4">
                             <label class="form-label small">Quantity Sold</label>
@@ -211,8 +239,55 @@
                     </div>
                     <button type="submit" class="btn btn-success mt-3">Save Sale</button>
                 </form>
+                {{ refund_form(item.sale) }}
+                {% elif item.is_written_off %}
+                <p class="text-muted mb-0">Written off.</p>
                 {% else %}
                 <p class="text-muted mb-0">Not sold yet.</p>
+                {% endif %}
+
+                {% if item.returned_sales %}
+                <details class="border-top pt-3 mt-3">
+                    <summary class="small fw-semibold">Returned sales ({{ item.returned_sales|length }})</summary>
+                    {% for s in item.returned_sales %}
+                    <div class="mt-3">
+                        <p class="small mb-1">
+                            Sold {{ s.sale_date or "-" }} for {{ currency_symbol }}{{ "%.2f"|format(s.gross_proceeds) }},
+                            refunded {{ currency_symbol }}{{ "%.2f"|format(s.refund_amount) }}.
+                            Result: <span class="{{ 'text-success' if s.profit >= 0 else 'text-danger' }}">{{ currency_symbol }}{{ "%.2f"|format(s.profit) }}</span>
+                        </p>
+                        {{ refund_form(s) }}
+                    </div>
+                    {% endfor %}
+                </details>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="card shadow-sm mt-4">
+            <div class="card-body">
+                <h6 class="card-title">Write-off</h6>
+                {% if item.is_written_off %}
+                <p class="mb-1">
+                    {{ item.quantity_written_off }} unit{{ '' if item.quantity_written_off == 1 else 's' }} written off.
+                    {% if item.is_bundle %}
+                    <span class="text-muted">The cost is part of the bundle profit.</span>
+                    {% elif item.write_off_loss is not none %}
+                    Loss: <span class="text-danger">{{ currency_symbol }}{{ "%.2f"|format(item.write_off_loss) }}</span>
+                    {% endif %}
+                </p>
+                <form method="post" action="{{ url_for('undo_write_off', item_id=item.id) }}" onsubmit="return confirm('Put the written-off units back into inventory?');">
+                    <button type="submit" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-counterclockwise"></i> Undo Write-off</button>
+                </form>
+                {% elif item.available_quantity > 0 %}
+                {% set loss = item.cost_for_quantity(item.available_quantity) %}
+                <p class="text-muted small">For items that won't be sold: lost, damaged, unsellable, donated or kept. All {{ item.available_quantity }} remaining unit{{ '' if item.available_quantity == 1 else 's' }} leave inventory, and their cost counts as a loss.</p>
+                <form method="post" action="{{ url_for('write_off_item', item_id=item.id) }}"
+                      onsubmit="return confirm('{% if item.is_bundle %}Write off this item? Its cost is part of the bundle profit.{% elif loss is not none %}Write off this item? {{ currency_symbol }}{{ '%.2f'|format(loss) }} will be recorded as a loss.{% else %}Write off this item?{% endif %}');">
+                    <button type="submit" class="btn btn-outline-danger btn-sm"><i class="bi bi-x-octagon"></i> Write Off</button>
+                </form>
+                {% else %}
+                <p class="text-muted mb-0">No remaining units to write off.</p>
                 {% endif %}
             </div>
         </div>
@@ -230,8 +305,8 @@
                     <div class="row g-2 mb-2">
                         <div class="col-6">
                             <label class="form-label small">Quantity</label>
-                            <input type="number" class="form-control" name="quantity" min="{{ item.quantity_sold }}" step="1" value="{{ item.quantity }}" required>
-                            <div class="form-text">{{ item.quantity_sold }} already sold</div>
+                            <input type="number" class="form-control" name="quantity" min="{{ [item.quantity_sold + item.quantity_written_off, 1]|max }}" step="1" value="{{ item.quantity }}" required>
+                            <div class="form-text">{{ item.quantity_sold }} already sold{% if item.is_written_off %}, {{ item.quantity_written_off }} written off{% endif %}</div>
                         </div>
                         <div class="col-6">
                             <label class="form-label small">Category <span class="text-muted">(optional)</span></label>
@@ -263,12 +338,12 @@
                         </div>
                         <div class="col-6">
                             <label class="form-label small">Status <span class="text-muted">(optional)</span></label>
-                            {% if item.status == ItemStatus.SOLD %}
-                            <input type="text" class="form-control" value="Sold" disabled>
+                            {% if item.status in [ItemStatus.SOLD, ItemStatus.WRITTEN_OFF] %}
+                            <input type="text" class="form-control" value="{{ item.status.value }}" disabled>
                             {% else %}
                             <select class="form-select" name="status">
                                 {% for status in ItemStatus %}
-                                    {% if status != ItemStatus.SOLD %}
+                                    {% if status not in [ItemStatus.SOLD, ItemStatus.WRITTEN_OFF] %}
                                     <option value="{{ status.value }}"
                                             {% if item.status == status %}selected{% endif %}>
                                         {{ status.value }}

@@ -6,11 +6,6 @@
     <div>
         <h3 class="mb-1">Dashboard</h3>
     </div>
-    <div class="d-flex flex-wrap gap-2">
-        <a href="{{ url_for('choose_purchase_type') }}" class="btn btn-primary">
-            <i class="bi bi-plus-lg"></i> New Purchase
-        </a>
-    </div>
 </div>
 
 <div class="row g-3 mb-4">
@@ -21,10 +16,11 @@
                 <div>
                     <div class="dashboard-hero-label">Realized profit</div>
                     <div class="dashboard-hero-value {{ 'text-success' if total_profit >= 0 else 'text-danger' }}">{{ currency_symbol }}{{ "%.2f"|format(total_profit) }}</div>
-                    <p class="dashboard-hero-note mb-0">Net result after purchase costs and sale fees.</p>
+                    <p class="dashboard-hero-note mb-0">Net result after purchase costs, sale fees, refunds and write-offs.</p>
                 </div>
             </div>
             <div class="dashboard-hero-stats">
+                <div><span>Last 30 days profit</span><strong class="{{ 'text-success' if last_month_profit >= 0 else 'text-danger' }}">{{ currency_symbol }}{{ "%.2f"|format(last_month_profit) }}</strong></div>
                 <div><span>Net revenue</span><strong>{{ currency_symbol }}{{ "%.2f"|format(total_revenue) }}</strong></div>
                 <div><span>Total invested</span><strong>{{ currency_symbol }}{{ "%.2f"|format(total_spend) }}</strong></div>
                 <div><span>Recorded sales</span><strong>{{ sales_count }}</strong></div>
@@ -45,6 +41,7 @@
             <div class="quick-stat"><span>Active listings</span><strong>{{ active_listing_count }} <small>/ {{ listing_count }} total</small></strong></div>
             <div class="quick-stat"><span>Average sale</span><strong>{{ currency_symbol }}{{ "%.2f"|format(average_sale_value) }}</strong></div>
             <div class="quick-stat"><span>Purchases</span><strong>{{ purchase_count }}</strong></div>
+            <div class="quick-stat"><span>Write-off losses</span><strong class="{{ 'text-danger' if write_off_loss > 0 }}">{{ currency_symbol }}{{ "%.2f"|format(write_off_loss) }} <small>/ {{ write_off_units }} unit{{ '' if write_off_units == 1 else 's' }}</small></strong></div>
         </section>
     </div>
 </div>
@@ -104,6 +101,23 @@
     </div>
 </div>
 
+<div class="dashboard-panel mb-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h5 class="card-title mb-0">Monthly profit</h5>
+        <form method="get" action="{{ url_for('index') }}">
+            <label for="months" class="visually-hidden">Months to show</label>
+            <select id="months" name="months" class="form-select form-select-sm" onchange="this.form.submit()">
+                {% for option in [3, 6, 12] %}
+                <option value="{{ option }}" {{ 'selected' if option == months }}>Last {{ option }} months</option>
+                {% endfor %}
+            </select>
+        </form>
+    </div>
+    <div class="profit-chart-wrap">
+        <canvas id="profitChart" aria-label="Profit per month" role="img"></canvas>
+    </div>
+</div>
+
 <div class="row g-4 mb-4">
     <div class="col-12">
         <div class="dashboard-panel h-100">
@@ -121,7 +135,7 @@
                         <tbody>
                             {% for sale in recent_sales %}
                             <tr>
-                                <td data-label="Date">{{ sale.sale_date }}</td>
+                                <td data-label="Date">{{ sale.sale_date or '-' }}</td>
                                 <td data-label="Item">
                                     <a href="{{ url_for('view_item', item_id=sale.item.id) }}">{{ sale.item.name }}</a>
                                     {% if sale.item.is_bundle %}<small class="d-block text-muted">Bundle sale</small>{% endif %}
@@ -180,4 +194,34 @@
     </div>
 </div>
 
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script>
+    const labels = {{ chart_labels|tojson }};
+    const values = {{ chart_values|tojson }};
+    const styles = getComputedStyle(document.documentElement);
+
+    new Chart(document.getElementById("profitChart"), {
+        type: "bar",
+        data: {
+            labels: labels,
+            datasets: [{
+                label: "Profit",
+                data: values,
+                // Green bars for profit, red bars for loss
+                backgroundColor: values.map(v => v >= 0 ? styles.getPropertyValue("--pos") : styles.getPropertyValue("--neg")),
+                borderRadius: 2
+            }]
+        },
+        options: {
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: {
+                y: { ticks: { callback: value => "{{ currency_symbol }}" + value } }
+            }
+        }
+    });
+</script>
 {% endblock %}

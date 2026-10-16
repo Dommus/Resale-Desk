@@ -117,13 +117,11 @@
                         {% endif %}
                     </td>
                     <!-- Profit -->
-                    <td data-label="Profit" data-sort-value="{{ item.sale.profit if item.sale and not item.is_bundle and item.sale.profit is not none else '' }}">
+                    <td data-label="Profit" data-sort-value="{{ item.realized_profit if item.realized_profit is not none else '' }}">
                         {% if item.is_bundle %}
                             <span class="text-muted" title="Calculated on the purchase">Bundle</span>
-                        {% elif item.sale %}
-                            {% if item.sale.profit is not none %}
-                            <span class="{{ 'text-success' if item.sale.profit >= 0 else 'text-danger' }}">{{ currency_symbol }}{{ "%.2f"|format(item.sale.profit) }}</span>
-                            {% else %}<span class="text-muted">-</span>{% endif %}
+                        {% elif item.realized_profit is not none %}
+                            <span class="{{ 'text-success' if item.realized_profit >= 0 else 'text-danger' }}">{{ currency_symbol }}{{ "%.2f"|format(item.realized_profit) }}</span>
                         {% else %}
                             <span class="text-muted">-</span>
                         {% endif %}

@@ -2,7 +2,7 @@
 # https://docs.sqlalchemy.org/en/20/orm/quickstart.html
 from flask_login import UserMixin
 from flask_sqlalchemy import SQLAlchemy
-from sqlalchemy import String, Text, ForeignKey, Numeric, Enum as SQLEnum, func, CheckConstraint
+from sqlalchemy import String, Text, ForeignKey, Numeric, Enum as SQLEnum, func, CheckConstraint, Boolean
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 from datetime import date as datetime_date, datetime
 from enum import Enum
@@ -26,14 +26,12 @@ db = SQLAlchemy(model_class=Base)
 #############
 
 class ItemStatus(Enum):
-    # TODO: Remove any status I decide later not to use
     ON_SALE = 'On Sale'
     SOLD = 'Sold'
     WAITING = 'Waiting'
-    REFUNDED = 'Refunded'
     IN_STORAGE = 'In Storage'
     RESERVED = 'Reserved'
-    NOT_SOLD = 'Not Sold'
+    WRITTEN_OFF = 'Written Off'
 
 class ListingStatus(Enum):
     ACTIVE = 'Active'
@@ -104,7 +102,8 @@ class Purchase(db.Model):
 
     @property
     def total_revenue(self) -> Decimal:
-        return sum((item.sale.net_proceeds for item in self.items if item.sale is not None), Decimal("0.00"))
+        # Includes returned sales: what was kept after the refund (usually 0 or negative)
+        return sum((sale.net_proceeds for item in self.items for sale in item.sales), Decimal("0.00"))
     
     @property
     def profit(self) -> Decimal:
@@ -115,7 +114,7 @@ class Purchase(db.Model):
             return round(self.total_revenue - self.total_cost, 2)
 
         return sum(
-            (item.sale.profit for item in self.items if item.sale and item.sale.profit is not None),
+            (item.realized_profit for item in self.items if item.realized_profit is not None),
             Decimal("0.00"),
         )
 
@@ -142,9 +141,10 @@ class Item(db.Model):
         # Cant have negative items on a shelf
         CheckConstraint("quantity > 0", name="ck_items_quantity_positive"),
 
-        # Sold quantity must be between 0 and total quantity
+        # Sold and written-off units can't exceed the total quantity
         CheckConstraint(
-            "quantity_sold >= 0 AND quantity_sold <= quantity",
+            "quantity_sold >= 0 AND quantity_written_off >= 0 "
+            "AND quantity_sold + quantity_written_off <= quantity",
             name="ck_items_quantity_sold_range",
         ),
     )
@@ -159,6 +159,7 @@ class Item(db.Model):
     name: Mapped[str] = mapped_column(String(64), nullable=False)
     quantity: Mapped[int] = mapped_column(nullable=False, default=1)
     quantity_sold: Mapped[int] = mapped_column(nullable=False, default=0)
+    quantity_written_off: Mapped[int] = mapped_column(nullable=False, default=0)
     category: Mapped[Optional[str]] = mapped_column(String(64))
     condition: Mapped[Optional[str]] = mapped_column(String(32))
     brand: Mapped[Optional[str]] = mapped_column(String(64))
@@ -174,11 +175,26 @@ class Item(db.Model):
     shelf: Mapped[Optional["Shelf"]] = relationship("Shelf", back_populates="items")
 
     listings: Mapped[List["Listing"]] = relationship("Listing", back_populates="item", cascade="all, delete-orphan", lazy=True)
-    sale: Mapped[Optional["Sale"]] = relationship("Sale", back_populates="item", uselist=False, cascade="all, delete-orphan")
+    # Every sale ever recorded, including ones refunded with the item returned.
+    # Use Item.sale for the sale that currently holds the units.
+    sales: Mapped[List["Sale"]] = relationship("Sale", back_populates="item", cascade="all, delete-orphan", order_by="Sale.id")
 
     # WORK ON THIS LATER. UNFINISHED IMPLEMENTATION
     # # # # # ## # ## # ## # #
      # # # # # # # # # # # #
+    @property
+    def sale(self) -> Optional["Sale"]:
+        # The current sale. Sales whose item came back are only kept as history.
+        return next((sale for sale in reversed(self.sales) if not sale.item_returned), None)
+
+    @property
+    def returned_sales(self) -> List["Sale"]:
+        return [sale for sale in self.sales if sale.item_returned]
+
+    @property
+    def is_written_off(self) -> bool:
+        return self.quantity_written_off > 0
+
     @property
     def inventory_code(self) -> str | None:
         if self.id is None:
@@ -189,12 +205,12 @@ class Item(db.Model):
     def days_in_inventory(self) -> Optional[int]:
         if not self.purchase or self.purchase.date is None:
             return None
-        end = self.sale.sale_date if self.sale else datetime_date.today()
+        end = (self.sale.sale_date if self.sale else None) or datetime_date.today()
         return (end - self.purchase.date).days
 
     @property
     def available_quantity(self) -> int:
-        return max(self.quantity - self.quantity_sold, 0)
+        return max(self.quantity - self.quantity_sold - self.quantity_written_off, 0)
 
     @property
     def is_bundle(self) -> bool:
@@ -227,6 +243,25 @@ class Item(db.Model):
         """The item's total cost, when it has an unambiguous item cost."""
         return self.total_cost_basis
 
+    @property
+    def write_off_loss(self) -> Optional[Decimal]:
+        # Cost of the written-off units. None for bundles, whose profit
+        # already subtracts the whole purchase cost.
+        if not self.is_written_off:
+            return Decimal("0.00")
+        return self.cost_for_quantity(self.quantity_written_off)
+
+    @property
+    def realized_profit(self) -> Optional[Decimal]:
+        # Profit of every sale (returned ones included) minus write-off losses.
+        # None when nothing has happened yet or the cost isn't known per item.
+        if self.is_bundle or (not self.sales and not self.is_written_off):
+            return None
+        profits = [sale.profit for sale in self.sales]
+        if None in profits or self.write_off_loss is None:
+            return None
+        return round(sum(profits, Decimal("0.00")) - self.write_off_loss, 2)
+
     def cost_for_quantity(self, quantity: int) -> Optional[Decimal]:
         if self.unit_cost is None or quantity < 0 or quantity > self.quantity:
             return None
@@ -241,7 +276,8 @@ class Sale(db.Model):
     item_id: Mapped[int] = mapped_column(ForeignKey("items.id"), nullable=False)
     listing_id: Mapped[Optional[int]] = mapped_column(ForeignKey("listings.id"))
 
-    sale_date: Mapped[datetime_date] = mapped_column(default=datetime_date.today)
+    # Left empty when the sale date is unknown (e.g. a CSV row without "Sold date")
+    sale_date: Mapped[Optional[datetime_date]] = mapped_column()
     sale_price: Mapped[Decimal] = mapped_column(MONEY, default=Decimal("0.00"))
     shipping_collected: Mapped[Decimal] = mapped_column(MONEY, default=Decimal("0.00"))
     shipping_paid: Mapped[Decimal] = mapped_column(MONEY, default=Decimal("0.00"))
@@ -250,7 +286,12 @@ class Sale(db.Model):
     quantity: Mapped[int] = mapped_column(nullable=False, default=1)
     notes: Mapped[Optional[str]] = mapped_column(Text)
 
-    item: Mapped["Item"] = relationship("Item", back_populates="sale")
+    # Refund given to the buyer. When the item came back it returns to stock,
+    # and this sale only keeps whatever money was lost (fees, shipping).
+    refund_amount: Mapped[Decimal] = mapped_column(MONEY, nullable=False, default=Decimal("0.00"))
+    item_returned: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+
+    item: Mapped["Item"] = relationship("Item", back_populates="sales")
     listing: Mapped[Optional["Listing"]] = relationship("Listing", back_populates="sale")
 
     @property
@@ -264,9 +305,14 @@ class Sale(db.Model):
         return round((self.sale_price or Decimal("0.00")) + (self.shipping_collected or Decimal("0.00")), 2)
 
     @property
+    def is_refunded(self) -> bool:
+        return bool(self.refund_amount) or self.item_returned
+
+    @property
     def net_proceeds(self) -> Decimal:
         return round(
             self.gross_proceeds
+            - (self.refund_amount or Decimal("0.00"))
             - (self.shipping_paid or Decimal("0.00"))
             - (self.platform_fee or Decimal("0.00"))
             - (self.payment_fee or Decimal("0.00")),
@@ -275,6 +321,9 @@ class Sale(db.Model):
 
     @property
     def cost_basis(self) -> Optional[Decimal]:
+        # A returned item went back into stock, so this sale used none of its cost
+        if self.item_returned:
+            return Decimal("0.00")
         return self.item.cost_for_quantity(self.quantity) if self.item else None
 
     @property
