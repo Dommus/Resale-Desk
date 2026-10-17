@@ -110,12 +110,22 @@
                 {% for option in [3, 6, 12] %}
                 <option value="{{ option }}" {{ 'selected' if option == months }}>{{ _('Last {count} months', count=option) }}</option>
                 {% endfor %}
-                <option value="0" {{ 'selected' if months == 0 }}>All months</option>
+                <option value="0" {{ 'selected' if months == 0 }}>{{ _('All months') }}</option>
             </select>
         </form>
     </div>
     <div class="profit-chart-wrap">
         <canvas id="profitChart" aria-label="{{ _('Profit per month') }}" role="img"></canvas>
+    </div>
+</div>
+
+<div class="dashboard-panel mb-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h5 class="card-title mb-0">{{ _('Monthly net revenue') }}</h5>
+        <small class="text-muted">{{ _('Includes bundle sales') }} &middot; {{ _('All months') if months == 0 else _('Last {count} months', count=months) }}</small>
+    </div>
+    <div class="profit-chart-wrap">
+        <canvas id="revenueChart" aria-label="{{ _('Net revenue per month') }}" role="img"></canvas>
     </div>
 </div>
 
@@ -221,6 +231,51 @@
             plugins: { legend: { display: false } },
             scales: {
                 y: { ticks: { callback: value => "{{ currency_symbol }}" + value } }
+            }
+        }
+    });
+
+    const revenueValues = {{ revenue_values|tojson }};
+    const bundleRevenueValues = {{ bundle_revenue_values|tojson }};
+    const accentColor = styles.getPropertyValue("--accent");
+    // Opaque on purpose: tooltips draw swatches on white, so a transparent
+    // colour would look different there than in the legend
+    const accentSoftColor = styles.getPropertyValue("--accent-soft");
+    const negColor = styles.getPropertyValue("--neg");
+
+    new Chart(document.getElementById("revenueChart"), {
+        type: "bar",
+        data: {
+            labels: labels,
+            datasets: [{
+                label: {{ _('Single items')|tojson }},
+                data: revenueValues,
+                // Red only when refunds and fees outweigh the month's sales
+                backgroundColor: revenueValues.map(v => v >= 0 ? accentColor : negColor),
+                borderRadius: 2
+            }, {
+                label: {{ _('Bundle items')|tojson }},
+                data: bundleRevenueValues,
+                // Lighter shade of the same colour, stacked on top
+                backgroundColor: bundleRevenueValues.map(v => v >= 0 ? accentSoftColor : negColor),
+                borderRadius: 2
+            }]
+        },
+        options: {
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: true, position: "bottom" },
+                tooltip: {
+                    callbacks: {
+                        footer: items => {{ (_('Total') ~ ': ' ~ currency_symbol)|tojson }} +
+                            (revenueValues[items[0].dataIndex] + bundleRevenueValues[items[0].dataIndex]).toFixed(2)
+                    }
+                }
+            },
+            interaction: { mode: "index", intersect: false },
+            scales: {
+                x: { stacked: true },
+                y: { stacked: true, ticks: { callback: value => "{{ currency_symbol }}" + value } }
             }
         }
     });

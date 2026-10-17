@@ -12,6 +12,7 @@
     --hover: #e6eaee;
     --accent: #1f4e79;
     --accent-rgb: 31, 78, 121;
+    --accent-soft: #9aafc3;
     --pos: #1e6b3a;
     --neg: #a8322d;
 
@@ -53,6 +54,7 @@
     --hover: #2b2f33;
     --accent: #7fb0dc;
     --accent-rgb: 127, 176, 220;
+    --accent-soft: #bfd8ee;
     --pos: #6cc28a;
     --neg: #e8807a;
 

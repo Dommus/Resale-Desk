@@ -269,7 +269,7 @@ def index():
     if months not in (0, 3, 6, 12):
         months = 6
 
-    # "All" spans from the month of the first sale up to the current month
+    # Show all from the the first sale up to the current month
     month_count = months
     if months == 0:
         sale_dates = [sale.sale_date for sale in sales if sale.sale_date]
@@ -287,14 +287,27 @@ def index():
             month = 12
             year -= 1
 
-    # Add up the profit of each sale into its month
+    # Add up the profit and net revenue of each sale into its month.
+    # Bundle sales have no profit of their own, but they do count as revenue.
     monthly_profit = {label: 0 for label in chart_labels}
+    monthly_revenue = {label: 0 for label in chart_labels}
+    monthly_bundle_revenue = {label: 0 for label in chart_labels}
     for sale in sales:
-        if sale.sale_date and sale.profit is not None:
-            label = sale.sale_date.strftime("%Y-%m")
-            if label in monthly_profit:
-                monthly_profit[label] += float(sale.profit)
+        if not sale.sale_date:
+            continue
+        label = sale.sale_date.strftime("%Y-%m")
+        if label not in monthly_profit:
+            continue
+        if sale.item.is_bundle:
+            monthly_bundle_revenue[label] += float(sale.net_proceeds)
+        else:
+            monthly_revenue[label] += float(sale.net_proceeds)
+        if sale.profit is not None:
+            monthly_profit[label] += float(sale.profit)
     chart_values = [round(monthly_profit[label], 2) for label in chart_labels]
+    # Revenue is split so the chart can stack bundle sales on top of single items
+    revenue_values = [round(monthly_revenue[label], 2) for label in chart_labels]
+    bundle_revenue_values = [round(monthly_bundle_revenue[label], 2) for label in chart_labels]
 
     return render_template(
         'index.html',
@@ -302,6 +315,8 @@ def index():
         months=months,
         chart_labels=chart_labels,
         chart_values=chart_values,
+        revenue_values=revenue_values,
+        bundle_revenue_values=bundle_revenue_values,
         total_units=total_units,
         available_units=available_units,
         sold_units=sold_units,
