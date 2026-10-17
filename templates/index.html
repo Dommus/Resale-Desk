@@ -110,6 +110,7 @@
                 {% for option in [3, 6, 12] %}
                 <option value="{{ option }}" {{ 'selected' if option == months }}>{{ _('Last {count} months', count=option) }}</option>
                 {% endfor %}
+                <option value="0" {{ 'selected' if months == 0 }}>All months</option>
             </select>
         </form>
     </div>

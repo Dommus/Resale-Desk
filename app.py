@@ -264,16 +264,23 @@ def index():
         if sale.sale_date and sale.sale_date >= month_ago and sale.profit is not None:
             last_month_profit += sale.profit
 
-    # Profit per month for the chart (the user picks how many months)
+    # Profit per month for the chart (the user picks how many months, 0 = all)
     months = request.args.get("months", 6, type=int)
-    if months not in (3, 6, 12):
+    if months not in (0, 3, 6, 12):
         months = 6
+
+    # "All" spans from the month of the first sale up to the current month
+    month_count = months
+    if months == 0:
+        sale_dates = [sale.sale_date for sale in sales if sale.sale_date]
+        first = min(sale_dates) if sale_dates else date.today()
+        month_count = (date.today().year - first.year) * 12 + date.today().month - first.month + 1
 
     # Build the list of month labels, oldest first, e.g. ["2026-05", "2026-06", ...]
     year = date.today().year
     month = date.today().month
     chart_labels = []
-    for i in range(months):
+    for i in range(month_count):
         chart_labels.insert(0, f"{year}-{month:02d}")
         month -= 1
         if month == 0:
