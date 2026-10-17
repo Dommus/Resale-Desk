@@ -179,9 +179,6 @@ class Item(db.Model):
     # Use Item.sale for the sale that currently holds the units.
     sales: Mapped[List["Sale"]] = relationship("Sale", back_populates="item", cascade="all, delete-orphan", order_by="Sale.id")
 
-    # WORK ON THIS LATER. UNFINISHED IMPLEMENTATION
-    # # # # # ## # ## # ## # #
-     # # # # # # # # # # # #
     @property
     def sale(self) -> Optional["Sale"]:
         # The current sale. Sales whose item came back are only kept as history.

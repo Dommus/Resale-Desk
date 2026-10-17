@@ -47,7 +47,6 @@ db.init_app(app)
 
 ###################
 # FUTURE FEATURES:
-# Change currency symbol all throughout the app
 # Translate (at least English & Portuguese)
 ##########################
 
