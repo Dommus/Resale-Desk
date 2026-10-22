@@ -1,6 +1,6 @@
 # Resale Desk
 
-#### Video Demo:  <URL HERE>
+#### Video Demo:  https://www.youtube.com/watch?v=MQevm5aZ92I
 
 #### Description:
 
@@ -92,9 +92,9 @@ flask run
 
   
 
-The database is created in `instance/database.db` on first run, or if it's delted.
+The database includes a demo account. Log in as `demo` with password `cs50` to explore it, or simply create a fresh empty account.
 
-If the database gets corrupted, it can be deleted on the `/user` page.
+If you need to reset the database, it can be deleted on the `/user` page.
 
   
 

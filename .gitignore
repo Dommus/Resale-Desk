@@ -12,6 +12,7 @@ env/
 # Flask / instance data (SQLite database, local config)
 instance/
 *.db
+!/demo.db
 *.sqlite3
  
 # Environment variables / secrets

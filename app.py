@@ -22,6 +22,8 @@ app = Flask(__name__)
 # https://flask-sqlalchemy.readthedocs.io/en/stable/config/
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 DB_PATH = os.path.join(BASE_DIR, 'instance', 'database.db')
+# Demo data shipped with the app, copied in as the database on first run
+DEMO_DB_PATH = os.path.join(BASE_DIR, 'demo.db')
 os.makedirs(os.path.join(BASE_DIR, 'instance'), exist_ok=True)
 
 # App configs
@@ -63,7 +65,10 @@ def create_admin_account():
         db.session.commit()
 
 # Create the physical database files
-def create_database():
+def create_database(with_demo_data=True):
+    if with_demo_data and not os.path.exists(DB_PATH) and os.path.exists(DEMO_DB_PATH):
+        with open(DEMO_DB_PATH, 'rb') as source, open(DB_PATH, 'wb') as copy:
+            copy.write(source.read())
     with app.app_context():
         db.create_all()
         create_admin_account()
@@ -91,7 +96,8 @@ def reset_database():
             except OSError:
                 pass
 
-    create_database()
+    # Start empty: a reset shouldn't bring the demo data back
+    create_database(with_demo_data=False)
 
     print(f"Database reset at {DB_PATH}")
 
