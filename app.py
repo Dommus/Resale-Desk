@@ -9,6 +9,8 @@ from translations import _, get_language, js_translations, LANGUAGES, LANGUAGE_C
 
 from flask import Flask, Response, abort, render_template, request, redirect, url_for, flash, g
 from flask_login import login_user, logout_user, login_required, current_user
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
 from sqlalchemy import or_, cast, String
 from werkzeug.security import generate_password_hash, check_password_hash
 
@@ -58,6 +60,16 @@ app.config['MAX_CONTENT_LENGTH'] = 5 * 1024 * 1024
 # https://flask-login.readthedocs.io/en/latest/
 login_manager.init_app(app)
 login_manager.localize_callback = _
+
+# Rate limiting, to slow down password guessing
+# https://flask-limiter.readthedocs.io/en/stable/
+# Counters live in memory, so they reset on restart and are per worker process.
+limiter = Limiter(
+    get_remote_address,
+    app=app,
+    default_limits=[],
+    storage_uri="memory://",
+)
 
 @login_manager.user_loader
 def load_user(user_id):
@@ -204,6 +216,13 @@ def inject_language():
         "languages": LANGUAGES,
         "js_translations": js_translations(),
     }
+
+# Rate limit hit: show a message on the page instead of a bare 429 error.
+# The redirect is a GET, which is never limited, so it cannot loop.
+@app.errorhandler(429)
+def too_many_requests(error):
+    flash(_('Too many attempts. Please wait a moment and try again.'), 'danger')
+    return redirect(request.path)
 
 
 ##########################
@@ -1160,6 +1179,12 @@ def set_language():
 
 # https://flask-login.readthedocs.io/en/latest/#login-example
 @app.route('/login', methods=['GET', 'POST'])
+# Only failed attempts count (a successful login redirects), per IP and per username
+@limiter.limit("5 per minute;20 per hour", methods=["POST"],
+               deduct_when=lambda response: response.status_code != 302)
+@limiter.limit("10 per hour", methods=["POST"],
+               key_func=lambda: request.form.get('username', '').strip().lower(),
+               deduct_when=lambda response: response.status_code != 302)
 def login():
     if current_user.is_authenticated:
         return redirect(url_for('index'))
@@ -1189,6 +1214,7 @@ def logout():
     return redirect(url_for('login'))
 
 @app.route('/register', methods=['GET', 'POST'])
+@limiter.limit("3 per hour", methods=["POST"])
 def register():
     if current_user.is_authenticated:
         return redirect(url_for('index'))
@@ -1270,6 +1296,7 @@ def delete_database():
 
 @app.route('/user/import-csv', methods=['POST'])
 @login_required
+@limiter.limit("10 per hour", key_func=lambda: str(current_user.id))
 def import_csv():
     csv_file = request.files.get('csv_file')
     if csv_file is None or not csv_file.filename:

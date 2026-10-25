@@ -467,6 +467,7 @@ PT = {
     "Item written off. Its cost now counts as a loss.": "Artigo abatido. O seu custo conta agora como perda.",
     "Write-off undone. The units are back in inventory.": "Abate anulado. As unidades voltaram ao inventário.",
     "Invalid username or password.": "Nome de utilizador ou palavra-passe inválidos.",
+    "Too many attempts. Please wait a moment and try again.": "Demasiadas tentativas. Aguarde um momento e tente novamente.",
     "Logged in successfully.": "Sessão iniciada com sucesso.",
     "Logged out successfully.": "Sessão terminada com sucesso.",
     "Registration is closed.": "O registo está fechado.",
