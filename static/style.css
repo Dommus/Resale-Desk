@@ -942,7 +942,10 @@ code.inv-code {
    or mail app: a title with an amount on the right, a line of key facts
    below, and the whole row opens the record. Cells choose their place with
    data-mobile="title|amount|badge|meta|link"; cells without it are left
-   out, and meta cells can show a short data-mobile-label before the value. */
+   out, and meta cells can show a short data-mobile-label before the value.
+   The badge starts the facts line without a separator, so it can also be
+   a date. The row opens through the link cell or, for tables without one,
+   through a title link marked data-row-link. */
 .table-action-chevron,
 .listing-open-button {
     display: none;
@@ -972,7 +975,7 @@ code.inv-code {
         border-bottom: 0;
     }
 
-    .app-list-table tbody tr:not(:has(> [data-mobile="link"])) {
+    .app-list-table tbody tr:not(:has(> [data-mobile="link"], [data-row-link])) {
         padding-right: 0.85rem;
     }
 
@@ -1038,9 +1041,16 @@ code.inv-code {
         white-space: nowrap;
     }
 
+    .app-list-table tbody td[data-mobile="title"] small,
+    .app-list-table tbody td[data-mobile="amount"] .text-muted {
+        font-size: 0.8rem;
+        font-weight: 400;
+    }
+
     .app-list-table tbody td[data-mobile="badge"] {
         order: 4;
         flex: none;
+        font-size: 0.8rem;
     }
 
     .app-list-table tbody td[data-mobile="badge"] .badge {
@@ -1084,6 +1094,45 @@ code.inv-code {
 
     .app-list-table td[data-mobile="link"] > a:focus-visible {
         box-shadow: inset 0 0 0 2px var(--accent);
+    }
+
+    /* A title link marked data-row-link covers the row instead, with a drawn chevron */
+    .app-list-table td[data-mobile] a[data-row-link]::after {
+        position: absolute;
+        inset: 0;
+        z-index: 1;
+        content: "";
+    }
+
+    .app-list-table td[data-mobile] a[data-row-link]:focus-visible {
+        outline: 0;
+    }
+
+    .app-list-table td[data-mobile] a[data-row-link]:focus-visible::after {
+        box-shadow: inset 0 0 0 2px var(--accent);
+    }
+
+    .app-list-table tbody tr:has([data-row-link])::after {
+        position: absolute;
+        top: 50%;
+        right: 0.75rem;
+        color: var(--bs-secondary-color);
+        content: "\f285";
+        font-family: "bootstrap-icons";
+        transform: translateY(-50%);
+    }
+
+    @media (hover: none) {
+        .app-list-table tbody tr:has([data-row-link]):active {
+            background: rgba(var(--accent-rgb), 0.08);
+        }
+    }
+
+    /* Inside a dashboard panel the list sits flush with the panel's padding,
+       like the "Needs attention" list */
+    .dashboard-panel .app-list-table tbody tr {
+        padding-left: 0;
+        background: transparent;
     }
 
     .table-action-label {

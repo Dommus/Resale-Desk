@@ -139,21 +139,21 @@
                 </div>
                 {% if recent_sales %}
                 <div class="app-fit-table-wrap">
-                    <table class="table table-sm align-middle app-fit-table mb-0">
+                    <table class="table table-sm align-middle app-fit-table app-list-table mb-0">
                         <thead>
                             <tr><th>{{ _('Date') }}</th><th>{{ _('Item') }}</th><th>{{ _('Quantity') }}</th><th>{{ _('Net proceeds') }}</th><th>{{ _('Profit') }}</th></tr>
                         </thead>
                         <tbody>
                             {% for sale in recent_sales %}
                             <tr>
-                                <td data-label="{{ _('Date') }}">{{ sale.sale_date or '-' }}</td>
-                                <td data-label="{{ _('Item') }}">
-                                    <a href="{{ url_for('view_item', item_id=sale.item.id) }}">{{ sale.item.name }}</a>
+                                <td data-label="{{ _('Date') }}" data-mobile="badge">{{ sale.sale_date or '-' }}</td>
+                                <td data-label="{{ _('Item') }}" data-mobile="title">
+                                    <a href="{{ url_for('view_item', item_id=sale.item.id) }}" data-row-link>{{ sale.item.name }}</a>
                                     {% if sale.item.is_bundle %}<small class="d-block text-muted">{{ _('Bundle sale') }}</small>{% endif %}
                                 </td>
-                                <td data-label="{{ _('Quantity') }}">{{ sale.quantity }}</td>
-                                <td data-label="{{ _('Net proceeds') }}">{{ currency_symbol }}{{ "%.2f"|format(sale.net_proceeds) }}</td>
-                                <td data-label="{{ _('Profit') }}">
+                                <td data-label="{{ _('Quantity') }}"{% if sale.quantity > 1 %} data-mobile="meta" data-mobile-label="{{ _('Qty') }}"{% endif %}>{{ sale.quantity }}</td>
+                                <td data-label="{{ _('Net proceeds') }}" data-mobile="meta" data-mobile-label="{{ _('Net proceeds') }}">{{ currency_symbol }}{{ "%.2f"|format(sale.net_proceeds) }}</td>
+                                <td data-label="{{ _('Profit') }}" data-mobile="amount">
                                     {% if sale.profit is not none %}
                                     <span class="{{ 'text-success' if sale.profit >= 0 else 'text-danger' }}">{{ currency_symbol }}{{ "%.2f"|format(sale.profit) }}</span>
                                     {% else %}
@@ -181,19 +181,19 @@
         </div>
         {% if top_purchases %}
         <div class="app-fit-table-wrap">
-            <table class="table table-sm align-middle app-fit-table mb-0">
+            <table class="table table-sm align-middle app-fit-table app-list-table mb-0">
                 <thead>
                     <tr><th>{{ _('Purchase') }}</th><th>{{ _('Type') }}</th><th>{{ _('Units sold') }}</th><th>{{ _('Total cost') }}</th><th>{{ _('Revenue') }}</th><th>{{ _('Profit') }}</th></tr>
                 </thead>
                 <tbody>
                     {% for purchase in top_purchases %}
                     <tr>
-                        <td data-label="{{ _('Purchase') }}"><a href="{{ url_for('view_purchase', purchase_id=purchase.id) }}">{{ purchase.display_name }}</a></td>
-                        <td data-label="{{ _('Type') }}"><span class="badge purchase-type-badge-{{ purchase.purchase_type.value }}">{{ _(purchase.purchase_type.value) }}</span></td>
-                        <td data-label="{{ _('Units sold') }}">{{ purchase.items|sum(attribute='quantity_sold') }}/{{ purchase.items|sum(attribute='quantity') }}</td>
-                        <td data-label="{{ _('Total cost') }}">{{ currency_symbol }}{{ "%.2f"|format(purchase.total_cost) }}</td>
-                        <td data-label="{{ _('Revenue') }}">{{ currency_symbol }}{{ "%.2f"|format(purchase.total_revenue) }}</td>
-                        <td data-label="{{ _('Profit') }}"><span class="{{ 'text-success' if purchase.profit >= 0 else 'text-danger' }}">{{ currency_symbol }}{{ "%.2f"|format(purchase.profit) }}</span></td>
+                        <td data-label="{{ _('Purchase') }}" data-mobile="title"><a href="{{ url_for('view_purchase', purchase_id=purchase.id) }}" data-row-link>{{ purchase.display_name }}</a></td>
+                        <td data-label="{{ _('Type') }}" data-mobile="badge"><span class="badge purchase-type-badge-{{ purchase.purchase_type.value }}">{{ _(purchase.purchase_type.value) }}</span></td>
+                        <td data-label="{{ _('Units sold') }}" data-mobile="meta" data-mobile-label="{{ _('Sold') }}">{{ purchase.items|sum(attribute='quantity_sold') }}/{{ purchase.items|sum(attribute='quantity') }}</td>
+                        <td data-label="{{ _('Total cost') }}" data-mobile="meta" data-mobile-label="{{ _('Cost') }}">{{ currency_symbol }}{{ "%.2f"|format(purchase.total_cost) }}</td>
+                        <td data-label="{{ _('Revenue') }}" data-mobile="meta" data-mobile-label="{{ _('Revenue') }}">{{ currency_symbol }}{{ "%.2f"|format(purchase.total_revenue) }}</td>
+                        <td data-label="{{ _('Profit') }}" data-mobile="amount"><span class="{{ 'text-success' if purchase.profit >= 0 else 'text-danger' }}">{{ currency_symbol }}{{ "%.2f"|format(purchase.profit) }}</span></td>
                     </tr>
                     {% endfor %}
                 </tbody>
