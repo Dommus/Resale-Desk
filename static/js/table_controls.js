@@ -16,6 +16,11 @@
 
     const COLUMN_STORAGE_PREFIX = 'resale-desk.table-columns.v1.';
 
+    // Translated UI text, provided by layout.html. Falls back to English.
+    function t(text) {
+        return (window.I18N && window.I18N[text]) || text;
+    }
+
     // -------------------------------------------------------------
     // FILTERING
     // -------------------------------------------------------------
@@ -184,7 +189,7 @@
     function columnLabel(header) {
         const copy = header.cloneNode(true);
         copy.querySelectorAll('.sort-indicator').forEach(indicator => indicator.remove());
-        return copy.textContent.trim() || 'Actions';
+        return copy.textContent.trim() || t('Actions');
     }
 
     function normaliseColumnState(columns, savedState) {
@@ -259,8 +264,8 @@
         details.className = 'table-column-picker table-column-picker-inline';
         const summary = document.createElement('summary');
         summary.className = 'btn btn-outline-secondary btn-sm';
-        summary.title = 'Columns';
-        summary.setAttribute('aria-label', 'Columns');
+        summary.title = t('Columns');
+        summary.setAttribute('aria-label', t('Columns'));
         summary.innerHTML = '<i class="bi bi-layout-three-columns" aria-hidden="true"></i>';
         details.append(summary);
 
@@ -268,7 +273,7 @@
         menu.className = 'table-column-picker-menu shadow-sm';
         const title = document.createElement('div');
         title.className = 'small fw-semibold mb-2';
-        title.textContent = 'Toggle columns';
+        title.textContent = t('Toggle columns');
         menu.append(title);
 
         const checkboxes = new Map();
@@ -296,7 +301,7 @@
         const resetButton = document.createElement('button');
         resetButton.type = 'button';
         resetButton.className = 'btn btn-link btn-sm px-0 mt-2';
-        resetButton.textContent = 'Reset columns';
+        resetButton.textContent = t('Reset columns');
         resetButton.addEventListener('click', () => {
             state.order = [...state.defaultOrder];
             state.hidden = [];
@@ -353,7 +358,7 @@
             const { header, id } = column;
             header.draggable = true;
             header.classList.add('column-draggable');
-            header.title = 'Click to sort. Drag to reorder.';
+            header.title = t('Click to sort. Drag to reorder.');
 
             header.addEventListener('dragstart', event => {
                 draggedId = id;

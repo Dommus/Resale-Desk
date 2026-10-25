@@ -5,21 +5,21 @@
 
 {% macro refund_form(sale) %}
 <form method="post" action="{{ url_for('refund_sale', sale_id=sale.id) }}" class="border-top pt-3 mt-3">
-    <div class="small fw-semibold mb-2">Refund</div>
+    <div class="small fw-semibold mb-2">{{ _('Refund') }}</div>
     <div class="row g-2 align-items-end">
         <div class="col-md-6">
-            <label class="form-label small">Amount refunded ({{ currency_symbol }})</label>
+            <label class="form-label small">{{ _('Amount refunded ({symbol})', symbol=currency_symbol) }}</label>
             <input type="number" step="0.01" min="0" class="form-control" name="refund_amount" value="{{ sale.refund_amount if sale.refund_amount else '' }}" placeholder="0.00">
         </div>
         <div class="col-md-6">
             <div class="form-check mb-2">
                 <input class="form-check-input" type="checkbox" name="item_returned" id="item-returned-{{ sale.id }}" {% if sale.item_returned %}checked{% endif %}>
-                <label class="form-check-label small" for="item-returned-{{ sale.id }}">Item came back</label>
+                <label class="form-check-label small" for="item-returned-{{ sale.id }}">{{ _('Item came back') }}</label>
             </div>
         </div>
     </div>
-    <div class="form-text">If the item came back, it goes back into stock and this sale keeps only the money lost (fees, shipping). If it didn't, the refund lowers this sale's profit.</div>
-    <button type="submit" class="btn btn-outline-danger btn-sm mt-2">Save Refund</button>
+    <div class="form-text">{{ _("If the item came back, it goes back into stock and this sale keeps only the money lost (fees, shipping). If it didn't, the refund lowers this sale's profit.") }}</div>
+    <button type="submit" class="btn btn-outline-danger btn-sm mt-2">{{ _('Save Refund') }}</button>
 </form>
 {% endmacro %}
 
@@ -28,80 +28,80 @@
         <h3 class="mb-1">{{ item.name }}</h3>
         <p class="text-muted mb-0">
             <code class="inv-code">{{ item.inventory_code }}</code>
-            &middot; <span class="badge status-badge-{{ item.status.value|replace(' ', '-') }}">{{ item.status.value }}</span>
-            &middot; Shelf: {% if item.shelf %}<a href="{{ url_for('inventory', shelf_id=item.shelf.id) }}">{{ item.shelf.name }}</a>{% else %}-{% endif %}
+            &middot; <span class="badge status-badge-{{ item.status.value|replace(' ', '-') }}">{{ _(item.status.value) }}</span>
+            &middot; {{ _('Shelf:') }} {% if item.shelf %}<a href="{{ url_for('inventory', shelf_id=item.shelf.id) }}">{{ item.shelf.name }}</a>{% else %}-{% endif %}
         </p>
     </div>
-    <form method="post" action="{{ url_for('delete_item', item_id=item.id) }}" onsubmit="return confirm('Delete this item permanently?');">
-        <button class="btn btn-outline-danger btn-sm"><i class="bi bi-trash"></i> Delete</button>
+    <form method="post" action="{{ url_for('delete_item', item_id=item.id) }}" onsubmit='return confirm({{ _("Delete this item permanently?")|tojson }});'>
+        <button class="btn btn-outline-danger btn-sm"><i class="bi bi-trash"></i> {{ _('Delete') }}</button>
     </form>
 </div>
 
 <div class="row g-3 mb-4">
     <div class="col-md-3">
         <div class="card card-kpi"><div class="card-body">
-            <div class="kpi-label">{% if item.is_bundle %}Bundle Purchase Cost{% else %}Purchase Cost{% endif %}</div>
+            <div class="kpi-label">{% if item.is_bundle %}{{ _('Bundle Purchase Cost') }}{% else %}{{ _('Purchase Cost') }}{% endif %}</div>
             <div class="kpi-value">{% if item.is_bundle %}{{ currency_symbol }}{{ "%.2f"|format(item.purchase.total_cost) }}{% elif item.total_cost_basis is not none %}{{ currency_symbol }}{{ "%.2f"|format(item.total_cost_basis) }}{% else %}-{% endif %}</div>
-            <div class="text-muted small">{% if item.is_bundle %}From bundle: {{ item.purchase.display_name }}{% else %}{{ item.available_quantity }} available of {{ item.quantity }}{% if item.unit_cost is not none %} · {{ currency_symbol }}{{ "%.2f"|format(item.unit_cost) }} per unit{% endif %}{% endif %}</div>
+            <div class="text-muted small">{% if item.is_bundle %}{{ _('From bundle: {name}', name=item.purchase.display_name) }}{% else %}{{ _('{available} available of {total}', available=item.available_quantity, total=item.quantity) }}{% if item.unit_cost is not none %} · {{ _('{price} per unit', price=currency_symbol ~ "%.2f"|format(item.unit_cost)) }}{% endif %}{% endif %}</div>
         </div></div>
     </div>
     {% if item.is_bundle %}
     <div class="col-md-3">
         <div class="card card-kpi"><div class="card-body">
-            <div class="kpi-label">Bundle Net Proceeds</div>
+            <div class="kpi-label">{{ _('Bundle Net Proceeds') }}</div>
             <div class="kpi-value">{{ currency_symbol }}{{ "%.2f"|format(item.purchase.total_revenue) }}</div>
         </div></div>
     </div>
     <div class="col-md-3">
         <div class="card card-kpi"><div class="card-body">
-            <div class="kpi-label">Bundle Profit</div>
+            <div class="kpi-label">{{ _('Bundle Profit') }}</div>
             <div class="kpi-value {{ 'text-success' if item.purchase.profit >= 0 else 'text-danger' }}">{{ currency_symbol }}{{ "%.2f"|format(item.purchase.profit) }}</div>
         </div></div>
     </div>
     <div class="col-md-3">
         <div class="card card-kpi"><div class="card-body">
-            <div class="kpi-label">Bundle ROI / Margin</div>
+            <div class="kpi-label">{{ _('Bundle ROI / Margin') }}</div>
             <div class="kpi-value">{{ item.purchase.roi if item.purchase.roi is not none else "-" }}% / {{ item.purchase.margin if item.purchase.margin is not none else "-" }}%</div>
         </div></div>
     </div>
     {% elif item.sale %}
     <div class="col-md-3">
         <div class="card card-kpi"><div class="card-body">
-            <div class="kpi-label">Net Proceeds</div>
+            <div class="kpi-label">{{ _('Net Proceeds') }}</div>
             <div class="kpi-value">{{ currency_symbol }}{{ "%.2f"|format(item.sale.net_proceeds) }}</div>
         </div></div>
     </div>
     <div class="col-md-3">
         <div class="card card-kpi"><div class="card-body">
-            <div class="kpi-label">Profit</div>
+            <div class="kpi-label">{{ _('Profit') }}</div>
             <div class="kpi-value {{ 'text-success' if item.realized_profit is not none and item.realized_profit >= 0 else 'text-danger' }}">{% if item.realized_profit is not none %}{{ currency_symbol }}{{ "%.2f"|format(item.realized_profit) }}{% else %}-{% endif %}</div>
-            {% if item.sale.is_refunded or item.returned_sales or item.is_written_off %}<div class="text-muted small">Includes refunds{% if item.is_written_off %} and write-offs{% endif %}</div>{% endif %}
+            {% if item.sale.is_refunded or item.returned_sales or item.is_written_off %}<div class="text-muted small">{% if item.is_written_off %}{{ _('Includes refunds and write-offs') }}{% else %}{{ _('Includes refunds') }}{% endif %}</div>{% endif %}
         </div></div>
     </div>
     <div class="col-md-3">
         <div class="card card-kpi"><div class="card-body">
-            <div class="kpi-label">ROI / Margin</div>
+            <div class="kpi-label">{{ _('ROI / Margin') }}</div>
             <div class="kpi-value">{{ item.sale.roi if item.sale.roi is not none else "-" }}% / {{ item.sale.margin if item.sale.margin is not none else "-" }}%</div>
         </div></div>
     </div>
     {% elif item.is_written_off %}
     <div class="col-md-3">
         <div class="card card-kpi"><div class="card-body">
-            <div class="kpi-label">Write-off Loss</div>
+            <div class="kpi-label">{{ _('Write-off Loss') }}</div>
             <div class="kpi-value text-danger">{% if item.realized_profit is not none %}{{ currency_symbol }}{{ "%.2f"|format(item.realized_profit) }}{% else %}-{% endif %}</div>
         </div></div>
     </div>
     {% elif item.purchase.date %}
     <div class="col-md-3">
         <div class="card card-kpi"><div class="card-body">
-            <div class="kpi-label">Days in Inventory</div>
+            <div class="kpi-label">{{ _('Days in Inventory') }}</div>
             <div class="kpi-value">{{ item.days_in_inventory }}</div>
         </div></div>
     </div>
     {% else %}
     <div class="col-md-3">
         <div class="card card-kpi"><div class="card-body">
-            <div class="kpi-label">Days in Inventory</div>
+            <div class="kpi-label">{{ _('Days in Inventory') }}</div>
             <div class="kpi-value text-muted">-</div>
         </div></div>
     </div>
@@ -113,9 +113,9 @@
         <div class="card shadow-sm mb-4">
             <div class="card-body">
                 <div class="d-flex justify-content-between align-items-center mb-2">
-                    <h6 class="card-title mb-0">Marketplace Listings</h6>
+                    <h6 class="card-title mb-0">{{ _('Marketplace Listings') }}</h6>
                     {% if item.available_quantity > 0 %}
-                    <a href="{{ url_for('new_listing', item_id=item.id) }}" class="btn btn-sm btn-outline-primary"><i class="bi bi-plus-lg"></i> Add Listing</a>
+                    <a href="{{ url_for('new_listing', item_id=item.id) }}" class="btn btn-sm btn-outline-primary"><i class="bi bi-plus-lg"></i> {{ _('Add Listing') }}</a>
                     {% endif %}
                 </div>
                 {% if item.listings %}
@@ -127,35 +127,35 @@
                     <div class="card-body">
                         <div class="row g-2">
                             <div class="col-12 col-sm-6 col-xl-4">
-                                <label class="form-label small mb-1">Platform</label>
+                                <label class="form-label small mb-1">{{ _('Platform') }}</label>
                                 <input form="edit-listing-{{ l.id }}" type="text" class="form-control form-control-sm" name="platform" value="{{ l.platform }}" required>
                             </div>
                             <div class="col-12 col-sm-6 col-xl-4">
-                                <label class="form-label small mb-1">Listing ID</label>
+                                <label class="form-label small mb-1">{{ _('Listing ID') }}</label>
                                 <input form="edit-listing-{{ l.id }}" type="text" class="form-control form-control-sm" name="listing_id" value="{{ l.listing_id or '' }}">
                             </div>
                             <div class="col-12 col-sm-6 col-xl-4">
-                                <label class="form-label small mb-1">Price ({{ currency_symbol }})</label>
+                                <label class="form-label small mb-1">{{ _('Price ({symbol})', symbol=currency_symbol) }}</label>
                                 <input form="edit-listing-{{ l.id }}" type="number" step="0.01" min="0" class="form-control form-control-sm" name="listing_price" value="{{ l.listing_price if l.listing_price is not none else '' }}">
                             </div>
                             <div class="col-12 col-sm-6 col-xl-4">
-                                <label class="form-label small mb-1">Listing URL</label>
+                                <label class="form-label small mb-1">{{ _('Listing URL') }}</label>
                                 <input form="edit-listing-{{ l.id }}" type="url" class="form-control form-control-sm" name="listing_url" value="{{ l.listing_url or '' }}" placeholder="https://...">
                             </div>
                             <div class="col-12 col-sm-6 col-xl-4">
-                                <label class="form-label small mb-1">Date Listed</label>
+                                <label class="form-label small mb-1">{{ _('Date Listed') }}</label>
                                 <input form="edit-listing-{{ l.id }}" type="date" class="form-control form-control-sm" name="date_listed" value="{{ l.date_listed.isoformat() if l.date_listed else '' }}">
                             </div>
                             <div class="col-12 col-sm-6 col-xl-4">
-                                <label class="form-label small mb-1">Status</label>
+                                <label class="form-label small mb-1">{{ _('Status') }}</label>
                                 {% if l.status == ListingStatus.SOLD %}
-                                <span class="badge bg-success">{{ l.status.value }}</span>
+                                <span class="badge bg-success">{{ _(l.status.value) }}</span>
                                 {% else %}
                                 <form method="post" action="{{ url_for('update_listing_status', listing_id=l.id) }}">
                                     <select name="status" class="form-select form-select-sm" onchange="this.form.submit()">
                                         {% for status in ListingStatus %}
                                         {% if status != ListingStatus.SOLD %}
-                                        <option value="{{ status.value }}" {% if l.status == status %}selected{% endif %}>{{ status.value }}</option>
+                                        <option value="{{ status.value }}" {% if l.status == status %}selected{% endif %}>{{ _(status.value) }}</option>
                                         {% endif %}
                                         {% endfor %}
                                     </select>
@@ -165,19 +165,19 @@
                         </div>
                     </div>
                     <div class="card-footer d-flex flex-wrap justify-content-end gap-1">
-                        <button form="edit-listing-{{ l.id }}" type="submit" class="btn btn-sm btn-primary">Save</button>
+                        <button form="edit-listing-{{ l.id }}" type="submit" class="btn btn-sm btn-primary">{{ _('Save') }}</button>
                         <form method="post" action="{{ url_for('delete_listing', listing_id=l.id) }}"
-                              onsubmit="return confirm('Delete this marketplace listing?');">
-                            <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete listing">
+                              onsubmit='return confirm({{ _("Delete this marketplace listing?")|tojson }});'>
+                            <button type="submit" class="btn btn-sm btn-outline-danger" title="{{ _('Delete listing') }}">
                                 <i class="bi bi-trash" aria-hidden="true"></i>
-                                <span class="visually-hidden">Delete</span>
+                                <span class="visually-hidden">{{ _('Delete') }}</span>
                             </button>
                         </form>
                     </div>
                 </div>
                 {% endfor %}
                 {% else %}
-                <p class="text-muted mb-0">No listings yet.</p>
+                <p class="text-muted mb-0">{{ _('No listings yet.') }}</p>
                 {% endif %}
             </div>
         </div>
@@ -185,9 +185,9 @@
         <div class="card shadow-sm">
             <div class="card-body">
                 <div class="d-flex justify-content-between align-items-center mb-2">
-                    <h6 class="card-title mb-0">Sale</h6>
+                    <h6 class="card-title mb-0">{{ _('Sale') }}</h6>
                     {% if not item.sale and item.available_quantity > 0 %}
-                    <a href="{{ url_for('new_sale', item_id=item.id) }}" class="btn btn-sm btn-outline-success"><i class="bi bi-cash-coin"></i> Record Sale</a>
+                    <a href="{{ url_for('new_sale', item_id=item.id) }}" class="btn btn-sm btn-outline-success"><i class="bi bi-cash-coin"></i> {{ _('Record Sale') }}</a>
                     {% endif %}
                 </div>
                 {% if item.sale %}
@@ -195,9 +195,9 @@
                     <div class="row g-2">
                         {% if item.listings %}
                         <div class="col-md-6">
-                            <label class="form-label small">Sold via Listing</label>
+                            <label class="form-label small">{{ _('Sold via Listing') }}</label>
                             <select class="form-select" name="listing_id">
-                                <option value="">Not linked to a specific listing</option>
+                                <option value="">{{ _('Not linked to a specific listing') }}</option>
                                 {% for l in item.listings %}
                                 <option value="{{ l.id }}" {% if item.sale.listing_id == l.id %}selected{% endif %}>{{ l.platform }}{% if l.listing_id %} - {{ l.listing_id }}{% endif %}</option>
                                 {% endfor %}
@@ -205,56 +205,55 @@
                         </div>
                         {% endif %}
                         <div class="col-md-6">
-                            <label class="form-label small">Sale Date</label>
+                            <label class="form-label small">{{ _('Sale Date') }}</label>
                             <input type="date" class="form-control" name="sale_date" value="{{ item.sale.sale_date or '' }}" required>
                         </div>
                         <div class="col-md-4">
-                            <label class="form-label small">Quantity Sold</label>
+                            <label class="form-label small">{{ _('Quantity Sold') }}</label>
                             <input type="number" class="form-control" name="quantity" min="1" max="{{ item.quantity }}" step="1" value="{{ item.sale.quantity }}" required>
                         </div>
                         <div class="col-md-4">
-                            <label class="form-label small">Sale Price ({{ currency_symbol }})</label>
+                            <label class="form-label small">{{ _('Sale Price ({symbol})', symbol=currency_symbol) }}</label>
                             <input type="number" step="0.01" min="0" class="form-control" name="sale_price" value="{{ item.sale.sale_price }}" required>
                         </div>
                         <div class="col-md-4">
-                            <label class="form-label small">Shipping Collected ({{ currency_symbol }})</label>
+                            <label class="form-label small">{{ _('Shipping Collected ({symbol})', symbol=currency_symbol) }}</label>
                             <input type="number" step="0.01" min="0" class="form-control" name="shipping_collected" value="{{ item.sale.shipping_collected }}">
                         </div>
                         <div class="col-md-4">
-                            <label class="form-label small">Shipping Paid ({{ currency_symbol }})</label>
+                            <label class="form-label small">{{ _('Shipping Paid ({symbol})', symbol=currency_symbol) }}</label>
                             <input type="number" step="0.01" min="0" class="form-control" name="shipping_paid" value="{{ item.sale.shipping_paid }}">
                         </div>
                         <div class="col-md-4">
-                            <label class="form-label small">Platform Fee ({{ currency_symbol }})</label>
+                            <label class="form-label small">{{ _('Platform Fee ({symbol})', symbol=currency_symbol) }}</label>
                             <input type="number" step="0.01" min="0" class="form-control" name="platform_fee" value="{{ item.sale.platform_fee }}">
                         </div>
                         <div class="col-md-4">
-                            <label class="form-label small">Payment Fee ({{ currency_symbol }})</label>
+                            <label class="form-label small">{{ _('Payment Fee ({symbol})', symbol=currency_symbol) }}</label>
                             <input type="number" step="0.01" min="0" class="form-control" name="payment_fee" value="{{ item.sale.payment_fee }}">
                         </div>
                         <div class="col-12">
-                            <label class="form-label small">Notes <span class="text-muted">(optional)</span></label>
+                            <label class="form-label small">{{ _('Notes') }} <span class="text-muted">{{ _('(optional)') }}</span></label>
                             <textarea class="form-control" name="notes" rows="2">{{ item.sale.notes or '' }}</textarea>
                         </div>
                     </div>
-                    <button type="submit" class="btn btn-success mt-3">Save Sale</button>
+                    <button type="submit" class="btn btn-success mt-3">{{ _('Save Sale') }}</button>
                 </form>
                 {{ refund_form(item.sale) }}
                 {% elif item.is_written_off %}
-                <p class="text-muted mb-0">Written off.</p>
+                <p class="text-muted mb-0">{{ _('Written off.') }}</p>
                 {% else %}
-                <p class="text-muted mb-0">Not sold yet.</p>
+                <p class="text-muted mb-0">{{ _('Not sold yet.') }}</p>
                 {% endif %}
 
                 {% if item.returned_sales %}
                 <details class="border-top pt-3 mt-3">
-                    <summary class="small fw-semibold">Returned sales ({{ item.returned_sales|length }})</summary>
+                    <summary class="small fw-semibold">{{ _('Returned sales ({count})', count=item.returned_sales|length) }}</summary>
                     {% for s in item.returned_sales %}
                     <div class="mt-3">
                         <p class="small mb-1">
-                            Sold {{ s.sale_date or "-" }} for {{ currency_symbol }}{{ "%.2f"|format(s.gross_proceeds) }},
-                            refunded {{ currency_symbol }}{{ "%.2f"|format(s.refund_amount) }}.
-                            Result: <span class="{{ 'text-success' if s.profit >= 0 else 'text-danger' }}">{{ currency_symbol }}{{ "%.2f"|format(s.profit) }}</span>
+                            {{ _('Sold {date} for {gross}, refunded {refund}.', date=s.sale_date or "-", gross=currency_symbol ~ "%.2f"|format(s.gross_proceeds), refund=currency_symbol ~ "%.2f"|format(s.refund_amount)) }}
+                            {{ _('Result:') }} <span class="{{ 'text-success' if s.profit >= 0 else 'text-danger' }}">{{ currency_symbol }}{{ "%.2f"|format(s.profit) }}</span>
                         </p>
                         {{ refund_form(s) }}
                     </div>
@@ -266,28 +265,35 @@
 
         <div class="card shadow-sm mt-4">
             <div class="card-body">
-                <h6 class="card-title">Write-off</h6>
+                <h6 class="card-title">{{ _('Write-off') }}</h6>
                 {% if item.is_written_off %}
                 <p class="mb-1">
-                    {{ item.quantity_written_off }} unit{{ '' if item.quantity_written_off == 1 else 's' }} written off.
+                    {{ _('{count} {units} written off.', count=item.quantity_written_off, units=_('unit') if item.quantity_written_off == 1 else _('units')) }}
                     {% if item.is_bundle %}
-                    <span class="text-muted">The cost is part of the bundle profit.</span>
+                    <span class="text-muted">{{ _('The cost is part of the bundle profit.') }}</span>
                     {% elif item.write_off_loss is not none %}
-                    Loss: <span class="text-danger">{{ currency_symbol }}{{ "%.2f"|format(item.write_off_loss) }}</span>
+                    {{ _('Loss:') }} <span class="text-danger">{{ currency_symbol }}{{ "%.2f"|format(item.write_off_loss) }}</span>
                     {% endif %}
                 </p>
-                <form method="post" action="{{ url_for('undo_write_off', item_id=item.id) }}" onsubmit="return confirm('Put the written-off units back into inventory?');">
-                    <button type="submit" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-counterclockwise"></i> Undo Write-off</button>
+                <form method="post" action="{{ url_for('undo_write_off', item_id=item.id) }}" onsubmit='return confirm({{ _("Put the written-off units back into inventory?")|tojson }});'>
+                    <button type="submit" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-counterclockwise"></i> {{ _('Undo Write-off') }}</button>
                 </form>
                 {% elif item.available_quantity > 0 %}
                 {% set loss = item.cost_for_quantity(item.available_quantity) %}
-                <p class="text-muted small">For items that won't be sold: lost, damaged, unsellable, donated or kept. All {{ item.available_quantity }} remaining unit{{ '' if item.available_quantity == 1 else 's' }} leave inventory, and their cost counts as a loss.</p>
+                <p class="text-muted small">{{ _("For items that won't be sold: lost, damaged, unsellable, donated or kept. All {count} remaining {units} leave inventory, and their cost counts as a loss.", count=item.available_quantity, units=_('unit') if item.available_quantity == 1 else _('units')) }}</p>
+                {% if item.is_bundle %}
+                {% set write_off_message = _('Write off this item? Its cost is part of the bundle profit.') %}
+                {% elif loss is not none %}
+                {% set write_off_message = _('Write off this item? {amount} will be recorded as a loss.', amount=currency_symbol ~ '%.2f'|format(loss)) %}
+                {% else %}
+                {% set write_off_message = _('Write off this item?') %}
+                {% endif %}
                 <form method="post" action="{{ url_for('write_off_item', item_id=item.id) }}"
-                      onsubmit="return confirm('{% if item.is_bundle %}Write off this item? Its cost is part of the bundle profit.{% elif loss is not none %}Write off this item? {{ currency_symbol }}{{ '%.2f'|format(loss) }} will be recorded as a loss.{% else %}Write off this item?{% endif %}');">
-                    <button type="submit" class="btn btn-outline-danger btn-sm"><i class="bi bi-x-octagon"></i> Write Off</button>
+                      onsubmit='return confirm({{ write_off_message|tojson }});'>
+                    <button type="submit" class="btn btn-outline-danger btn-sm"><i class="bi bi-x-octagon"></i> {{ _('Write Off') }}</button>
                 </form>
                 {% else %}
-                <p class="text-muted mb-0">No remaining units to write off.</p>
+                <p class="text-muted mb-0">{{ _('No remaining units to write off.') }}</p>
                 {% endif %}
             </div>
         </div>
@@ -296,39 +302,39 @@
     <div class="col-lg-6">
         <div class="card shadow-sm">
             <div class="card-body">
-                <h6 class="card-title">Edit Item</h6>
+                <h6 class="card-title">{{ _('Edit Item') }}</h6>
                 <form method="post" action="{{ url_for('edit_item', item_id=item.id) }}">
                     <div class="mb-2">
-                        <label class="form-label small">Name</label>
+                        <label class="form-label small">{{ _('Name') }}</label>
                         <input type="text" class="form-control" name="name" value="{{ item.name }}" required>
                     </div>
                     <div class="row g-2 mb-2">
                         <div class="col-6">
-                            <label class="form-label small">Quantity</label>
+                            <label class="form-label small">{{ _('Quantity') }}</label>
                             <input type="number" class="form-control" name="quantity" min="{{ [item.quantity_sold + item.quantity_written_off, 1]|max }}" step="1" value="{{ item.quantity }}" required>
-                            <div class="form-text">{{ item.quantity_sold }} already sold{% if item.is_written_off %}, {{ item.quantity_written_off }} written off{% endif %}</div>
+                            <div class="form-text">{{ _('{count} already sold', count=item.quantity_sold) }}{% if item.is_written_off %}{{ _(', {count} written off', count=item.quantity_written_off) }}{% endif %}</div>
                         </div>
                         <div class="col-6">
-                            <label class="form-label small">Category <span class="text-muted">(optional)</span></label>
+                            <label class="form-label small">{{ _('Category') }} <span class="text-muted">{{ _('(optional)') }}</span></label>
                             {{ suggestion_input('category', item.category, 'category-options') }}
                         </div>
                         <div class="col-6">
-                            <label class="form-label small">Brand <span class="text-muted">(optional)</span></label>
+                            <label class="form-label small">{{ _('Brand') }} <span class="text-muted">{{ _('(optional)') }}</span></label>
                             {{ suggestion_input('brand', item.brand, 'brand-options') }}
                         </div>
                         <div class="col-6">
-                            <label class="form-label small">Condition <span class="text-muted">(optional)</span></label>
+                            <label class="form-label small">{{ _('Condition') }} <span class="text-muted">{{ _('(optional)') }}</span></label>
                             <select class="form-select" name="condition">
                                 <option value="">-</option>
                                 {% for c in ["New", "Like New", "Good", "Fair", "Poor"] %}
-                                <option value="{{ c }}" {% if item.condition == c %}selected{% endif %}>{{ c }}</option>
+                                <option value="{{ c }}" {% if item.condition == c %}selected{% endif %}>{{ _(c) }}</option>
                                 {% endfor %}
                             </select>
                         </div>
                     </div>
                     <div class="row g-2 mb-2">
                         <div class="col-6">
-                            <label class="form-label small">Shelf <span class="text-muted">(optional)</span></label>
+                            <label class="form-label small">{{ _('Shelf') }} <span class="text-muted">{{ _('(optional)') }}</span></label>
                             <select class="form-select" name="shelf_id">
                                 <option value="">-</option>
                                 {% for shelf in shelves %}
@@ -337,16 +343,16 @@
                             </select>
                         </div>
                         <div class="col-6">
-                            <label class="form-label small">Status <span class="text-muted">(optional)</span></label>
+                            <label class="form-label small">{{ _('Status') }} <span class="text-muted">{{ _('(optional)') }}</span></label>
                             {% if item.status in [ItemStatus.SOLD, ItemStatus.WRITTEN_OFF] %}
-                            <input type="text" class="form-control" value="{{ item.status.value }}" disabled>
+                            <input type="text" class="form-control" value="{{ _(item.status.value) }}" disabled>
                             {% else %}
                             <select class="form-select" name="status">
                                 {% for status in ItemStatus %}
                                     {% if status not in [ItemStatus.SOLD, ItemStatus.WRITTEN_OFF] %}
                                     <option value="{{ status.value }}"
                                             {% if item.status == status %}selected{% endif %}>
-                                        {{ status.value }}
+                                        {{ _(status.value) }}
                                     </option>
                                     {% endif %}
                                 {% endfor %}
@@ -355,10 +361,10 @@
                         </div>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label small">Notes <span class="text-muted">(optional)</span></label>
+                        <label class="form-label small">{{ _('Notes') }} <span class="text-muted">{{ _('(optional)') }}</span></label>
                         <textarea class="form-control" name="notes" rows="3">{{ item.notes or '' }}</textarea>
                     </div>
-                    <button type="submit" class="btn btn-primary">Save Changes</button>
+                    <button type="submit" class="btn btn-primary">{{ _('Save Changes') }}</button>
                 </form>
                 {{ suggestion_datalist('category-options', used_categories) }}
                 {{ suggestion_datalist('brand-options', used_brands) }}
@@ -367,19 +373,19 @@
 
         <div class="card shadow-sm mt-4">
             <div class="card-body">
-                <h6 class="card-title">Purchase</h6>
+                <h6 class="card-title">{{ _('Purchase') }}</h6>
                 <p class="mb-1">
-                    From <a href="{{ url_for('view_purchase', purchase_id=item.purchase.id) }}">{{ item.purchase.display_name }}</a>
+                    {{ _('From') }} <a href="{{ url_for('view_purchase', purchase_id=item.purchase.id) }}">{{ item.purchase.display_name }}</a>
                     ({{ item.purchase.date or "-" }})
                 </p>
-                <p class="text-muted small mb-0">Seller: {{ item.purchase.seller or "-" }} &middot; <span class="badge purchase-type-badge-{{ item.purchase.purchase_type.value }}">{{ item.purchase.purchase_type.value }}</span></p>
+                <p class="text-muted small mb-0">{{ _('Seller:') }} {{ item.purchase.seller or "-" }} &middot; <span class="badge purchase-type-badge-{{ item.purchase.purchase_type.value }}">{{ _(item.purchase.purchase_type.value) }}</span></p>
             </div>
         </div>
     </div>
 </div>
 
 <div class="mt-4">
-    <a href="{{ url_for('inventory') }}" class="btn btn-link px-0">&larr; Back to Inventory</a>
+    <a href="{{ url_for('inventory') }}" class="btn btn-link px-0">&larr; {{ _('Back to Inventory') }}</a>
 </div>
 
 {% block scripts %}

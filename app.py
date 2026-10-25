@@ -5,8 +5,9 @@ from urllib.parse import urlparse
 # Imports from local python files
 from models import db, User, Shelf, Item, Purchase, ItemStatus, PurchaseType, Listing, ListingStatus, Sale
 from utilities import login_manager, parse_date, parse_decimal, parse_quantity, process_csv, currency_display, CURRENCY_SYMBOLS
+from translations import _, get_language, js_translations, LANGUAGES, LANGUAGE_COOKIE, HTML_LANG
 
-from flask import Flask, Response, abort, render_template, request, redirect, url_for, flash
+from flask import Flask, Response, abort, render_template, request, redirect, url_for, flash, g
 from flask_login import login_user, logout_user, login_required, current_user
 from sqlalchemy import or_, cast, String
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -54,6 +55,7 @@ app.config['MAX_CONTENT_LENGTH'] = 5 * 1024 * 1024
 # Login Manager
 # https://flask-login.readthedocs.io/en/latest/
 login_manager.init_app(app)
+login_manager.localize_callback = _
 
 @login_manager.user_loader
 def load_user(user_id):
@@ -68,7 +70,7 @@ db.init_app(app)
 
 ###################
 # FUTURE FEATURES:
-# Translate (at least English & Portuguese)
+# Change currency symbol all throughout the app
 ##########################
 
 
@@ -187,6 +189,20 @@ def check_same_origin():
     if not source or urlparse(source).netloc != request.host:
         abort(403)
 
+# Templates translate their UI text with {{ _('...') }}. A global (rather than
+# a context processor) so imported macros can use it too.
+app.jinja_env.globals["_"] = _
+
+@app.context_processor
+def inject_language():
+    language = get_language()
+    return {
+        "current_language": language,
+        "html_lang": HTML_LANG[language],
+        "languages": LANGUAGES,
+        "js_translations": js_translations(),
+    }
+
 
 ##########################
 #        ROUTES
@@ -297,14 +313,27 @@ def index():
             month = 12
             year -= 1
 
-    # Add up the profit of each sale into its month
+    # Add up the profit and net revenue of each sale into its month.
+    # Bundle sales have no profit of their own, but they do count as revenue.
     monthly_profit = {label: 0 for label in chart_labels}
+    monthly_revenue = {label: 0 for label in chart_labels}
+    monthly_bundle_revenue = {label: 0 for label in chart_labels}
     for sale in sales:
-        if sale.sale_date and sale.profit is not None:
-            label = sale.sale_date.strftime("%Y-%m")
-            if label in monthly_profit:
-                monthly_profit[label] += float(sale.profit)
+        if not sale.sale_date:
+            continue
+        label = sale.sale_date.strftime("%Y-%m")
+        if label not in monthly_profit:
+            continue
+        if sale.item.is_bundle:
+            monthly_bundle_revenue[label] += float(sale.net_proceeds)
+        else:
+            monthly_revenue[label] += float(sale.net_proceeds)
+        if sale.profit is not None:
+            monthly_profit[label] += float(sale.profit)
     chart_values = [round(monthly_profit[label], 2) for label in chart_labels]
+    # Revenue is split so the chart can stack bundle sales on top of single items
+    revenue_values = [round(monthly_revenue[label], 2) for label in chart_labels]
+    bundle_revenue_values = [round(monthly_bundle_revenue[label], 2) for label in chart_labels]
 
     return render_template(
         'index.html',
@@ -312,6 +341,8 @@ def index():
         months=months,
         chart_labels=chart_labels,
         chart_values=chart_values,
+        revenue_values=revenue_values,
+        bundle_revenue_values=bundle_revenue_values,
         total_units=total_units,
         available_units=available_units,
         sold_units=sold_units,
@@ -360,7 +391,7 @@ def inventory():
             status_enum = ItemStatus(status)
         except ValueError:
             status_enum = None
-            flash('Status returned None', 'danger')
+            flash(_('Status returned None'), 'danger')
 
         print(f'status_enum is {status_enum}')
         if status_enum is not None:
@@ -425,7 +456,7 @@ def view_item(item_id):
 
     item = Item.query.filter_by(id=item_id, user_id=current_user.id).first()
     if not item:
-        flash('Invalid item', 'danger')
+        flash(_('Invalid item'), 'danger')
         return redirect("/inventory")
     
     shelves = Shelf.query.filter_by(user_id=current_user.id).order_by(Shelf.name).all()
@@ -448,7 +479,7 @@ def edit_item(item_id):
     quantity = item.quantity if raw_quantity is None else parse_quantity(raw_quantity)
     minimum_quantity = max(item.quantity_sold + item.quantity_written_off, 1)
     if quantity is None or quantity < minimum_quantity:
-        flash(f'Quantity must be a whole number of at least {minimum_quantity}.', 'danger')
+        flash(_('Quantity must be a whole number of at least {minimum}.', minimum=minimum_quantity), 'danger')
         return redirect(url_for('view_item', item_id=item.id))
     item.quantity = quantity
     item.category = request.form.get('category', '').strip() or None
@@ -462,21 +493,21 @@ def edit_item(item_id):
         try:
             new_status = ItemStatus(status)
         except ValueError:
-            flash(f"Invalid status: {status!r}", "danger")
+            flash(_("Invalid status: {status}", status=repr(status)), "danger")
             return redirect(url_for('view_item', item_id=item.id))
         # Sold and Written Off only come from recording a sale or a write-off
         if new_status == ItemStatus.SOLD:
-            flash('Items are marked Sold automatically when a sale is recorded.', 'warning')
+            flash(_('Items are marked Sold automatically when a sale is recorded.'), 'warning')
             return redirect(url_for('view_item', item_id=item.id))
         if new_status == ItemStatus.WRITTEN_OFF:
-            flash('Use "Write off" on the item to record it as a loss.', 'warning')
+            flash(_('Use "Write off" on the item to record it as a loss.'), 'warning')
             return redirect(url_for('view_item', item_id=item.id))
         item.status = new_status
 
     item.notes = request.form.get('notes', '').strip()
     refresh_item_status(item)
     db.session.commit()
-    flash('Item updated.', 'success')
+    flash(_('Item updated.'), 'success')
     return redirect(url_for('view_item', item_id=item.id))
 
 
@@ -492,7 +523,7 @@ def delete_item(item_id):
 
     db.session.delete(item)
     db.session.commit()
-    flash("Item deleted.", "success")
+    flash(_("Item deleted."), "success")
 
     # Redirect to current page
     referrer = request.referrer
@@ -576,8 +607,8 @@ def new_purchase():
                 break
 
         if purchase_type is None:
-            flash('Invalid purchase type', 'danger')
-            return 'Invalid purchase type submitted', 400
+            flash(_('Invalid purchase type'), 'danger')
+            return _('Invalid purchase type submitted'), 400
 
         purchase_type_label = purchase_type.value.lower()
         print(f'Purchase type is {purchase_type.value}')
@@ -605,7 +636,7 @@ def new_purchase():
             name = request.form.get('itemName', '').strip()
             if not name:
                 db.session.rollback()
-                flash('Item name is required.', 'danger')
+                flash(_('Item name is required.'), 'danger')
                 return render_template("purchases/purchases_new.html",
                                        shelves=shelves, purchase_type=purchase_type_label,
                                        **form_options)
@@ -613,7 +644,7 @@ def new_purchase():
             quantity = parse_quantity(request.form.get('itemQuantity'))
             if quantity is None:
                 db.session.rollback()
-                flash('Quantity must be a positive whole number.', 'danger')
+                flash(_('Quantity must be a positive whole number.'), 'danger')
                 return render_template("purchases/purchases_new.html",
                                        shelves=shelves, purchase_type=purchase_type_label,
                                        **form_options)
@@ -627,7 +658,7 @@ def new_purchase():
                 notes=request.form.get('itemNotes'),
                 quantity=quantity,
             ))
-            flash(f'{name} added to the purchase.', 'success')
+            flash(_('{name} added to the purchase.', name=name), 'success')
 
         elif checked_add_items and purchase_type == PurchaseType.BUNDLE:
             names = request.form.getlist('itemName[]')
@@ -641,7 +672,7 @@ def new_purchase():
             valid_names = [name.strip() for name in names if name.strip()]
             if not valid_names:
                 db.session.rollback()
-                flash('Add at least one item to this bundle.', 'danger')
+                flash(_('Add at least one item to this bundle.'), 'danger')
                 return render_template("purchases/purchases_new.html",
                                        shelves=shelves, purchase_type=purchase_type_label,
                                        **form_options)
@@ -653,7 +684,7 @@ def new_purchase():
                 quantity = parse_quantity(quantities[index] if index < len(quantities) else None)
                 if quantity is None:
                     db.session.rollback()
-                    flash('Every item quantity must be a positive whole number.', 'danger')
+                    flash(_('Every item quantity must be a positive whole number.'), 'danger')
                     return render_template("purchases/purchases_new.html",
                                            shelves=shelves, purchase_type=purchase_type_label,
                                            **form_options)
@@ -672,7 +703,7 @@ def new_purchase():
                     notes=notes[index] if index < len(notes) else None,
                     quantity=parsed_quantities[index],
                 ))
-            flash(f'{len(valid_names)} item(s) added to the purchase.', 'success')
+            flash(_('{count} item(s) added to the purchase.', count=len(valid_names)), 'success')
 
         db.session.commit()
         return redirect(url_for('view_purchase', purchase_id=purchase.id))
@@ -723,7 +754,7 @@ def edit_purchase(purchase_id):
     purchase.notes = request.form.get('purchaseNotes', '').strip() or None
 
     db.session.commit()
-    flash('Purchase updated.', 'success')
+    flash(_('Purchase updated.'), 'success')
     return redirect(url_for('view_purchase', purchase_id=purchase.id))
 
 @app.route("/purchases/<int:purchase_id>/add", methods=["GET", "POST"])
@@ -748,7 +779,7 @@ def add_items(purchase_id):
 
         valid_names = [name.strip() for name in names if name.strip()]
         if not valid_names:
-            flash('Add at least one item to this bundle.', 'danger')
+            flash(_('Add at least one item to this bundle.'), 'danger')
         else:
             parsed_quantities = {}
             for index, name in enumerate(names):
@@ -756,7 +787,7 @@ def add_items(purchase_id):
                     continue
                 quantity = parse_quantity(quantities[index] if index < len(quantities) else None)
                 if quantity is None:
-                    flash('Every item quantity must be a positive whole number.', 'danger')
+                    flash(_('Every item quantity must be a positive whole number.'), 'danger')
                     return render_template(
                         "purchases/purchases_add_items.html",
                         purchase=purchase,
@@ -783,7 +814,7 @@ def add_items(purchase_id):
                     quantity=parsed_quantities[index],
                 ))
             db.session.commit()
-            flash(f'{len(valid_names)} item(s) added to the purchase.', 'success')
+            flash(_('{count} item(s) added to the purchase.', count=len(valid_names)), 'success')
             return redirect(url_for('view_purchase', purchase_id=purchase.id))
 
     return render_template(
@@ -805,13 +836,13 @@ def shelves():
         description = request.form.get('description', '').strip()
 
         if not name:
-            flash('Please write a shelf name', 'danger')
+            flash(_('Please write a shelf name'), 'danger')
         elif Shelf.query.filter_by(user_id=current_user.id, name=name).first() is not None:
-            flash('A box with this name already exists.', 'danger')
+            flash(_('A box with this name already exists.'), 'danger')
         else:
             db.session.add(Shelf(user_id=current_user.id, name=name, description=description))
             db.session.commit()
-            flash("Shelf added.", "success")
+            flash(_("Shelf added."), "success")
         return redirect(url_for("shelves"))
 
     all_shelves = Shelf.query.filter_by(user_id=current_user.id).order_by(Shelf.name).all()
@@ -823,7 +854,7 @@ def delete_shelf(shelf_id):
     # Also make sure the user id matches for security
     shelf = Shelf.query.filter_by(id=shelf_id, user_id=current_user.id).first_or_404()
     if shelf.items:
-        flash("Cannot delete a shelf that still has items on it.", "danger")
+        flash(_("Cannot delete a shelf that still has items on it."), "danger")
 
     ##############
     ##############
@@ -834,7 +865,7 @@ def delete_shelf(shelf_id):
     else:
         db.session.delete(shelf)
         db.session.commit()
-        flash("Shelf deleted.", "success")
+        flash(_("Shelf deleted."), "success")
     return redirect(url_for("shelves"))
 
 
@@ -857,14 +888,14 @@ def new_listing(item_id):
             status=ListingStatus.ACTIVE,
         )
         if not listing.platform:
-            flash("Platform is required.", "danger")
+            flash(_("Platform is required."), "danger")
             return render_template("listings/listings_new.html", item=item)
 
         db.session.add(listing)
         if item.status == ItemStatus.IN_STORAGE:
             item.status = ItemStatus.ON_SALE
         db.session.commit()
-        flash("Listing added.", "success")
+        flash(_("Listing added."), "success")
         return redirect(url_for("view_item", item_id=item.id))
 
     return render_template("listings/listings_new.html", item=item)
@@ -879,7 +910,7 @@ def edit_listing(listing_id):
 
     platform = request.form.get("platform", "").strip()
     if not platform:
-        flash("Platform is required.", "danger")
+        flash(_("Platform is required."), "danger")
         return redirect(url_for("view_item", item_id=listing.item_id))
 
     listing.platform = platform
@@ -889,7 +920,7 @@ def edit_listing(listing_id):
     listing.date_listed = parse_date(request.form.get("date_listed"), default=listing.date_listed)
 
     db.session.commit()
-    flash("Listing updated.", "success")
+    flash(_("Listing updated."), "success")
     return redirect(url_for("view_item", item_id=listing.item_id))
 
 
@@ -903,7 +934,7 @@ def delete_listing(listing_id):
 
     db.session.delete(listing)
     db.session.commit()
-    flash("Listing deleted.", "success")
+    flash(_("Listing deleted."), "success")
     return redirect(url_for("view_item", item_id=item_id))
 
 
@@ -917,15 +948,15 @@ def update_listing_status(listing_id):
     try:
         new_status = ListingStatus(status)
         if new_status == ListingStatus.SOLD:
-            flash('Listings are marked Sold automatically when a sale is recorded.', 'warning')
+            flash(_('Listings are marked Sold automatically when a sale is recorded.'), 'warning')
             return redirect(url_for('view_item', item_id=listing.item_id))
         listing.status = new_status
     except (ValueError, TypeError):
-        flash("Invalid listing status.", "danger")
+        flash(_("Invalid listing status."), "danger")
         return redirect(url_for("view_item", item_id=listing.item_id))
 
     db.session.commit()
-    flash("Listing status updated.", "success")
+    flash(_("Listing status updated."), "success")
     return redirect(url_for("view_item", item_id=listing.item_id))
 
 
@@ -937,17 +968,17 @@ def update_listing_status(listing_id):
 def new_sale(item_id):
     item = Item.query.filter_by(id=item_id, user_id=current_user.id).first_or_404()
     if item.available_quantity <= 0:
-        flash("There are no available units to sell.", "warning")
+        flash(_("There are no available units to sell."), "warning")
         return redirect(url_for("view_item", item_id=item.id))
     if item.sale is not None:
-        flash("This item has already been sold.", "warning")
+        flash(_("This item has already been sold."), "warning")
         return redirect(url_for("view_item", item_id=item.id))
 
     if request.method == "POST":
         listing_id = request.form.get("listing_id")
         sale_quantity = parse_quantity(request.form.get("quantity"))
         if sale_quantity is None or sale_quantity > item.available_quantity:
-            flash(f"Sale quantity must be between 1 and {item.available_quantity}.", "danger")
+            flash(_("Sale quantity must be between 1 and {maximum}.", maximum=item.available_quantity), "danger")
             return render_template("sales/sales_new.html", item=item)
 
         listing = None
@@ -961,7 +992,7 @@ def new_sale(item_id):
             except (TypeError, ValueError):
                 listing = None
             if listing is None:
-                flash("Invalid listing selected.", "danger")
+                flash(_("Invalid listing selected."), "danger")
                 return render_template("sales/sales_new.html", item=item)
 
         sale = Sale(
@@ -985,7 +1016,7 @@ def new_sale(item_id):
             if item.available_quantity == 0 and l.id != sale.listing_id and l.status == ListingStatus.ACTIVE:
                 l.status = ListingStatus.REMOVED
         db.session.commit()
-        flash("Sale recorded.", "success")
+        flash(_("Sale recorded."), "success")
         return redirect(url_for("view_item", item_id=item.id))
 
     return render_template("sales/sales_new.html", item=item)
@@ -1005,7 +1036,7 @@ def edit_sale(sale_id):
         except (TypeError, ValueError):
             listing = None
         if listing is None:
-            flash("Invalid listing selected.", "danger")
+            flash(_("Invalid listing selected."), "danger")
             return redirect(url_for("view_item", item_id=item.id))
 
     sale.listing_id = listing.id if listing else None
@@ -1028,13 +1059,13 @@ def edit_sale(sale_id):
     else:
         max_quantity = item.available_quantity + sale.quantity
     if sale_quantity is None or sale_quantity > max_quantity:
-        flash(f"Sale quantity must be between 1 and {max_quantity}.", "danger")
+        flash(_("Sale quantity must be between 1 and {maximum}.", maximum=max_quantity), "danger")
         return redirect(url_for("view_item", item_id=item.id))
     if sale.item_returned:
         # A returned sale doesn't hold any stock, so it can't change quantities
         sale.quantity = sale_quantity
         db.session.commit()
-        flash("Sale updated.", "success")
+        flash(_("Sale updated."), "success")
         return redirect(url_for("view_item", item_id=item.id))
     item.quantity_sold += sale_quantity - sale.quantity
     sale.quantity = sale_quantity
@@ -1047,7 +1078,7 @@ def edit_sale(sale_id):
             listing.status = ListingStatus.REMOVED
 
     db.session.commit()
-    flash("Sale updated.", "success")
+    flash(_("Sale updated."), "success")
     return redirect(url_for("view_item", item_id=item.id))
 
 
@@ -1059,7 +1090,7 @@ def refund_sale(sale_id):
 
     refund_amount = parse_decimal(request.form.get("refund_amount"))
     if refund_amount < 0:
-        flash("Refund amount can't be negative.", "danger")
+        flash(_("Refund amount can't be negative."), "danger")
         return redirect(url_for("view_item", item_id=item.id))
     item_returned = request.form.get("item_returned") == "on"
 
@@ -1071,7 +1102,7 @@ def refund_sale(sale_id):
     elif sale.item_returned and not item_returned:
         # Undo return
         if item.sale is not None or item.available_quantity < sale.quantity:
-            flash("The returned units have been sold or written off since, so this return can't be undone.", "danger")
+            flash(_("The returned units have been sold or written off since, so this return can't be undone."), "danger")
             return redirect(url_for("view_item", item_id=item.id))
         item.quantity_sold += sale.quantity
 
@@ -1079,7 +1110,7 @@ def refund_sale(sale_id):
     sale.item_returned = item_returned
     refresh_item_status(item)
     db.session.commit()
-    flash("Refund saved." if sale.is_refunded else "Refund removed.", "success")
+    flash(_("Refund saved.") if sale.is_refunded else _("Refund removed."), "success")
     return redirect(url_for("view_item", item_id=item.id))
 
 
@@ -1088,7 +1119,7 @@ def refund_sale(sale_id):
 def write_off_item(item_id):
     item = Item.query.filter_by(id=item_id, user_id=current_user.id).first_or_404()
     if item.available_quantity <= 0:
-        flash("There are no available units to write off.", "warning")
+        flash(_("There are no available units to write off."), "warning")
         return redirect(url_for("view_item", item_id=item.id))
 
     # Whole item only: every remaining unit is written off
@@ -1098,7 +1129,7 @@ def write_off_item(item_id):
             listing.status = ListingStatus.REMOVED
     refresh_item_status(item)
     db.session.commit()
-    flash("Item written off. Its cost now counts as a loss.", "success")
+    flash(_("Item written off. Its cost now counts as a loss."), "success")
     return redirect(url_for("view_item", item_id=item.id))
 
 
@@ -1109,7 +1140,7 @@ def undo_write_off(item_id):
     item.quantity_written_off = 0
     refresh_item_status(item)
     db.session.commit()
-    flash("Write-off undone. The units are back in inventory.", "success")
+    flash(_("Write-off undone. The units are back in inventory."), "success")
     return redirect(url_for("view_item", item_id=item.id))
 
 
@@ -1130,11 +1161,11 @@ def login():
 
         # Validate username and password
         if user is None or not check_password_hash(user.password_hash, password):
-            flash('Invalid username or password.', 'danger')
+            flash(_('Invalid username or password.'), 'danger')
         else:
             # Log-in the user
             login_user(user)
-            flash('Logged in successfully.', 'success')
+            flash(_('Logged in successfully.'), 'success')
             return redirect(url_for('index'))
 
     return render_template("login.html")
@@ -1143,7 +1174,7 @@ def login():
 @login_required
 def logout():
     logout_user()
-    flash('Logged out successfully.', 'success')
+    flash(_('Logged out successfully.'), 'success')
     return redirect(url_for('login'))
 
 @app.route('/register', methods=['GET', 'POST'])
@@ -1152,7 +1183,7 @@ def register():
         return redirect(url_for('index'))
 
     if not ALLOW_REGISTRATION:
-        flash('Registration is closed.', 'warning')
+        flash(_('Registration is closed.'), 'warning')
         return redirect(url_for('login'))
 
     if request.method == "POST":
@@ -1163,13 +1194,13 @@ def register():
 
         # Validate the form
         if not username or not password:
-            flash('Please insert username and password.', 'danger')
+            flash(_('Please insert username and password.'), 'danger')
         elif len(password) < 8:
-            flash('Password must be at least 8 characters.', 'danger')
+            flash(_('Password must be at least 8 characters.'), 'danger')
         elif password != repeat_password:
-            flash('Passwords do not match.', 'danger')
+            flash(_('Passwords do not match.'), 'danger')
         elif User.query.filter_by(username=username).first():
-            flash('That username is already taken.', 'danger')
+            flash(_('That username is already taken.'), 'danger')
 
         else:
             # Complete registration
@@ -1191,14 +1222,26 @@ def register():
 @login_required
 def user():
     if request.method == 'POST':
-        # Persist the chosen cosmetic currency to the user's account.
         currency = request.form.get('currency', '').strip().upper()
-        if currency in CURRENCY_SYMBOLS:
-            current_user.currency = currency
-            db.session.commit()
-            flash('Currency preference saved.', 'success')
-        else:
-            flash('Please choose a valid currency.', 'danger')
+        language = request.form.get('language', '').strip()
+        if currency not in CURRENCY_SYMBOLS:
+            flash(_('Please choose a valid currency.'), 'danger')
+            return redirect(url_for('user'))
+        if language not in LANGUAGES:
+            flash(_('Please choose a valid language.'), 'danger')
+            return redirect(url_for('user'))
+
+        # Persist the chosen cosmetic currency to the user's account.
+        current_user.currency = currency
+        db.session.commit()
+
+        # The language lives in a cookie, so no database column is needed.
+        # Setting g.language makes the flash below use the new language.
+        g.language = language
+        flash(_('Preferences saved.'), 'success')
+        response = redirect(url_for('user'))
+        response.set_cookie(LANGUAGE_COOKIE, language, max_age=60 * 60 * 24 * 365, samesite='Lax')
+        return response
     return render_template('user.html')
 
 @app.route('/user/delete-database', methods=['POST'])
@@ -1206,11 +1249,11 @@ def user():
 def delete_database():
     try:
         reset_user_data(current_user)
-        flash('Your data was deleted.', 'success')
+        flash(_('Your data was deleted.'), 'success')
     except Exception:
         db.session.rollback()
         app.logger.exception('Data reset failed')
-        flash('Could not delete your data.', 'danger')
+        flash(_('Could not delete your data.'), 'danger')
 
     return redirect(url_for('user'))
 
@@ -1219,7 +1262,7 @@ def delete_database():
 def import_csv():
     csv_file = request.files.get('csv_file')
     if csv_file is None or not csv_file.filename:
-        flash('Choose a CSV file to import.', 'danger')
+        flash(_('Choose a CSV file to import.'), 'danger')
         return redirect(url_for('user'))
 
     try:
@@ -1227,12 +1270,13 @@ def import_csv():
     except Exception:
         db.session.rollback()
         app.logger.exception('CSV import failed')
-        flash('The CSV could not be imported.', 'danger')
+        flash(_('The CSV could not be imported.'), 'danger')
         return redirect(url_for('user'))
 
-    message = (
-        f"Imported {result['purchases_created']} purchase(s) and "
-        f"{result['items_created']} item(s)."
+    message = _(
+        "Imported {purchases} purchase(s) and {items} item(s).",
+        purchases=result['purchases_created'],
+        items=result['items_created'],
     )
     if result['errors']:
         return render_template('user.html', import_result=result)

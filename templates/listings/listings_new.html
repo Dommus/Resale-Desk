@@ -1,40 +1,40 @@
 {% extends "layout.html" %}
-{% block title %}New Listing{% endblock %}
+{% block title %}{{ _('New Listing') }}{% endblock %}
 {% block content %}
 
-<h3 class="mb-1">Add Listing</h3>
-<p class="text-muted">for <strong>{{ item.name }}</strong> (<code class="inv-code">{{ item.inventory_code }}</code>)</p>
+<h3 class="mb-1">{{ _('Add Listing') }}</h3>
+<p class="text-muted">{{ _('for') }} <strong>{{ item.name }}</strong> (<code class="inv-code">{{ item.inventory_code }}</code>)</p>
 
 <div class="card shadow-sm">
     <div class="card-body">
         <form method="post">
             <div class="row g-3">
                 <div class="col-md-6">
-                    <label class="form-label">Platform</label>
-                    <input type="text" class="form-control" name="platform" list="platformOptions" placeholder="e.g. Vinted, eBay, OLX" required>
+                    <label class="form-label">{{ _('Platform') }}</label>
+                    <input type="text" class="form-control" name="platform" list="platformOptions" placeholder="{{ _('e.g. Vinted, eBay, OLX') }}" required>
                     <datalist id="platformOptions">
                         <option value="Vinted"><option value="eBay"><option value="OLX"><option value="Facebook Marketplace">
                     </datalist>
                 </div>
                 <div class="col-md-6">
-                    <label class="form-label">Listing ID (from the platform) <span class="text-muted">(optional)</span></label>
+                    <label class="form-label">{{ _('Listing ID (from the platform)') }} <span class="text-muted">{{ _('(optional)') }}</span></label>
                     <input type="text" class="form-control" name="listing_id">
                 </div>
                 <div class="col-md-8">
-                    <label class="form-label">Listing URL <span class="text-muted">(optional)</span></label>
+                    <label class="form-label">{{ _('Listing URL') }} <span class="text-muted">{{ _('(optional)') }}</span></label>
                     <input type="url" class="form-control" name="listing_url" placeholder="https://...">
                 </div>
                 <div class="col-md-4">
-                    <label class="form-label">Listing Price ({{ currency_symbol }})</label>
+                    <label class="form-label">{{ _('Listing Price ({symbol})', symbol=currency_symbol) }}</label>
                     <input type="number" step="0.01" min="0" class="form-control" name="listing_price">
                 </div>
                 <div class="col-md-4">
-                    <label class="form-label">Date Listed</label>
+                    <label class="form-label">{{ _('Date Listed') }}</label>
                     <input type="date" class="form-control" name="date_listed" value="">
                 </div>
             </div>
-            <button type="submit" class="btn btn-primary mt-3">Add Listing</button>
-            <a href="{{ url_for('view_item', item_id=item.id) }}" class="btn btn-link mt-3">Cancel</a>
+            <button type="submit" class="btn btn-primary mt-3">{{ _('Add Listing') }}</button>
+            <a href="{{ url_for('view_item', item_id=item.id) }}" class="btn btn-link mt-3">{{ _('Cancel') }}</a>
         </form>
     </div>
 </div>

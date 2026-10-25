@@ -1,33 +1,33 @@
 {% extends "layout.html" %}
 {% from "helpers/form_macros.html" import suggestion_input, suggestion_datalist %}
-{% block title %}Purchase #{{ purchase.id }}{% endblock %}
+{% block title %}{{ _('Purchase #{id}', id=purchase.id) }}{% endblock %}
 {% block content %}
 
 <div class="d-flex justify-content-between align-items-start mb-3">
     <div>
-        <h3 class="mb-1">Purchase #{{purchase.id}}: {{ purchase.display_name }}</h3>
+        <h3 class="mb-1">{{ _('Purchase #{id}', id=purchase.id) }}: {{ purchase.display_name }}</h3>
         <p class="text-muted mb-0">
-            {{ purchase.date or "Unassigned" }}
-            &middot; {{ purchase.seller or "Unknown seller" }}
-            &middot; {{ purchase.platform or "No platform" }}
-            &middot; <span class="badge purchase-type-badge-{{ purchase.purchase_type.value }}">{{ purchase.purchase_type.value }}</span>
+            {{ purchase.date or _('Unassigned') }}
+            &middot; {{ purchase.seller or _('Unknown seller') }}
+            &middot; {{ purchase.platform or _('No platform') }}
+            &middot; <span class="badge purchase-type-badge-{{ purchase.purchase_type.value }}">{{ _(purchase.purchase_type.value) }}</span>
         </p>
     </div>
     <a href="{{ url_for('add_items', purchase_id=purchase.id) }}" class="btn btn-outline-primary btn-sm">
-        <i class="bi bi-plus-lg"></i> Add items
+        <i class="bi bi-plus-lg"></i> {{ _('Add items') }}
     </a>
 </div>
 
 <div class="row g-3 mb-4">
     <div class="col-md-3">
         <div class="card card-kpi"><div class="card-body">
-            <div class="kpi-label">Total Cost</div>
+            <div class="kpi-label">{{ _('Total Cost') }}</div>
             <div class="kpi-value">{{ currency_symbol }}{{ "%.2f"|format(purchase.total_cost or 0) }}</div>
         </div></div>
     </div>
     <div class="col-md-3">
         <div class="card card-kpi"><div class="card-body">
-            <div class="kpi-label">Realized Profit</div>
+            <div class="kpi-label">{{ _('Realized Profit') }}</div>
             <div class="kpi-value {{ 'text-success' if purchase.profit >= 0 else 'text-danger' }}">{{ currency_symbol }}{{ "%.2f"|format(purchase.profit) }}</div>
         </div></div>
     </div>
@@ -38,8 +38,8 @@
         <div class="card shadow-sm">
             <div class="card-body">
                 <div class="d-flex justify-content-between align-items-center mb-2">
-                    <h6 class="card-title mb-0">Items from this Purchase</h6>
-                    <span class="text-muted small">{{ purchase.items|length }} product line{% if purchase.items|length != 1 %}s{% endif %} · {{ purchase.items|sum(attribute='quantity') }} unit{% if purchase.items|sum(attribute='quantity') != 1 %}s{% endif %}</span>
+                    <h6 class="card-title mb-0">{{ _('Items from this Purchase') }}</h6>
+                    <span class="text-muted small">{{ purchase.items|length }} {{ _('product line') if purchase.items|length == 1 else _('product lines') }} · {{ purchase.items|sum(attribute='quantity') }} {{ _('unit') if purchase.items|sum(attribute='quantity') == 1 else _('units') }}</span>
                 </div>
 
                 {% if purchase.items %}
@@ -48,40 +48,40 @@
                         <thead>
                             <tr>
                                 {% if purchase.purchase_type.value == 'Single' %}
-                                <th>ID</th><th>Code</th><th>Name</th><th>Quantity</th><th>Category</th><th>Purchase Cost</th><th>Profit</th><th>Status</th><th></th>
+                                <th>{{ _('ID') }}</th><th>{{ _('Code') }}</th><th>{{ _('Name') }}</th><th>{{ _('Quantity') }}</th><th>{{ _('Category') }}</th><th>{{ _('Purchase Cost') }}</th><th>{{ _('Profit') }}</th><th>{{ _('Status') }}</th><th></th>
                                 {% elif purchase.purchase_type.value == 'Bundle' %}
-                                <th>ID</th><th>Code</th><th>Name</th><th>Quantity</th><th>Category</th><th>Profit</th><th>Status</th><th></th>
+                                <th>{{ _('ID') }}</th><th>{{ _('Code') }}</th><th>{{ _('Name') }}</th><th>{{ _('Quantity') }}</th><th>{{ _('Category') }}</th><th>{{ _('Profit') }}</th><th>{{ _('Status') }}</th><th></th>
                                 {% endif %}
                             </tr>
                         </thead>
                         <tbody>
                             {% for item in purchase.items %}
                             <tr{% if loop.index > 5 %} class="d-none purchase-item-extra"{% endif %}>
-                                <td data-label="ID"><code class="inv-code">{{ item.id }}</code></td>
-                                <td data-label="Code"><code class="inv-code">INV-{{ "%06d"|format(item.id) }}</code></td>
-                                <td data-label="Name">{{ item.name }}</td>
-                                <td data-label="Quantity">{{ item.available_quantity }} / {{ item.quantity }}{% if item.quantity_sold %} sold{% endif %}{% if item.is_written_off %} &middot; {{ item.quantity_written_off }} written off{% endif %}</td>
-                                <td data-label="Category">{{ item.category or "-" }}</td>
+                                <td data-label="{{ _('ID') }}"><code class="inv-code">{{ item.id }}</code></td>
+                                <td data-label="{{ _('Code') }}"><code class="inv-code">INV-{{ "%06d"|format(item.id) }}</code></td>
+                                <td data-label="{{ _('Name') }}">{{ item.name }}</td>
+                                <td data-label="{{ _('Quantity') }}">{{ item.available_quantity }} / {{ item.quantity }}{% if item.quantity_sold %} {{ _('sold') }}{% endif %}{% if item.is_written_off %} &middot; {{ _('{count} written off', count=item.quantity_written_off) }}{% endif %}</td>
+                                <td data-label="{{ _('Category') }}">{{ item.category or "-" }}</td>
                                 {% if purchase.purchase_type.value == 'Single' %}               
-                                <td data-label="Purchase cost">{{ currency_symbol }}{{ "%.2f"|format(item.purchase_cost) }}</td>
+                                <td data-label="{{ _('Purchase cost') }}">{{ currency_symbol }}{{ "%.2f"|format(item.purchase_cost) }}</td>
                                 {% endif %}
-                                <td data-label="Profit">
+                                <td data-label="{{ _('Profit') }}">
                                     {% if purchase.purchase_type.value == 'Bundle' %}
-                                    <span class="text-muted" title="Calculated on the purchase">Bundle</span>
+                                    <span class="text-muted" title="{{ _('Calculated on the purchase') }}">{{ _('Bundle') }}</span>
                                     {% elif item.realized_profit is not none %}
                                     <span class="{{ 'text-success' if item.realized_profit >= 0 else 'text-danger' }}">{{ currency_symbol }}{{ "%.2f"|format(item.realized_profit) }}</span>
                                     {% else %}<span class="text-muted">-</span>{% endif %}
                                 </td>
-                                <td data-label="Status">
+                                <td data-label="{{ _('Status') }}">
                                     <span class="badge status-badge-{{ item.status.value|replace(' ', '-') }}">
-                                        {{ item.status.value }}
+                                        {{ _(item.status.value) }}
                                     </span>
                                 </td>
                                 <td data-label="" class="text-end table-action-cell">
                                     <div class="d-inline-flex gap-1">
-                                        <a href="{{ url_for('view_item', item_id=item.id) }}" class="btn btn-sm btn-outline-primary">View</a>
-                                        <form method="post" action="{{ url_for('delete_item', item_id=item.id) }}" onsubmit="return confirm('Delete this item permanently?');">
-                                            <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete item" aria-label="Delete {{ item.name }}">
+                                        <a href="{{ url_for('view_item', item_id=item.id) }}" class="btn btn-sm btn-outline-primary">{{ _('View') }}</a>
+                                        <form method="post" action="{{ url_for('delete_item', item_id=item.id) }}" onsubmit='return confirm({{ _("Delete this item permanently?")|tojson }});'>
+                                            <button type="submit" class="btn btn-sm btn-outline-danger" title="{{ _('Delete item') }}" aria-label="{{ _('Delete {name}', name=item.name) }}">
                                                 <i class="bi bi-trash"></i>
                                             </button>
                                         </form>
@@ -94,14 +94,14 @@
                 </div>
                 {% if purchase.items|length > 5 %}
                 <button type="button" class="btn btn-link w-100 mt-2 p-0" id="toggle-purchase-items" aria-expanded="false">
-                    Show all {{ purchase.items|length }} items
+                    {{ _('Show all {count} items', count=purchase.items|length) }}
                 </button>
                 {% endif %}
                 {% else %}
-                <p class="text-muted mb-3">No items have been added to this purchase yet.</p>
+                <p class="text-muted mb-3">{{ _('No items have been added to this purchase yet.') }}</p>
                 {% if purchase.purchase_type.value == 'Bundle' %}
                 <a href="{{ url_for('add_items', purchase_id=purchase.id) }}" class="btn btn-primary btn-sm">
-                    <i class="bi bi-plus-lg"></i> Add the first item
+                    <i class="bi bi-plus-lg"></i> {{ _('Add the first item') }}
                 </a>
                 {% endif %}
                 {% endif %}
@@ -112,39 +112,39 @@
     <div class="col-lg-8">
         <div class="card shadow-sm">
             <div class="card-body">
-                <h6 class="card-title">Edit Purchase</h6>
+                <h6 class="card-title">{{ _('Edit Purchase') }}</h6>
                 <form method="post" action="{{ url_for('edit_purchase', purchase_id=purchase.id) }}">
                     <div class="mb-2">
-                        <label class="form-label small">Date</label>
+                        <label class="form-label small">{{ _('Date') }}</label>
                         <input type="date" class="form-control" name="date" value="{{ purchase.date.isoformat() if purchase.date else '' }}">
                     </div>
                     <div class="mb-2">
-                        <label class="form-label small">Purchase Name <span class="text-muted">(optional)</span></label>
-                        <input type="text" class="form-control" name="name" value="{{ purchase.name or '' }}" maxlength="128" placeholder="e.g. 50{{ currency_symbol }} Box">
+                        <label class="form-label small">{{ _('Purchase Name') }} <span class="text-muted">{{ _('(optional)') }}</span></label>
+                        <input type="text" class="form-control" name="name" value="{{ purchase.name or '' }}" maxlength="128" placeholder="{{ _('e.g. 50{symbol} Box', symbol=currency_symbol) }}">
                     </div>
                     <div class="mb-2">
-                        <label class="form-label small">Seller <span class="text-muted">(optional)</span></label>
-                        {{ suggestion_input('seller', purchase.seller, 'seller-options', 'e.g. livestream, Vinted user...') }}
+                        <label class="form-label small">{{ _('Seller') }} <span class="text-muted">{{ _('(optional)') }}</span></label>
+                        {{ suggestion_input('seller', purchase.seller, 'seller-options', _('e.g. livestream, Vinted user...')) }}
                     </div>
                     <div class="mb-2">
-                        <label class="form-label small">Source Platform <span class="text-muted">(optional)</span></label>
-                        {{ suggestion_input('platform', purchase.platform, 'platform-options', 'e.g. TikTok, Vinted...') }}
+                        <label class="form-label small">{{ _('Source Platform') }} <span class="text-muted">{{ _('(optional)') }}</span></label>
+                        {{ suggestion_input('platform', purchase.platform, 'platform-options', _('e.g. TikTok, Vinted...')) }}
                     </div>
                     <div class="row g-2 mb-2">
                         <div class="col-6">
-                            <label class="form-label small">Purchase Price ({{ currency_symbol }})</label>
+                            <label class="form-label small">{{ _('Purchase Price ({symbol})', symbol=currency_symbol) }}</label>
                             <input type="number" step="0.01" min="0" class="form-control" name="purchase_price" value="{{ purchase.purchase_price or 0 }}" required>
                         </div>
                         <div class="col-6">
-                            <label class="form-label small">Shipping Cost ({{ currency_symbol }}) <span class="text-muted">(optional)</span></label>
+                            <label class="form-label small">{{ _('Shipping Cost ({symbol})', symbol=currency_symbol) }} <span class="text-muted">{{ _('(optional)') }}</span></label>
                             <input type="number" step="0.01" min="0" class="form-control" name="shipping_cost" value="{{ purchase.shipping_cost or 0 }}">
                         </div>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label small">Purchase Notes <span class="text-muted">(optional)</span></label>
+                        <label class="form-label small">{{ _('Purchase Notes') }} <span class="text-muted">{{ _('(optional)') }}</span></label>
                         <textarea class="form-control" name="purchaseNotes" rows="3">{{ purchase.notes or '' }}</textarea>
                     </div>
-                    <button type="submit" class="btn btn-primary">Save Changes</button>
+                    <button type="submit" class="btn btn-primary">{{ _('Save Changes') }}</button>
                 </form>
             </div>
         </div>
@@ -154,13 +154,13 @@
     <div class="col-lg-4">
         <div class="card shadow-sm">
             <div class="card-body">
-                <h6 class="card-title">Cost Summary</h6>
+                <h6 class="card-title">{{ _('Cost Summary') }}</h6>
                 <table class="table table-sm mb-0">
-                    <tr><th>Purchase price</th><td class="text-end">{{ currency_symbol }}{{ "%.2f"|format(purchase.purchase_price or 0) }}</td></tr>
-                    <tr><th>Shipping</th><td class="text-end">{{ currency_symbol }}{{ "%.2f"|format(purchase.shipping_cost or 0) }}</td></tr>
-                    <tr class="fw-bold"><th>Total cost</th><td class="text-end">{{ currency_symbol }}{{ "%.2f"|format(purchase.total_cost or 0) }}</td></tr>
-                    <tr><th>Total revenue</th><td class="text-end">{{ currency_symbol }}{{ "%.2f"|format(purchase.total_revenue) }}</td></tr>
-                    <tr class="fw-bold"><th>Profit</th><td class="text-end">{{ currency_symbol }}{{ "%.2f"|format(purchase.profit) }}</td></tr>
+                    <tr><th>{{ _('Purchase price') }}</th><td class="text-end">{{ currency_symbol }}{{ "%.2f"|format(purchase.purchase_price or 0) }}</td></tr>
+                    <tr><th>{{ _('Shipping') }}</th><td class="text-end">{{ currency_symbol }}{{ "%.2f"|format(purchase.shipping_cost or 0) }}</td></tr>
+                    <tr class="fw-bold"><th>{{ _('Total cost') }}</th><td class="text-end">{{ currency_symbol }}{{ "%.2f"|format(purchase.total_cost or 0) }}</td></tr>
+                    <tr><th>{{ _('Total revenue') }}</th><td class="text-end">{{ currency_symbol }}{{ "%.2f"|format(purchase.total_revenue) }}</td></tr>
+                    <tr class="fw-bold"><th>{{ _('Profit') }}</th><td class="text-end">{{ currency_symbol }}{{ "%.2f"|format(purchase.profit) }}</td></tr>
                 </table>
             </div>
         </div>
@@ -171,7 +171,7 @@
 {{ suggestion_datalist('platform-options', used_platforms) }}
 
 <div class="mt-4">
-    <a href="{{ url_for('purchases') }}" class="btn btn-link px-0">&larr; Back to Purchases</a>
+    <a href="{{ url_for('purchases') }}" class="btn btn-link px-0">&larr; {{ _('Back to Purchases') }}</a>
 </div>
 
 {% endblock %}
@@ -188,8 +188,8 @@
             extraItems.forEach((item) => item.classList.toggle("d-none", expanded));
             toggle.setAttribute("aria-expanded", String(!expanded));
             toggle.textContent = expanded
-                ? "Show all {{ purchase.items|length }} items"
-                : "Show fewer items";
+                ? {{ _('Show all {count} items', count=purchase.items|length)|tojson }}
+                : {{ _('Show fewer items')|tojson }};
         });
     })();
 </script>

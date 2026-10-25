@@ -5,6 +5,7 @@ from flask_login import LoginManager, current_user
 from io import StringIO
 
 from models import db, Purchase, Item, Sale, Shelf, Listing, PurchaseType, ItemStatus, ListingStatus
+from translations import _
 
 # Login Manager
 # https://flask-login.readthedocs.io/en/latest/
@@ -172,12 +173,12 @@ def process_csv(file, user_id):
             continue
 
         if has_extra_columns(row):
-            errors.append(f"Row {row_number}: extra values found after the CSV headers.")
+            errors.append(_("Row {row}: extra values found after the CSV headers.", row=row_number))
             continue
 
         bundle_cost = parse_csv_money(row.get("Bundle Cost"))
         if bundle_cost is None:
-            errors.append(f"Row {row_number}: invalid or missing Bundle Cost.")
+            errors.append(_("Row {row}: invalid or missing Bundle Cost.", row=row_number))
             continue
 
         bundle_name_key = normalise_name(bundle_name)
@@ -195,7 +196,7 @@ def process_csv(file, user_id):
             continue
 
         if has_extra_columns(row):
-            errors.append(f"Row {row_number}: extra values found after the CSV headers.")
+            errors.append(_("Row {row}: extra values found after the CSV headers.", row=row_number))
             continue
 
         raw_quantity = row.get('Quantity')
@@ -204,7 +205,7 @@ def process_csv(file, user_id):
         else:
             item_quantity = parse_quantity(raw_quantity)
             if item_quantity is None:
-                errors.append(f"Row {row_number}: Quantity must be a positive whole number.")
+                errors.append(_("Row {row}: Quantity must be a positive whole number.", row=row_number))
                 continue
 
         raw_quantity_sold = row.get('Sold Quantity')
@@ -213,42 +214,42 @@ def process_csv(file, user_id):
         else:
             item_quantity_sold = parse_non_negative_quantity(raw_quantity_sold)
             if item_quantity_sold is None:
-                errors.append(f"Row {row_number}: Sold Quantity must be a non-negative whole number.")
+                errors.append(_("Row {row}: Sold Quantity must be a non-negative whole number.", row=row_number))
                 continue
 
         if item_quantity_sold > item_quantity:
-            errors.append(f"Row {row_number}: Sold Quantity cannot exceed Quantity.")
+            errors.append(_("Row {row}: Sold Quantity cannot exceed Quantity.", row=row_number))
             continue
 
         raw_status = get_row_clean(row, 'Status')
         item_status = item_status_lookup.get(raw_status.casefold())
         if item_status is None:
-            errors.append(f"Row {row_number}: invalid ItemStatus '{raw_status}'.")
+            errors.append(_("Row {row}: invalid ItemStatus '{status}'.", row=row_number, status=raw_status))
             continue
 
         # Blank date remains unassigned
         raw_purchase_date = get_row_clean(row, "Bought date")
         purchase_date = parse_csv_date(raw_purchase_date)
         if raw_purchase_date and purchase_date is None:
-            errors.append(f"Row {row_number}: Invalid purchase date.")
+            errors.append(_("Row {row}: Invalid purchase date.", row=row_number))
             continue
 
         raw_sale_date = get_row_clean(row, "Sold date")
         sale_date = parse_csv_date(raw_sale_date)
         if raw_sale_date and sale_date is None:
-            errors.append(f"Row {row_number}: Invalid sale date.")
+            errors.append(_("Row {row}: Invalid sale date.", row=row_number))
             continue
 
         raw_refund_amount = get_row_clean(row, "Refund amount")
         refund_amount = parse_csv_money(raw_refund_amount) if raw_refund_amount else Decimal("0.00")
         if refund_amount is None:
-            errors.append(f"Row {row_number}: Invalid refund amount.")
+            errors.append(_("Row {row}: Invalid refund amount.", row=row_number))
             continue
 
         sale_price = parse_csv_money(row.get('Sold price'))
         if item_quantity_sold > 0:
             if sale_price is None:
-                errors.append(f"Row {row_number}: Sold price is required when quantity is sold.")
+                errors.append(_("Row {row}: Sold price is required when quantity is sold.", row=row_number))
                 continue
 
         listing_price_total = parse_csv_money(row.get('Sell price (total)'))
@@ -266,7 +267,7 @@ def process_csv(file, user_id):
             # csv column stores unit price, while Purchase.purchase_price stores the total cost of the purchase.
             item_purchase_price = parse_csv_money(row.get('Buy price (unit)'))
             if item_purchase_price is None:
-                errors.append(f"Row {row_number}: invalid or missing Buy price (unit).")
+                errors.append(_("Row {row}: invalid or missing Buy price (unit).", row=row_number))
                 continue
 
             purchase = Purchase(
@@ -282,16 +283,16 @@ def process_csv(file, user_id):
             purchases_created += 1
         else:
             if not bundle_name:
-                errors.append(f"Row {row_number}: Bundle is required for a non-Individual item.")
+                errors.append(_("Row {row}: Bundle is required for a non-Individual item.", row=row_number))
                 continue
 
             bundle_name_key = normalise_name(bundle_name)
             bundle_costs = bundle_costs_by_name.get(bundle_name_key, set())
             if not bundle_costs:
-                errors.append(f"Row {row_number}: no bundle entry found for '{bundle_name}'.")
+                errors.append(_("Row {row}: no bundle entry found for '{name}'.", row=row_number, name=bundle_name))
                 continue
             if len(bundle_costs) > 1:
-                errors.append(f"Row {row_number}: '{bundle_name}' has multiple bundle costs, so this item row is ambiguous.")
+                errors.append(_("Row {row}: '{name}' has multiple bundle costs, so this item row is ambiguous.", row=row_number, name=bundle_name))
                 continue
 
             bundle_cost = next(iter(bundle_costs))
@@ -352,7 +353,7 @@ def process_csv(file, user_id):
 
             sale_platform = get_row_clean(row, 'Sales platform')
             if not sale_platform:
-                errors.append(f"Row {row_number}: Sales platform is required for a Listing.")
+                errors.append(_("Row {row}: Sales platform is required for a Listing.", row=row_number))
                 continue
 
             listing = Listing(

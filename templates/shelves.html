@@ -1,26 +1,26 @@
 {% extends "layout.html" %}
-{% block title %}Shelves{% endblock %}
+{% block title %}{{ _('Shelves') }}{% endblock %}
 {% block content %}
 
 <div class="d-flex justify-content-between align-items-center mb-3">
-    <h3 class="mb-0">Shelves & Storage</h3>
+    <h3 class="mb-0">{{ _('Shelves & Storage') }}</h3>
 </div>
 
 <div class="row g-4">
     <div class="col-md-5">
         <div class="card shadow-sm">
             <div class="card-body">
-                <h6 class="card-title">Add a Shelf / Storage Location</h6>
+                <h6 class="card-title">{{ _('Add a Shelf / Storage Location') }}</h6>
                 <form method="post">
                     <div class="mb-2">
-                        <label class="form-label">Name</label>
-                        <input type="text" class="form-control" name="name" placeholder="e.g. Shelf A1, Garage Box" required>
+                        <label class="form-label">{{ _('Name') }}</label>
+                        <input type="text" class="form-control" name="name" placeholder="{{ _('e.g. Shelf A1, Garage Box') }}" required>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label">Description (optional)</label>
+                        <label class="form-label">{{ _('Description (optional)') }}</label>
                         <input type="text" class="form-control" name="description">
                     </div>
-                    <button type="submit" class="btn btn-primary">Add Shelf</button>
+                    <button type="submit" class="btn btn-primary">{{ _('Add Shelf') }}</button>
                 </form>
             </div>
         </div>
@@ -29,27 +29,27 @@
     <div class="col-md-7">
         <div class="card shadow-sm">
             <div class="card-body">
-                <h6 class="card-title">All Shelves</h6>
+                <h6 class="card-title">{{ _('All Shelves') }}</h6>
                 <div class="app-fit-table-wrap">
                 <table class="table table-sm align-middle app-fit-table">
                     <thead>
-                        <tr><th>Name</th><th># Items</th><th>Description</th><th></th></tr>
+                        <tr><th>{{ _('Name') }}</th><th>{{ _('# Items') }}</th><th>{{ _('Description') }}</th><th></th></tr>
                     </thead>
                     <tbody>
                         {% for shelf in shelves %}
                         <tr>
-                            <td data-label="Name"><a href="{{ url_for('inventory', shelf_id=shelf.id) }}">{{ shelf.name }}</a></td>
-                            <td data-label="# Items">{{ shelf.items|length }}</td>
-                            <td data-label="Description" class="text-muted">{{ shelf.description or "" }}</td>
+                            <td data-label="{{ _('Name') }}"><a href="{{ url_for('inventory', shelf_id=shelf.id) }}">{{ shelf.name }}</a></td>
+                            <td data-label="{{ _('# Items') }}">{{ shelf.items|length }}</td>
+                            <td data-label="{{ _('Description') }}" class="text-muted">{{ shelf.description or "" }}</td>
                             <td data-label="" class="text-end table-action-cell">
                                 <form method="post" action="{{ url_for('delete_shelf', shelf_id=shelf.id) }}"
-                                      onsubmit="return confirm('Delete this shelf?');">
-                                    <button class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
+                                      onsubmit='return confirm({{ _("Delete this shelf?")|tojson }});'>
+                                    <button class="btn btn-sm btn-outline-danger" aria-label="{{ _('Delete') }}"><i class="bi bi-trash"></i></button>
                                 </form>
                             </td>
                         </tr>
                         {% else %}
-                        <tr><td colspan="4" class="text-muted text-center py-3">No shelves yet.</td></tr>
+                        <tr><td colspan="4" class="text-muted text-center py-3">{{ _('No shelves yet.') }}</td></tr>
                         {% endfor %}
                     </tbody>
                 </table>

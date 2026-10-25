@@ -1,27 +1,27 @@
 {% extends "layout.html" %}
-{% block title %}Register{% endblock %}
+{% block title %}{{ _('Register') }}{% endblock %}
 {% block content %}
 <div class="card auth-card shadow-sm">
     <div class="card-body p-4">
-        <h3 class="mb-3 text-center"><i class="bi bi-box-seam"></i> Resale Desk</h3>
-        <h5 class="mb-3 text-center text-muted">Create an Account</h5>
+        <h3 class="mb-3 text-center"><i class="bi bi-box-seam"></i> {{ _('Resale Desk') }}</h3>
+        <h5 class="mb-3 text-center text-muted">{{ _('Create an Account') }}</h5>
         <form method="post">
             <div class="mb-3">
-                <label class="form-label">Username</label>
+                <label class="form-label">{{ _('Username') }}</label>
                 <input type="text" class="form-control" name="username" required autofocus>
             </div>
             <div class="mb-3">
-                <label class="form-label">Password</label>
+                <label class="form-label">{{ _('Password') }}</label>
                 <input type="password" class="form-control" name="password" required>
             </div>
             <div class="mb-3">
-                <label class="form-label">Repeat Password</label>
+                <label class="form-label">{{ _('Repeat Password') }}</label>
                 <input type="password" class="form-control" name="repeat_password" required>
             </div>
-            <button type="submit" class="btn btn-primary w-100">Register</button>
+            <button type="submit" class="btn btn-primary w-100">{{ _('Register') }}</button>
         </form>
         <p class="text-center mt-3 mb-0 small">
-            Already have an account? <a href="{{ url_for('login') }}">Log in</a>
+            {{ _('Already have an account?') }} <a href="{{ url_for('login') }}">{{ _('Log in') }}</a>
         </p>
     </div>
 </div>

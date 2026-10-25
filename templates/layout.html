@@ -1,10 +1,10 @@
 <!DOCTYPE html>
 
-<html lang="en">
+<html lang="{{ html_lang }}">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}Resale Desk{% endblock %}</title>
+    <title>{% block title %}{{ _('Resale Desk') }}{% endblock %}</title>
     <script>
         (() => {
             const savedTheme = localStorage.getItem("resale-desk-theme");
@@ -36,27 +36,27 @@
                 ] %}
                 <ul class="navbar-nav me-auto">
                     {% for endpoint, label, endpoints in nav_tabs %}
-                    <li class="nav-item"><a class="nav-link{{ ' active' if ep in endpoints }}" href="{{ url_for(endpoint) }}"{{ ' aria-current="page"'|safe if ep in endpoints }}>{{ label }}</a></li>
+                    <li class="nav-item"><a class="nav-link{{ ' active' if ep in endpoints }}" href="{{ url_for(endpoint) }}"{{ ' aria-current="page"'|safe if ep in endpoints }}>{{ _(label) }}</a></li>
                     {% endfor %}
                 </ul>
                 <form class="d-flex flex-grow-1 header-search ms-3 me-3" role="search" action="{{ url_for('inventory') }}" method="get">
-                    <input class="form-control form-control-sm" type="search" name="q" placeholder="Search inventory or listing ID" value="{{ request.args.get('q', '') }}">
+                    <input class="form-control form-control-sm" type="search" name="q" placeholder="{{ _('Search inventory or listing ID') }}" value="{{ request.args.get('q', '') }}">
                 </form>
                 <div class="dropdown header-new-purchase">
                     <button class="btn btn-primary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
-                        <i class="bi bi-plus-lg" aria-hidden="true"></i> New purchase
+                        <i class="bi bi-plus-lg" aria-hidden="true"></i> {{ _('New purchase') }}
                     </button>
                     <ul class="dropdown-menu dropdown-menu-end">
                         <li>
                             <a class="dropdown-item" href="{{ url_for('new_purchase', purchase_type='single') }}">
-                                <i class="bi bi-box-seam" aria-hidden="true"></i> Single
-                                <small>One item</small>
+                                <i class="bi bi-box-seam" aria-hidden="true"></i> {{ _('Single') }}
+                                <small>{{ _('One item') }}</small>
                             </a>
                         </li>
                         <li>
                             <a class="dropdown-item" href="{{ url_for('new_purchase', purchase_type='bundle') }}">
-                                <i class="bi bi-boxes" aria-hidden="true"></i> Bundle
-                                <small>Several items, one price</small>
+                                <i class="bi bi-boxes" aria-hidden="true"></i> {{ _('Bundle') }}
+                                <small>{{ _('Several items, one price') }}</small>
                             </a>
                         </li>
                     </ul>
@@ -66,17 +66,17 @@
                         <span class="header-account-name">{{ current_user.username }}</span>
                     </button>
                     <ul class="dropdown-menu dropdown-menu-end">
-                        <li class="dropdown-header">Signed in as <strong>{{ current_user.username }}</strong></li>
-                        <li><a class="dropdown-item" href="{{ url_for('user') }}"><i class="bi bi-gear" aria-hidden="true"></i> Account settings</a></li>
+                        <li class="dropdown-header">{{ _('Signed in as') }} <strong>{{ current_user.username }}</strong></li>
+                        <li><a class="dropdown-item" href="{{ url_for('user') }}"><i class="bi bi-gear" aria-hidden="true"></i> {{ _('Account settings') }}</a></li>
                         <li>
                             <button class="dropdown-item" type="button" id="themeToggle"
                                     aria-pressed="false">
                                 <i class="bi bi-moon-stars-fill" aria-hidden="true"></i>
-                                <span id="themeToggleLabel">Dark mode</span>
+                                <span id="themeToggleLabel">{{ _('Dark mode') }}</span>
                             </button>
                         </li>
                         <li><hr class="dropdown-divider"></li>
-                        <li><a class="dropdown-item" href="{{ url_for('logout') }}"><i class="bi bi-box-arrow-right" aria-hidden="true"></i> Log out</a></li>
+                        <li><a class="dropdown-item" href="{{ url_for('logout') }}"><i class="bi bi-box-arrow-right" aria-hidden="true"></i> {{ _('Log out') }}</a></li>
                     </ul>
                 </div>
             </div>
@@ -84,9 +84,9 @@
     </nav>
     {% else %}
     <button class="btn btn-outline-secondary theme-toggle" type="button" id="themeToggle"
-            aria-label="Switch to dark mode" aria-pressed="false" title="Switch to dark mode">
+            aria-label="{{ _('Switch to dark mode') }}" aria-pressed="false" title="{{ _('Switch to dark mode') }}">
         <i class="bi bi-moon-stars-fill" aria-hidden="true"></i>
-        <span class="visually-hidden">Toggle dark mode</span>
+        <span class="visually-hidden">{{ _('Toggle dark mode') }}</span>
     </button>
     {% endif %}
 
@@ -107,6 +107,9 @@
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script>
+    // UI strings used by static JS files
+    window.I18N = {{ js_translations|tojson }};
+
     // Automatically fade flash alerts after X ms
     document.querySelectorAll('.alert.alert-dismissible').forEach((alert) => {
         window.setTimeout(() => {
@@ -119,15 +122,18 @@
         const themeToggle = document.getElementById("themeToggle");
         const root = document.documentElement;
 
+        const switchToLight = {{ _('Switch to light mode')|tojson }};
+        const switchToDark = {{ _('Switch to dark mode')|tojson }};
+
         const updateThemeToggle = () => {
             const isDark = root.dataset.bsTheme === "dark";
             themeToggle.setAttribute("aria-pressed", String(isDark));
-            themeToggle.setAttribute("aria-label", isDark ? "Switch to light mode" : "Switch to dark mode");
-            themeToggle.title = isDark ? "Switch to light mode" : "Switch to dark mode";
+            themeToggle.setAttribute("aria-label", isDark ? switchToLight : switchToDark);
+            themeToggle.title = isDark ? switchToLight : switchToDark;
             themeToggle.querySelector("i").className = isDark ? "bi bi-sun-fill" : "bi bi-moon-stars-fill";
             const themeLabel = document.getElementById("themeToggleLabel");
             if (themeLabel) {
-                themeLabel.textContent = isDark ? "Light mode" : "Dark mode";
+                themeLabel.textContent = isDark ? {{ _('Light mode')|tojson }} : {{ _('Dark mode')|tojson }};
             }
         };
 

@@ -1,33 +1,43 @@
 {% extends "layout.html" %}
-{% block title %}Settings{% endblock %}
+{% block title %}{{ _('Settings') }}{% endblock %}
 {% block content %}
 
 <div class="d-flex justify-content-between align-items-center mb-3">
-    <h3 class="mb-0">User Settings</h3>
+    <h3 class="mb-0">{{ _('User Settings') }}</h3>
 </div>
 
 <div class="row g-4">
     <div class="col-lg-6">
         <div class="card shadow-sm h-100">
             <div class="card-body">
-                <h6 class="card-title">Display preferences</h6>
+                <h6 class="card-title">{{ _('Display preferences') }}</h6>
                 <form method="post" action="{{ url_for('user') }}">
-                    <label class="form-label" for="currencySelect">Currency</label>
+                    <label class="form-label" for="currencySelect">{{ _('Currency') }}</label>
                     {# Keep the symbols in sync with CURRENCY_SYMBOLS in utilities.py #}
                     <select class="form-select" id="currencySelect" name="currency">
-                        <option value="USD" {% if currency_code == 'USD' %}selected{% endif %}>US Dollar ($)</option>
-                        <option value="EUR" {% if currency_code == 'EUR' %}selected{% endif %}>Euro (€)</option>
-                        <option value="GBP" {% if currency_code == 'GBP' %}selected{% endif %}>British Pound (£)</option>
-                        <option value="JPY" {% if currency_code == 'JPY' %}selected{% endif %}>Japanese Yen (¥)</option>
-                        <option value="CNY" {% if currency_code == 'CNY' %}selected{% endif %}>Chinese Yuan (CN¥)</option>
-                        <option value="CAD" {% if currency_code == 'CAD' %}selected{% endif %}>Canadian Dollar (C$)</option>
-                        <option value="HKD" {% if currency_code == 'HKD' %}selected{% endif %}>Hong Kong Dollar (HK$)</option>
-                        <option value="AUD" {% if currency_code == 'AUD' %}selected{% endif %}>Australian Dollar (A$)</option>
-                        <option value="SGD" {% if currency_code == 'SGD' %}selected{% endif %}>Singapore Dollar (S$)</option>
-                        <option value="CHF" {% if currency_code == 'CHF' %}selected{% endif %}>Swiss Franc (CHF)</option>
+                        <option value="USD" {% if currency_code == 'USD' %}selected{% endif %}>{{ _('US Dollar ($)') }}</option>
+                        <option value="EUR" {% if currency_code == 'EUR' %}selected{% endif %}>{{ _('Euro (€)') }}</option>
+                        <option value="GBP" {% if currency_code == 'GBP' %}selected{% endif %}>{{ _('British Pound (£)') }}</option>
+                        <option value="JPY" {% if currency_code == 'JPY' %}selected{% endif %}>{{ _('Japanese Yen (¥)') }}</option>
+                        <option value="CNY" {% if currency_code == 'CNY' %}selected{% endif %}>{{ _('Chinese Yuan (CN¥)') }}</option>
+                        <option value="CAD" {% if currency_code == 'CAD' %}selected{% endif %}>{{ _('Canadian Dollar (C$)') }}</option>
+                        <option value="HKD" {% if currency_code == 'HKD' %}selected{% endif %}>{{ _('Hong Kong Dollar (HK$)') }}</option>
+                        <option value="AUD" {% if currency_code == 'AUD' %}selected{% endif %}>{{ _('Australian Dollar (A$)') }}</option>
+                        <option value="SGD" {% if currency_code == 'SGD' %}selected{% endif %}>{{ _('Singapore Dollar (S$)') }}</option>
+                        <option value="CHF" {% if currency_code == 'CHF' %}selected{% endif %}>{{ _('Swiss Franc (CHF)') }}</option>
                     </select>
-                    <p class="text-muted small mt-2">Saved to your account. This is purely cosmetic and won't convert currencies.</p>
-                    <button type="submit" class="btn btn-primary mt-2">Save preference</button>
+                    <p class="text-muted small mt-2">{{ _("Currency is saved to your account. This is purely cosmetic and won't convert currencies.") }}</p>
+
+                    <label class="form-label" for="languageSelect">{{ _('Language') }}</label>
+                    {# Language names stay in their own language so they can always be found #}
+                    <select class="form-select" id="languageSelect" name="language">
+                        {% for code, name in languages.items() %}
+                        <option value="{{ code }}" lang="{{ code }}" {% if current_language == code %}selected{% endif %}>{{ name }}</option>
+                        {% endfor %}
+                    </select>
+                    <p class="text-muted small mt-2">{{ _('Language is saved in this browser.') }}</p>
+
+                    <button type="submit" class="btn btn-primary mt-2">{{ _('Save preferences') }}</button>
                 </form>
             </div>
         </div>
@@ -36,12 +46,12 @@
     <div class="col-lg-6">
         <div class="card shadow-sm border-danger h-100">
             <div class="card-body">
-                <h6 class="card-title text-danger">Danger zone</h6>
+                <h6 class="card-title text-danger">{{ _('Danger zone') }}</h6>
                 <p class="text-muted mb-3">
-                    This will permanently delete all your purchases, inventory, and shelves. Your account is kept.
+                    {{ _('This will permanently delete all your purchases, inventory, and shelves. Your account is kept.') }}
                 </p>
-                <form method="post" action="{{ url_for('delete_database') }}" onsubmit="return confirm('Are you sure you want to delete all your data? This cannot be undone.');">
-                    <button type="submit" class="btn btn-outline-danger">Delete my data</button>
+                <form method="post" action="{{ url_for('delete_database') }}" onsubmit='return confirm({{ _("Are you sure you want to delete all your data? This cannot be undone.")|tojson }});'>
+                    <button type="submit" class="btn btn-outline-danger">{{ _('Delete my data') }}</button>
                 </form>
             </div>
         </div>
@@ -50,11 +60,11 @@
     <div class="col-lg-6">
         <div class="card shadow-sm h-100">
             <div class="card-body">
-                <h6 class="card-title">Import Database (.csv)</h6>
-                <p class="text-muted small">Restore items and purchases from a Resale Desk CSV export.</p>
+                <h6 class="card-title">{{ _('Import Database (.csv)') }}</h6>
+                <p class="text-muted small">{{ _('Restore items and purchases from a Resale Desk CSV export.') }}</p>
                 <form method="post" enctype="multipart/form-data" action="{{ url_for('import_csv') }}">
                     <input type="file" name="csv_file" accept=".csv" required>
-                    <button type="submit" class="btn btn-primary mt-2">Import CSV</button>
+                    <button type="submit" class="btn btn-primary mt-2">{{ _('Import CSV') }}</button>
                 </form>
             </div>
         </div>
@@ -63,9 +73,9 @@
     <div class="col-lg-6">
         <div class="card shadow-sm h-100">
             <div class="card-body">
-                <h6 class="card-title">Export Database (.csv)</h6>
-                <p class="text-muted small">Download your database in a CSV format.</p>
-                <a href="{{ url_for('export_csv') }}" class="btn btn-outline-primary">Export CSV</a>
+                <h6 class="card-title">{{ _('Export Database (.csv)') }}</h6>
+                <p class="text-muted small">{{ _('Download your database in a CSV format.') }}</p>
+                <a href="{{ url_for('export_csv') }}" class="btn btn-outline-primary">{{ _('Export CSV') }}</a>
             </div>
         </div>
     </div>
@@ -74,15 +84,14 @@
     <div class="col-12">
         <div class="card shadow-sm {% if import_result.errors %}border-warning{% else %}border-success{% endif %}">
             <div class="card-body">
-                <h6 class="card-title">CSV import results</h6>
+                <h6 class="card-title">{{ _('CSV import results') }}</h6>
                 <p class="mb-2">
-                    Imported {{ import_result.purchases_created }} purchase(s) and
-                    {{ import_result.items_created }} item(s).
+                    {{ _('Imported {purchases} purchase(s) and {items} item(s).', purchases=import_result.purchases_created, items=import_result.items_created) }}
                 </p>
 
                 {% if import_result.errors %}
                 <p class="text-warning mb-2">
-                    {{ import_result.errors|length }} row(s) were skipped:
+                    {{ _('{count} row(s) were skipped:', count=import_result.errors|length) }}
                 </p>
                 <ul class="mb-0">
                     {% for error in import_result.errors %}
@@ -90,7 +99,7 @@
                     {% endfor %}
                 </ul>
                 {% else %}
-                <p class="text-success mb-0">The import completed without errors.</p>
+                <p class="text-success mb-0">{{ _('The import completed without errors.') }}</p>
                 {% endif %}
             </div>
         </div>
