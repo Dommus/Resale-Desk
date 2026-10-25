@@ -4,60 +4,105 @@
 
 <h3 class="mb-3">{{ _('Inventory') }}</h3>
 
-<div class="card shadow-sm mb-3">
+{# Mobile layout (AI-generated with Claude): on phones the filters become a sticky
+   search bar with quick filter chips, and the other fields open in a bottom sheet.
+   Wide screens keep the same form as one row. #}
+{% set active_shelf = shelves|selectattr('id', 'equalto', shelf_id|int)|first if shelf_id and shelf_id != 'all' %}
+{% set active_category = category if category and category != 'all' %}
+{% set sheet_filter_count = [active_shelf, active_category, sort != 'newest']|select|list|length %}
+
+<div class="card shadow-sm mb-3 table-filters">
     <div class="card-body">
         <form id="inventory-filters" method="get" class="row g-2 align-items-end">
-            <div class="col-md-3">
-                <label class="form-label small mb-1">{{ _('Search') }}</label>
-                <input type="text" class="form-control form-control-sm" name="q" value="{{ q }}" placeholder="{{ _('Name, Inventory ID, Listing ID') }}">
+            <div class="col-md-3 table-search">
+                <label class="form-label small mb-1" for="inventory-search">{{ _('Search') }}</label>
+                <i class="bi bi-search table-search-icon d-md-none" aria-hidden="true"></i>
+                <input type="search" id="inventory-search" class="form-control form-control-sm" name="q" value="{{ q }}" placeholder="{{ _('Name, Inventory ID, Listing ID') }}" enterkeyhint="search">
             </div>
-            <div class="col-md-2">
-                <label class="form-label small mb-1">{{ _('Status') }}</label>
-                <select class="form-select form-select-sm" name="status">
-                    <option value="all" {% if status == 'all' %}selected{% endif %}>{{ _('All') }}</option>
+            <div class="col-12 d-md-none">
+                <div class="filter-chips" role="group" aria-label="{{ _('Filters') }}">
+                    <button type="button" class="filter-chip{{ ' filter-chip-applied' if sheet_filter_count }}" data-bs-toggle="offcanvas" data-bs-target="#inventory-filter-sheet" aria-controls="inventory-filter-sheet">
+                        <i class="bi bi-sliders" aria-hidden="true"></i> {{ _('Filters') }}
+                        {% if sheet_filter_count %}<span class="filter-chip-count">{{ sheet_filter_count }}</span>{% endif %}
+                    </button>
+                    {% if active_shelf %}
+                    <button type="button" class="filter-chip filter-chip-applied" data-filter-name="shelf_id" data-filter-value="all" aria-label="{{ _('Remove filter {name}', name=active_shelf.name) }}">
+                        <i class="bi bi-bookshelf" aria-hidden="true"></i> {{ active_shelf.name }} <i class="bi bi-x-lg" aria-hidden="true"></i>
+                    </button>
+                    {% endif %}
+                    {% if active_category %}
+                    <button type="button" class="filter-chip filter-chip-applied" data-filter-name="category" data-filter-value="all" aria-label="{{ _('Remove filter {name}', name=active_category) }}">
+                        <i class="bi bi-tag" aria-hidden="true"></i> {{ active_category }} <i class="bi bi-x-lg" aria-hidden="true"></i>
+                    </button>
+                    {% endif %}
+                    <button type="button" class="filter-chip" data-filter-name="status" data-filter-value="all" aria-pressed="{{ 'true' if status == 'all' else 'false' }}">{{ _('All') }}</button>
                     {% for s in ["On Sale", "In Storage", "Reserved", "Sold"] %}
-                    <option value="{{ s }}" {% if status == s %}selected{% endif %}>{{ _(s) }}</option>
+                    <button type="button" class="filter-chip" data-filter-name="status" data-filter-value="{{ s }}" aria-pressed="{{ 'true' if status == s else 'false' }}">
+                        <span class="filter-chip-dot status-progress-{{ s|replace(' ', '-') }}" aria-hidden="true"></span> {{ _(s) }}
+                    </button>
                     {% endfor %}
-                </select>
+                </div>
             </div>
-            <div class="col-md-2">
-                <label class="form-label small mb-1">{{ _('Shelf') }}</label>
-                <select class="form-select form-select-sm" name="shelf_id">
-                    <option value="all" {% if not shelf_id or shelf_id == 'all' %}selected{% endif %}>{{ _('All') }}</option>
-                    {% for shelf in shelves %}
-                    <option value="{{ shelf.id }}" {% if shelf_id == shelf.id|string %}selected{% endif %}>{{ shelf.name }}</option>
-                    {% endfor %}
-                </select>
-            </div>
-            <div class="col-md-2">
-                <label class="form-label small mb-1">{{ _('Category') }}</label>
-                <select class="form-select form-select-sm" name="category">
-                    <option value="all" {% if not category or category == 'all' %}selected{% endif %}>{{ _('All') }}</option>
-                    {% for c in categories %}
-                    <option value="{{ c }}" {% if category == c %}selected{% endif %}>{{ c }}</option>
-                    {% endfor %}
-                </select>
-            </div>
-            <div class="col-md-2">
-                <label class="form-label small mb-1">{{ _('Sort') }}</label>
-                <select class="form-select form-select-sm" name="sort">
-                    <option value="newest" {% if sort == "newest" %}selected{% endif %}>{{ _('Newest') }}</option>
-                    <option value="oldest" {% if sort == "oldest" %}selected{% endif %}>{{ _('Oldest') }}</option>
-                    <option value="highest_profit" {% if sort == "highest_profit" %}selected{% endif %}>{{ _('Highest Profit') }}</option>
-                    <option value="lowest_profit" {% if sort == "lowest_profit" %}selected{% endif %}>{{ _('Lowest Profit') }}</option>
-                </select>
-            </div>
-            <div class="col-md-1">
-                <button class="btn btn-secondary btn-sm w-100" type="button" id="inventory-reset">{{ _('Reset') }}</button>
+            <div class="col-md-9 table-filter-sheet-col">
+                <div class="offcanvas-md offcanvas-bottom table-filter-sheet" tabindex="-1" id="inventory-filter-sheet" aria-labelledby="inventory-filter-sheet-title" data-filter-sheet>
+                    <div class="offcanvas-header">
+                        <h5 class="offcanvas-title" id="inventory-filter-sheet-title">{{ _('Filters') }}</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#inventory-filter-sheet" aria-label="{{ _('Close') }}"></button>
+                    </div>
+                    <div class="offcanvas-body">
+                        <div class="row g-2 align-items-end flex-grow-1">
+                            <div class="col-md">
+                                <label class="form-label small mb-1" for="inventory-status">{{ _('Status') }}</label>
+                                <select class="form-select form-select-sm" name="status" id="inventory-status">
+                                    <option value="all" {% if status == 'all' %}selected{% endif %}>{{ _('All') }}</option>
+                                    {% for s in ["On Sale", "In Storage", "Reserved", "Sold"] %}
+                                    <option value="{{ s }}" {% if status == s %}selected{% endif %}>{{ _(s) }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md">
+                                <label class="form-label small mb-1" for="inventory-shelf">{{ _('Shelf') }}</label>
+                                <select class="form-select form-select-sm" name="shelf_id" id="inventory-shelf">
+                                    <option value="all" {% if not shelf_id or shelf_id == 'all' %}selected{% endif %}>{{ _('All') }}</option>
+                                    {% for shelf in shelves %}
+                                    <option value="{{ shelf.id }}" {% if shelf_id == shelf.id|string %}selected{% endif %}>{{ shelf.name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md">
+                                <label class="form-label small mb-1" for="inventory-category">{{ _('Category') }}</label>
+                                <select class="form-select form-select-sm" name="category" id="inventory-category">
+                                    <option value="all" {% if not category or category == 'all' %}selected{% endif %}>{{ _('All') }}</option>
+                                    {% for c in categories %}
+                                    <option value="{{ c }}" {% if category == c %}selected{% endif %}>{{ c }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md">
+                                <label class="form-label small mb-1" for="inventory-sort">{{ _('Sort') }}</label>
+                                <select class="form-select form-select-sm" name="sort" id="inventory-sort">
+                                    <option value="newest" {% if sort == "newest" %}selected{% endif %}>{{ _('Newest') }}</option>
+                                    <option value="oldest" {% if sort == "oldest" %}selected{% endif %}>{{ _('Oldest') }}</option>
+                                    <option value="highest_profit" {% if sort == "highest_profit" %}selected{% endif %}>{{ _('Highest Profit') }}</option>
+                                    <option value="lowest_profit" {% if sort == "lowest_profit" %}selected{% endif %}>{{ _('Lowest Profit') }}</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="table-filter-sheet-footer">
+                        <button class="btn btn-secondary btn-sm" type="button" id="inventory-reset">{{ _('Reset') }}</button>
+                        <button class="btn btn-primary btn-sm d-md-none" type="submit">{{ _('Show results') }}</button>
+                    </div>
+                </div>
             </div>
         </form>
     </div>
 </div>
 
-<div class="card shadow-sm">
+<div class="card shadow-sm table-card">
     <div class="card-body">
         <div class="app-fit-table-wrap">
-        <table class="table table-hover align-middle app-fit-table" id="inventory-table"
+        <table class="table table-hover align-middle app-fit-table app-list-table" id="inventory-table"
                data-sortable-table
                data-filter-form="inventory-filters"
                data-reset-button="inventory-reset"
@@ -84,7 +129,7 @@
                     <!-- Item Code -->
                     <td data-label="{{ _('Item code') }}" data-sort-value="{{ item.inventory_code or '' }}"><code class="inv-code">{{ item.inventory_code or _('No Code Assigned') }}</code></td>
                     <!-- Name -->
-                    <td data-label="{{ _('Name') }}" data-sort-value="{{ item.name }}">
+                    <td data-label="{{ _('Name') }}" data-mobile="title" data-sort-value="{{ item.name }}">
                         {% set first_listing_url = (item.listings | selectattr('listing_url') | first) %}
                         {% if first_listing_url %}
                         <a href="{{ first_listing_url.listing_url }}" target="_blank" rel="noopener noreferrer">{{ item.name }}</a>
@@ -93,11 +138,11 @@
                         {% endif %}
                     </td>
                     <!-- Quantity -->
-                    <td data-label="{{ _('Quantity') }}" data-sort-value="{{ item.quantity }}">{{ item.available_quantity }} / {{ item.quantity }}</td>
+                    <td data-label="{{ _('Quantity') }}" {% if item.quantity > 1 %}data-mobile="meta" data-mobile-label="{{ _('Qty') }}" {% endif %}data-sort-value="{{ item.quantity }}">{{ item.available_quantity }} / {{ item.quantity }}</td>
                     <!-- Category -->
                     <td data-label="{{ _('Category') }}" data-sort-value="{{ item.category or '' }}">{{ item.category or "-" }}</td>
                     <!-- Shelf -->
-                    <td data-label="{{ _('Shelf') }}" data-sort-value="{{ item.shelf.name if item.shelf else '' }}">
+                    <td data-label="{{ _('Shelf') }}" data-mobile="meta" data-mobile-label="{{ _('Shelf') }}" data-sort-value="{{ item.shelf.name if item.shelf else '' }}">
                         {% if item.shelf %}
                         <a href="{{ url_for('inventory', shelf_id=item.shelf.id) }}">{{ item.shelf.name }}</a>
                         {% else %}
@@ -105,9 +150,9 @@
                         {% endif %}
                     </td>
                     <!-- Status -->
-                    <td data-label="{{ _('Status') }}" data-sort-value="{{ _(item.status.value) }}"><span class="badge status-badge-{{ item.status.value|replace(' ', '-') }}">{{ _(item.status.value) }}</span></td>
+                    <td data-label="{{ _('Status') }}" data-mobile="badge" data-sort-value="{{ _(item.status.value) }}"><span class="badge status-badge-{{ item.status.value|replace(' ', '-') }}">{{ _(item.status.value) }}</span></td>
                     <!-- Cost -->
-                    <td data-label="{{ _('Purchase cost') }}" data-sort-value="{{ item.purchase_cost if not item.is_bundle and item.purchase_cost is not none else '' }}">
+                    <td data-label="{{ _('Purchase cost') }}" data-mobile="meta" data-mobile-label="{{ _('Cost') }}" data-sort-value="{{ item.purchase_cost if not item.is_bundle and item.purchase_cost is not none else '' }}">
                         {% if item.is_bundle %}
                         <span class="text-muted" title="{{ item.purchase.display_name }}">{{ _('Bundle: {name}', name=item.purchase.display_name) }}</span>
                         {% elif item.unit_cost is not none %}
@@ -117,7 +162,7 @@
                         {% endif %}
                     </td>
                     <!-- Profit -->
-                    <td data-label="{{ _('Profit') }}" data-sort-value="{{ item.realized_profit if item.realized_profit is not none else '' }}">
+                    <td data-label="{{ _('Profit') }}" data-mobile="amount" data-sort-value="{{ item.realized_profit if item.realized_profit is not none else '' }}">
                         {% if item.is_bundle %}
                             <span class="text-muted" title="{{ _('Calculated on the purchase') }}">{{ _('Bundle') }}</span>
                         {% elif item.realized_profit is not none %}
@@ -130,7 +175,7 @@
                     <td data-label="{{ _('Purchase date') }}" data-sort-value="{{ item.purchase.date.isoformat() if item.purchase.date else '' }}">{{ item.purchase.date.strftime('%Y-%m-%d') if item.purchase.date else '-' }}</td>
                     <!-- Sold Date -->
                     <td data-label="{{ _('Sold date') }}" data-sort-value="{{ item.sale.sale_date.isoformat() if item.sale and item.sale.sale_date else '' }}">{{ item.sale.sale_date.strftime('%Y-%m-%d') if item.sale and item.sale.sale_date else '-' }}</td>
-                    <td data-label="" class="text-end table-action-cell"><a href="{{ url_for('view_item', item_id=item.id) }}" class="btn btn-sm btn-outline-primary">{{ _('View') }}</a></td>
+                    <td data-label="" data-mobile="link" class="text-end table-action-cell"><a href="{{ url_for('view_item', item_id=item.id) }}" class="btn btn-sm btn-outline-primary"><span class="table-action-label">{{ _('View') }}</span><i class="bi bi-chevron-right table-action-chevron" aria-hidden="true"></i></a></td>
                 </tr>
                 {% else %}
                 <tr><td colspan="11" class="text-center text-muted py-4">{{ _('No items match your filters.') }}</td></tr>

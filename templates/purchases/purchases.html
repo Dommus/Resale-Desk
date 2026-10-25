@@ -7,41 +7,69 @@
     <a href="{{ url_for('choose_purchase_type') }}" class="btn btn-primary"><i class="bi bi-plus-lg"></i> {{ _('New Purchase') }}</a>
 </div>
 
-<div class="card shadow-sm mb-3">
+{# Mobile layout (AI-generated with Claude): see the matching comment in inventory/inventory.html #}
+{% set sheet_filter_count = 1 if sort != 'newest' else 0 %}
+
+<div class="card shadow-sm mb-3 table-filters">
     <div class="card-body">
         <form id="purchase-filters" method="get" class="row g-2 align-items-end">
-            <div class="col-md-5">
-                <label class="form-label small mb-1">{{ _('Search') }}</label>
-                <input type="text" class="form-control form-control-sm" name="q" value="{{ q }}" placeholder="{{ _('Name, seller, platform, item, or purchase #') }}">
+            <div class="col-md-5 table-search">
+                <label class="form-label small mb-1" for="purchase-search">{{ _('Search') }}</label>
+                <i class="bi bi-search table-search-icon d-md-none" aria-hidden="true"></i>
+                <input type="search" id="purchase-search" class="form-control form-control-sm" name="q" value="{{ q }}" placeholder="{{ _('Name, seller, platform, item, or purchase #') }}" enterkeyhint="search">
             </div>
-            <div class="col-md-2">
-                <label class="form-label small mb-1">{{ _('Type') }}</label>
-                <select class="form-select form-select-sm" name="purchase_type">
-                    <option value="">{{ _('All') }}</option>
-                    <option value="Single" {% if purchase_type == "Single" %}selected{% endif %}>{{ _('Single') }}</option>
-                    <option value="Bundle" {% if purchase_type == "Bundle" %}selected{% endif %}>{{ _('Bundle') }}</option>
-                </select>
+            <div class="col-12 d-md-none">
+                <div class="filter-chips" role="group" aria-label="{{ _('Filters') }}">
+                    <button type="button" class="filter-chip{{ ' filter-chip-applied' if sheet_filter_count }}" data-bs-toggle="offcanvas" data-bs-target="#purchase-filter-sheet" aria-controls="purchase-filter-sheet">
+                        <i class="bi bi-sliders" aria-hidden="true"></i> {{ _('Filters') }}
+                        {% if sheet_filter_count %}<span class="filter-chip-count">{{ sheet_filter_count }}</span>{% endif %}
+                    </button>
+                    {% for value, label in [("", "All"), ("Single", "Single"), ("Bundle", "Bundle")] %}
+                    <button type="button" class="filter-chip" data-filter-name="purchase_type" data-filter-value="{{ value }}" aria-pressed="{{ 'true' if purchase_type == value else 'false' }}">{{ _(label) }}</button>
+                    {% endfor %}
+                </div>
             </div>
-            <div class="col-md-3">
-                <label class="form-label small mb-1">{{ _('Sort') }}</label>
-                <select class="form-select form-select-sm" name="sort">
-                    <option value="newest" {% if sort == "newest" %}selected{% endif %}>{{ _('Newest') }}</option>
-                    <option value="oldest" {% if sort == "oldest" %}selected{% endif %}>{{ _('Oldest') }}</option>
-                    <option value="highest_profit" {% if sort == "highest_profit" %}selected{% endif %}>{{ _('Highest Profit') }}</option>
-                    <option value="lowest_profit" {% if sort == "lowest_profit" %}selected{% endif %}>{{ _('Lowest Profit') }}</option>
-                </select>
-            </div>
-            <div class="col-md-2">
-                <button class="btn btn-secondary btn-sm w-100" type="button" id="purchase-reset">{{ _('Reset') }}</button>
+            <div class="col-md-7 table-filter-sheet-col">
+                <div class="offcanvas-md offcanvas-bottom table-filter-sheet" tabindex="-1" id="purchase-filter-sheet" aria-labelledby="purchase-filter-sheet-title" data-filter-sheet>
+                    <div class="offcanvas-header">
+                        <h5 class="offcanvas-title" id="purchase-filter-sheet-title">{{ _('Filters') }}</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#purchase-filter-sheet" aria-label="{{ _('Close') }}"></button>
+                    </div>
+                    <div class="offcanvas-body">
+                        <div class="row g-2 align-items-end flex-grow-1">
+                            <div class="col-md-5">
+                                <label class="form-label small mb-1" for="purchase-type">{{ _('Type') }}</label>
+                                <select class="form-select form-select-sm" name="purchase_type" id="purchase-type">
+                                    <option value="">{{ _('All') }}</option>
+                                    <option value="Single" {% if purchase_type == "Single" %}selected{% endif %}>{{ _('Single') }}</option>
+                                    <option value="Bundle" {% if purchase_type == "Bundle" %}selected{% endif %}>{{ _('Bundle') }}</option>
+                                </select>
+                            </div>
+                            <div class="col-md-7">
+                                <label class="form-label small mb-1" for="purchase-sort">{{ _('Sort') }}</label>
+                                <select class="form-select form-select-sm" name="sort" id="purchase-sort">
+                                    <option value="newest" {% if sort == "newest" %}selected{% endif %}>{{ _('Newest') }}</option>
+                                    <option value="oldest" {% if sort == "oldest" %}selected{% endif %}>{{ _('Oldest') }}</option>
+                                    <option value="highest_profit" {% if sort == "highest_profit" %}selected{% endif %}>{{ _('Highest Profit') }}</option>
+                                    <option value="lowest_profit" {% if sort == "lowest_profit" %}selected{% endif %}>{{ _('Lowest Profit') }}</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="table-filter-sheet-footer">
+                        <button class="btn btn-secondary btn-sm" type="button" id="purchase-reset">{{ _('Reset') }}</button>
+                        <button class="btn btn-primary btn-sm d-md-none" type="submit">{{ _('Show results') }}</button>
+                    </div>
+                </div>
             </div>
         </form>
     </div>
 </div>
 
-<div class="card shadow-sm">
+<div class="card shadow-sm table-card">
     <div class="card-body">
         <div class="app-fit-table-wrap">
-        <table class="table table-hover align-middle app-fit-table" id="purchases-table"
+        <table class="table table-hover align-middle app-fit-table app-list-table" id="purchases-table"
                data-sortable-table
                data-filter-form="purchase-filters"
                data-reset-button="purchase-reset"
@@ -66,16 +94,18 @@
                 <!-- <tr onclick="window.location='{{ url_for('view_purchase', purchase_id=p.id) }}'" style="cursor:pointer;"> -->
                 <tr class="clickable-row" data-href="{{ url_for('view_purchase', purchase_id=p.id) }}" data-sort-row>
                     <td data-label="#" data-sort-value="{{ p.id }}">{{ p.id }}</td>
-                    <td data-label="{{ _('Date') }}" data-sort-value="{{ p.date.isoformat() if p.date else '' }}">{{ p.date or _('Unassigned') }}</td>
-                    <td data-label="{{ _('Name') }}" data-sort-value="{{ p.name or '' }}">{{ p.name or "-" }}</td>
+                    <td data-label="{{ _('Date') }}" data-mobile="meta" data-sort-value="{{ p.date.isoformat() if p.date else '' }}">{{ p.date or _('Unassigned') }}</td>
+                    <td data-label="{{ _('Name') }}" data-mobile="title" data-sort-value="{{ p.name or '' }}">
+                        {% if p.name %}{{ p.name }}{% else %}<span class="d-none d-md-inline">-</span><span class="d-md-none">{{ p.display_name }}</span>{% endif %}
+                    </td>
                     <td data-label="{{ _('Seller') }}" data-sort-value="{{ p.seller or '' }}">{{ p.seller or "-" }}</td>
-                    <td data-label="{{ _('Platform') }}" data-sort-value="{{ p.platform or '' }}">{{ p.platform or "-" }}</td>
-                    <td data-label="{{ _('Type') }}" data-sort-value="{{ _(p.purchase_type.value) }}"><span class="badge purchase-type-badge-{{ p.purchase_type.value }}">{{ _(p.purchase_type.value) }}</span></td>
-                    <td data-label="{{ _('Total cost') }}" data-sort-value="{{ p.total_cost }}">{{ currency_symbol }}{{ "%.2f"|format(p.total_cost) }}</td>
-                    <td data-label="{{ _('Profit') }}" data-sort-value="{{ p.profit }}"><span class="{{ 'text-success' if p.profit >= 0 else 'text-danger' }}">{{ currency_symbol }}{{ "%.2f"|format(p.profit) }}</span></td>
-                    <td data-label="{{ _('# Units') }}" data-sort-value="{{ p.items|sum(attribute='quantity') }}">{{ p.items|sum(attribute='quantity_sold') }}/{{ p.items|sum(attribute='quantity') }}</td>
-                    <td data-label="" class="text-end table-action-cell">
-                        <a href="{{ url_for('view_purchase', purchase_id=p.id) }}" class="btn btn-sm btn-outline-primary">{{ _('View') }}</a>
+                    <td data-label="{{ _('Platform') }}" data-mobile="meta" data-sort-value="{{ p.platform or '' }}">{{ p.platform or "-" }}</td>
+                    <td data-label="{{ _('Type') }}" data-mobile="badge" data-sort-value="{{ _(p.purchase_type.value) }}"><span class="badge purchase-type-badge-{{ p.purchase_type.value }}">{{ _(p.purchase_type.value) }}</span></td>
+                    <td data-label="{{ _('Total cost') }}" data-mobile="meta" data-mobile-label="{{ _('Cost') }}" data-sort-value="{{ p.total_cost }}">{{ currency_symbol }}{{ "%.2f"|format(p.total_cost) }}</td>
+                    <td data-label="{{ _('Profit') }}" data-mobile="amount" data-sort-value="{{ p.profit }}"><span class="{{ 'text-success' if p.profit >= 0 else 'text-danger' }}">{{ currency_symbol }}{{ "%.2f"|format(p.profit) }}</span></td>
+                    <td data-label="{{ _('# Units') }}" data-mobile="meta" data-mobile-label="{{ _('Sold') }}" data-sort-value="{{ p.items|sum(attribute='quantity') }}">{{ p.items|sum(attribute='quantity_sold') }}/{{ p.items|sum(attribute='quantity') }}</td>
+                    <td data-label="" data-mobile="link" class="text-end table-action-cell">
+                        <a href="{{ url_for('view_purchase', purchase_id=p.id) }}" class="btn btn-sm btn-outline-primary"><span class="table-action-label">{{ _('View') }}</span><i class="bi bi-chevron-right table-action-chevron" aria-hidden="true"></i></a>
                     </td>
                 </tr>
                 {% else %}

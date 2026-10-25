@@ -831,8 +831,8 @@ code.inv-code {
 
     .app-fit-table,
     .app-fit-table tbody,
-    .app-fit-table tr,
-    .app-fit-table td,
+    .app-fit-table:not(.app-list-table) tr,
+    .app-fit-table:not(.app-list-table) td,
     .app-form-table,
     .app-form-table tbody,
     .app-form-table tr,
@@ -846,7 +846,7 @@ code.inv-code {
         border: 0;
     }
 
-    .app-fit-table tbody tr,
+    .app-fit-table:not(.app-list-table) tbody tr,
     .app-form-table tbody tr.item-row,
     .app-form-table tbody tr.bundle-item-row {
         margin-bottom: 0.6rem;
@@ -856,11 +856,11 @@ code.inv-code {
         background: var(--sheet);
     }
 
-    .app-fit-table tbody tr:last-child {
+    .app-fit-table:not(.app-list-table) tbody tr:last-child {
         margin-bottom: 0;
     }
 
-    .app-fit-table tbody td {
+    .app-fit-table:not(.app-list-table) tbody td {
         display: flex;
         justify-content: space-between;
         align-items: flex-start;
@@ -871,11 +871,11 @@ code.inv-code {
         text-align: right;
     }
 
-    .app-fit-table tbody td:last-child {
+    .app-fit-table:not(.app-list-table) tbody td:last-child {
         border-bottom: 0 !important;
     }
 
-    .app-fit-table tbody td::before {
+    .app-fit-table:not(.app-list-table) tbody td::before {
         flex: 0 0 38%;
         color: var(--bs-secondary-color);
         content: attr(data-label);
@@ -885,14 +885,14 @@ code.inv-code {
         text-align: left;
     }
 
-    .app-fit-table tbody td.table-action-cell {
+    .app-fit-table:not(.app-list-table) tbody td.table-action-cell {
         width: 100%;
         justify-content: flex-end;
         padding-top: 0.5rem !important;
     }
 
-    .app-fit-table tbody td.table-action-cell::before,
-    .app-fit-table tbody td[data-label=""]::before {
+    .app-fit-table:not(.app-list-table) tbody td.table-action-cell::before,
+    .app-fit-table:not(.app-list-table) tbody td[data-label=""]::before {
         content: none;
     }
 
@@ -921,6 +921,351 @@ code.inv-code {
     .app-form-table tbody tr.bundle-item-row td[data-label=""]::before,
     .app-form-table tbody tr.bundle-add-row td::before {
         content: none;
+    }
+}
+
+/* ---------- Mobile list tables ----------
+   On small screens an .app-list-table becomes a compact list, like a banking
+   or mail app: a title with an amount on the right, a line of key facts
+   below, and the whole row opens the record. Cells choose their place with
+   data-mobile="title|amount|badge|meta|link"; cells without it are left
+   out, and meta cells can show a short data-mobile-label before the value. */
+.table-action-chevron {
+    display: none;
+}
+
+@media (max-width: 767.98px) {
+    .table-card {
+        overflow: clip;
+    }
+
+    .table-card > .card-body {
+        padding: 0;
+    }
+
+    .app-list-table tbody tr {
+        position: relative;
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 0.25rem 0.4rem;
+        padding: 0.65rem 2.25rem 0.65rem 0.85rem;
+        border-bottom: 1px solid var(--rule);
+        background: var(--sheet);
+    }
+
+    .app-list-table tbody tr:last-child {
+        border-bottom: 0;
+    }
+
+    .app-list-table tbody tr:not(:has(> [data-mobile="link"])) {
+        padding-right: 0.85rem;
+    }
+
+    /* Ends the title line, so the badge and facts always start a new line */
+    .app-list-table tbody tr:has(> [data-mobile="title"])::before {
+        order: 3;
+        flex-basis: 100%;
+        content: "";
+    }
+
+    .app-list-table tbody td {
+        display: none;
+        width: auto;
+        padding: 0;
+        border: 0;
+        background: transparent;
+        box-shadow: none;
+        text-align: left;
+    }
+
+    .app-list-table tbody td[colspan] {
+        display: block;
+        flex: 1 1 100%;
+    }
+
+    .app-list-table tbody td[data-mobile] {
+        display: block;
+    }
+
+    /* The list has a fixed layout, so columns hidden on desktop still show here */
+    .app-list-table tbody td[data-mobile][hidden] {
+        display: block !important;
+    }
+
+    /* Facts without a value are left out instead of showing a dash */
+    .app-list-table tbody td[data-mobile="meta"][data-sort-value=""],
+    .app-list-table tbody td[data-mobile="amount"][data-sort-value=""] {
+        display: none !important;
+    }
+
+    .app-list-table tbody td[data-mobile] a {
+        color: inherit;
+        text-decoration: none;
+    }
+
+    .app-list-table tbody td[data-mobile="title"] {
+        display: -webkit-box;
+        order: 1;
+        flex: 1 1 0;
+        min-width: 0;
+        overflow: hidden;
+        -webkit-box-orient: vertical;
+        -webkit-line-clamp: 2;
+        font-weight: 600;
+        line-height: 1.3;
+    }
+
+    .app-list-table tbody td[data-mobile="amount"] {
+        order: 2;
+        flex: none;
+        margin-left: auto;
+        font-weight: 600;
+        white-space: nowrap;
+    }
+
+    .app-list-table tbody td[data-mobile="badge"] {
+        order: 4;
+        flex: none;
+    }
+
+    .app-list-table tbody td[data-mobile="badge"] .badge {
+        font-size: 0.75rem;
+    }
+
+    .app-list-table tbody td[data-mobile="meta"] {
+        order: 5;
+        font-size: 0.8rem;
+        white-space: nowrap;
+    }
+
+    .app-list-table tbody td[data-mobile="meta"]::before {
+        color: var(--bs-secondary-color);
+        content: "·\00a0";
+    }
+
+    .app-list-table tbody td[data-mobile="meta"][data-mobile-label]::before {
+        content: "·\00a0" attr(data-mobile-label) "\00a0";
+    }
+
+    /* The row's own link is stretched over the whole row, with a chevron */
+    .app-list-table tbody td[data-mobile="link"] {
+        display: contents;
+    }
+
+    .app-list-table td[data-mobile="link"] > a {
+        --bs-btn-hover-bg: transparent;
+        --bs-btn-active-bg: rgba(var(--accent-rgb), 0.08);
+        position: absolute;
+        inset: 0;
+        z-index: 1;
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        padding: 0 0.75rem;
+        border: 0;
+        border-radius: 0;
+        color: var(--bs-secondary-color);
+    }
+
+    .app-list-table td[data-mobile="link"] > a:focus-visible {
+        box-shadow: inset 0 0 0 2px var(--accent);
+    }
+
+    .table-action-label {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+        white-space: nowrap;
+    }
+
+    .table-action-chevron {
+        display: inline-block;
+    }
+}
+
+@media (max-width: 767.98px) and (hover: hover) {
+    .app-list-table tbody tr:hover {
+        background: var(--hover);
+    }
+}
+
+/* ---------- Table filters: search bar, quick chips, bottom sheet ----------
+   One filter form, two layouts. Wide screens show it as a row of fields. On
+   phones it is a sticky search bar with a row of quick filter chips, and the
+   remaining fields open in a bottom sheet (Bootstrap's .offcanvas-md). */
+.filter-chips {
+    display: flex;
+    gap: 0.4rem;
+    margin: 0 -0.75rem;
+    padding: 0.1rem 0.75rem;
+    overflow-x: auto;
+    scrollbar-width: none;
+}
+
+.filter-chips::-webkit-scrollbar {
+    display: none;
+}
+
+.filter-chip {
+    display: inline-flex;
+    flex: none;
+    align-items: center;
+    gap: 0.4rem;
+    min-height: 2.25rem;
+    padding: 0 0.75rem;
+    border: 1px solid var(--rule-strong);
+    border-radius: 4px;
+    background: var(--sheet);
+    color: var(--ink);
+    font-size: 0.85rem;
+    font-weight: 500;
+    white-space: nowrap;
+}
+
+.filter-chip:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+}
+
+.filter-chip[aria-pressed="true"] {
+    border-color: var(--accent);
+    background: var(--accent);
+    color: var(--sheet);
+}
+
+.filter-chip-applied {
+    border-color: var(--accent);
+    background: rgba(var(--accent-rgb), 0.08);
+    color: var(--accent);
+}
+
+.filter-chip-dot {
+    width: 0.55rem;
+    height: 0.55rem;
+    border-radius: 50%;
+}
+
+.filter-chip[aria-pressed="true"] .filter-chip-dot {
+    box-shadow: 0 0 0 1.5px var(--sheet);
+}
+
+.filter-chip-count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 1.15rem;
+    height: 1.15rem;
+    padding: 0 0.3rem;
+    border-radius: 999px;
+    background: var(--accent);
+    color: var(--sheet);
+    font-size: 0.7rem;
+    font-weight: 600;
+}
+
+.table-search {
+    position: relative;
+}
+
+.table-search-icon {
+    position: absolute;
+    top: 50%;
+    left: 1rem;
+    color: var(--bs-secondary-color);
+    pointer-events: none;
+    transform: translateY(-50%);
+}
+
+@media (min-width: 768px) {
+    .table-filter-sheet {
+        display: flex;
+        align-items: flex-end;
+        gap: 0.5rem;
+    }
+
+    .table-filter-sheet .offcanvas-body {
+        flex: 1 1 auto;
+    }
+}
+
+@media (max-width: 767.98px) {
+    .table-filters {
+        position: sticky;
+        top: 0;
+        z-index: 1020;
+        margin-right: -0.75rem;
+        margin-left: -0.75rem;
+        border-width: 0 0 1px;
+        border-radius: 0;
+        background: var(--paper);
+    }
+
+    /* A sticky parent would keep the open sheet below Bootstrap's backdrop */
+    .table-filters:has(.offcanvas-md:is(.show, .showing, .hiding)) {
+        position: static;
+    }
+
+    .table-filters > .card-body {
+        padding: 0.6rem 0.75rem;
+    }
+
+    /* 16px text stops iOS from zooming in when a field gets focus */
+    .table-filters .form-control,
+    .table-filters .form-select {
+        min-height: 2.75rem;
+        font-size: 1rem;
+    }
+
+    .table-search .form-label {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+        white-space: nowrap;
+    }
+
+    .table-search .form-control {
+        padding-left: 2.25rem;
+    }
+
+    .table-filter-sheet-col {
+        margin-top: 0;
+    }
+
+    .table-filter-sheet.offcanvas-bottom {
+        --bs-offcanvas-height: auto;
+        max-height: 85vh;
+        border-radius: 8px 8px 0 0;
+    }
+
+    .table-filter-sheet .offcanvas-header {
+        padding: 1rem 1rem 0.25rem;
+    }
+
+    .table-filter-sheet .offcanvas-title {
+        font-size: 1rem;
+        font-weight: 600;
+    }
+
+    .table-filter-sheet .offcanvas-body {
+        padding: 0.5rem 1rem 1rem;
+    }
+
+    .table-filter-sheet-footer {
+        display: flex;
+        gap: 0.5rem;
+        padding: 0.75rem 1rem calc(0.75rem + env(safe-area-inset-bottom));
+        border-top: 1px solid var(--rule);
+    }
+
+    .table-filter-sheet-footer .btn {
+        flex: 1;
+        min-height: 2.75rem;
+        font-size: 0.95rem;
     }
 }
 

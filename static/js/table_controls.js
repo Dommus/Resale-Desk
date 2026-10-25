@@ -11,6 +11,10 @@
  * `data-column-preferences-key` to the table and `data-column-id` to every
  * header. A `data-column-locked` header stays visible and at the end, and a
  * `data-column-hidden-default` header starts hidden until the user shows it.
+ *
+ * In the filter form, buttons with `data-filter-name` and `data-filter-value`
+ * act as quick filter chips, and fields inside a `data-filter-sheet` bottom
+ * sheet are applied with the form's submit button on small screens.
  */
 (function () {
     'use strict';
@@ -41,6 +45,14 @@
             : window.location.pathname;
     }
 
+    // On small screens the filter fields sit in a bottom sheet (`data-filter-sheet`),
+    // which Bootstrap shows as a fixed panel. Changes made there wait for the
+    // sheet's submit button instead of reloading the page on every change.
+    function isInBottomSheet(element) {
+        const sheet = element.closest('[data-filter-sheet]');
+        return Boolean(sheet) && getComputedStyle(sheet).position === 'fixed';
+    }
+
     function initializeFiltering(table) {
         const form = document.getElementById(table.dataset.filterForm);
         if (!form) return;
@@ -66,7 +78,30 @@
         }
 
         form.querySelectorAll('select').forEach(select => {
-            select.addEventListener('change', () => reloadWithFilters(form));
+            select.addEventListener('change', () => {
+                if (!isInBottomSheet(select)) reloadWithFilters(form);
+            });
+        });
+
+        // Enter in the search box, or the sheet's "Show results" button
+        form.addEventListener('submit', event => {
+            event.preventDefault();
+            reloadWithFilters(form);
+        });
+
+        // Quick filter chips set one field and apply it straight away
+        form.querySelectorAll('[data-filter-name]').forEach(chip => {
+            chip.addEventListener('click', () => {
+                const field = form.elements[chip.dataset.filterName];
+                if (!field) return;
+                field.value = chip.dataset.filterValue;
+                reloadWithFilters(form);
+            });
+        });
+
+        // Closing the sheet without applying drops the changes made in it
+        form.querySelectorAll('[data-filter-sheet]').forEach(sheet => {
+            sheet.addEventListener('hidden.bs.offcanvas', () => form.reset());
         });
 
         if (resetButton) {
