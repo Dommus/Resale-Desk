@@ -14,7 +14,7 @@
             <div class="col-md-2">
                 <label class="form-label small mb-1">{{ _('Status') }}</label>
                 <select class="form-select form-select-sm" name="status">
-                    <option value="">{{ _('All') }}</option>
+                    <option value="all" {% if status == 'all' %}selected{% endif %}>{{ _('All') }}</option>
                     {% for s in ["On Sale", "In Storage", "Reserved", "Sold"] %}
                     <option value="{{ s }}" {% if status == s %}selected{% endif %}>{{ _(s) }}</option>
                     {% endfor %}
@@ -23,7 +23,7 @@
             <div class="col-md-2">
                 <label class="form-label small mb-1">{{ _('Shelf') }}</label>
                 <select class="form-select form-select-sm" name="shelf_id">
-                    <option value="">{{ _('All') }}</option>
+                    <option value="all" {% if status == 'all' %}selected{% endif %}>{{ _('All') }}</option>
                     {% for shelf in shelves %}
                     <option value="{{ shelf.id }}" {% if shelf_id == shelf.id|string %}selected{% endif %}>{{ shelf.name }}</option>
                     {% endfor %}
@@ -32,7 +32,7 @@
             <div class="col-md-2">
                 <label class="form-label small mb-1">{{ _('Category') }}</label>
                 <select class="form-select form-select-sm" name="category">
-                    <option value="">{{ _('All') }}</option>
+                    <option value="all" {% if status == 'all' %}selected{% endif %}>{{ _('All') }}</option>
                     {% for c in categories %}
                     <option value="{{ c }}" {% if category == c %}selected{% endif %}>{{ c }}</option>
                     {% endfor %}
@@ -65,10 +65,10 @@
                data-column-preferences-key="inventory-{{ current_user.id }}">
             <thead>
                 <tr>
-                    <th data-column-id="code" class="sortable-header" data-sort-key="code" data-sort-type="text" tabindex="0" role="button">{{ _('Item Code') }} <span class="sort-indicator" aria-hidden="true"></span></th>
+                    <th data-column-id="code" data-column-hidden-default class="sortable-header" data-sort-key="code" data-sort-type="text" tabindex="0" role="button">{{ _('Item Code') }} <span class="sort-indicator" aria-hidden="true"></span></th>
                     <th data-column-id="name" class="sortable-header" data-sort-key="name" data-sort-type="text" tabindex="0" role="button">{{ _('Name') }} <span class="sort-indicator" aria-hidden="true"></span></th>
                     <th data-column-id="quantity" class="sortable-header" data-sort-key="quantity" data-sort-type="number" tabindex="0" role="button">{{ _('Quantity') }} <span class="sort-indicator" aria-hidden="true"></span></th>
-                    <th data-column-id="category" class="sortable-header" data-sort-key="category" data-sort-type="text" tabindex="0" role="button">{{ _('Category') }} <span class="sort-indicator" aria-hidden="true"></span></th>
+                    <th data-column-id="category" data-column-hidden-default class="sortable-header" data-sort-key="category" data-sort-type="text" tabindex="0" role="button">{{ _('Category') }} <span class="sort-indicator" aria-hidden="true"></span></th>
                     <th data-column-id="shelf" class="sortable-header" data-sort-key="shelf" data-sort-type="text" tabindex="0" role="button">{{ _('Shelf') }} <span class="sort-indicator" aria-hidden="true"></span></th>
                     <th data-column-id="status" class="sortable-header" data-sort-key="status" data-sort-type="text" tabindex="0" role="button">{{ _('Status') }} <span class="sort-indicator" aria-hidden="true"></span></th>
                     <th data-column-id="cost" class="sortable-header" data-sort-key="cost" data-sort-type="number" tabindex="0" role="button">{{ _('Purchase Cost (unit)') }} <span class="sort-indicator" aria-hidden="true"></span></th>

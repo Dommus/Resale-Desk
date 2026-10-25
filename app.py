@@ -420,8 +420,9 @@ def inventory():
             )
         ).distinct()
 
-    status = request.args.get('status')
-    if status:
+    # Bare /inventory shows items on sale; links and searches with filters show all statuses
+    status = request.args.get('status', 'all' if request.args else ItemStatus.ON_SALE.value)
+    if status and status != 'all':
         try:
             status_enum = ItemStatus(status)
         except ValueError:

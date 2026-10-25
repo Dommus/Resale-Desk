@@ -9,7 +9,8 @@
  * A table can opt into filtering and header sorting with
  * `data-sortable-table`. To also get draggable, configurable columns, add
  * `data-column-preferences-key` to the table and `data-column-id` to every
- * header. A `data-column-locked` header stays visible and at the end.
+ * header. A `data-column-locked` header stays visible and at the end, and a
+ * `data-column-hidden-default` header starts hidden until the user shows it.
  */
 (function () {
     'use strict';
@@ -197,7 +198,8 @@
         const movableColumns = columns.filter(column => !column.locked);
         const lockedColumns = columns.filter(column => column.locked);
         const savedOrder = Array.isArray(savedState?.order) ? savedState.order : [];
-        const savedHidden = Array.isArray(savedState?.hidden) ? savedState.hidden : [];
+        const defaultHidden = columns.filter(column => column.hiddenByDefault).map(column => column.id);
+        const savedHidden = Array.isArray(savedState?.hidden) ? savedState.hidden : defaultHidden;
         const movableIds = movableColumns.map(column => column.id);
         const savedMovableIds = savedOrder.filter(
             (id, index) => movableIds.includes(id) && savedOrder.indexOf(id) === index,
@@ -214,6 +216,7 @@
             ],
             hidden: savedHidden.filter(id => movableIds.includes(id)),
             defaultOrder,
+            defaultHidden,
         };
     }
 
@@ -304,7 +307,7 @@
         resetButton.textContent = t('Reset columns');
         resetButton.addEventListener('click', () => {
             state.order = [...state.defaultOrder];
-            state.hidden = [];
+            state.hidden = [...state.defaultHidden];
             onChange();
         });
         menu.append(resetButton);
@@ -334,6 +337,7 @@
             header,
             label: columnLabel(header),
             locked: header.hasAttribute('data-column-locked'),
+            hiddenByDefault: header.hasAttribute('data-column-hidden-default'),
         }));
 
         if (columns.some(column => !column.id)) return;
