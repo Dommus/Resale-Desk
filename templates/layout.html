@@ -5,6 +5,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}{{ _('Resale Desk') }}{% endblock %}</title>
+    <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
+    <meta name="theme-color" content="#212529">
+    <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='icons/favicon-32.png') }}">
+    <link rel="apple-touch-icon" href="{{ url_for('static', filename='icons/apple-touch-icon.png') }}">
+    <meta name="apple-mobile-web-app-title" content="Resale Desk">
     <script>
         (() => {
             const savedTheme = localStorage.getItem("resale-desk-theme");
@@ -145,6 +150,11 @@
             updateThemeToggle();
         });
     })();
+
+    // Service worker, needed to install the app on a phone (see static/sw.js)
+    if ("serviceWorker" in navigator) {
+        navigator.serviceWorker.register("/sw.js");
+    }
 </script>
 {% block scripts %}{% endblock %}
 

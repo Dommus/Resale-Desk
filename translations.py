@@ -409,6 +409,20 @@ PT = {
     "Imported {purchases} purchase(s) and {items} item(s).": "Importadas {purchases} compra(s) e {items} artigo(s).",
     "{count} row(s) were skipped:": "{count} linha(s) foram ignoradas:",
     "The import completed without errors.": "A importação terminou sem erros.",
+    "Install app": "Instalar aplicação",
+    "Add Resale Desk to your home screen to open it like an app.":
+        "Adicione o Resale Desk ao ecrã principal para o abrir como uma aplicação.",
+    'Tap the Share button, then "Add to Home Screen".':
+        'Toque no botão Partilhar e depois em "Adicionar ao ecrã principal".',
+    "Resale Desk is installed on this device.": "O Resale Desk está instalado neste dispositivo.",
+    'Open your browser menu and choose "Install app" or "Add to Home screen".':
+        'Abra o menu do navegador e escolha "Instalar aplicação" ou "Adicionar ao ecrã principal".',
+
+    # Offline page
+    "You're offline": "Está offline",
+    "Resale Desk needs an internet connection. Check your connection and try again.":
+        "O Resale Desk precisa de uma ligação à internet. Verifique a ligação e tente novamente.",
+    "Try again": "Tentar novamente",
 
     # Table controls (JS)
     "Actions": "Ações",

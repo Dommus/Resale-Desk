@@ -80,6 +80,30 @@
         </div>
     </div>
 
+    <div class="col-lg-6">
+        <div class="card shadow-sm h-100">
+            <div class="card-body">
+                <h6 class="card-title">{{ _('Install app') }}</h6>
+                <p class="text-muted small">{{ _('Add Resale Desk to your home screen to open it like an app.') }}</p>
+                {# Only one of these is shown, chosen by the script below #}
+                <div id="installReady" hidden>
+                    <button type="button" class="btn btn-primary" id="installButton">
+                        <i class="bi bi-download" aria-hidden="true"></i> {{ _('Install app') }}
+                    </button>
+                </div>
+                <p class="mb-0" id="installIos" hidden>
+                    {{ _('Tap the Share button, then "Add to Home Screen".') }}
+                </p>
+                <p class="mb-0" id="installDone" hidden>
+                    <i class="bi bi-check-circle text-success" aria-hidden="true"></i> {{ _('Resale Desk is installed on this device.') }}
+                </p>
+                <p class="mb-0" id="installOther">
+                    {{ _('Open your browser menu and choose "Install app" or "Add to Home screen".') }}
+                </p>
+            </div>
+        </div>
+    </div>
+
     {% if import_result %}
     <div class="col-12">
         <div class="card shadow-sm {% if import_result.errors %}border-warning{% else %}border-success{% endif %}">
@@ -107,4 +131,53 @@
     {% endif %}
 </div>
 
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Install card: Android/desktop Chrome can show its install prompt from a
+    // button; iOS has no such API, so it gets instructions instead.
+    (() => {
+        const sections = {
+            ready: document.getElementById("installReady"),
+            ios: document.getElementById("installIos"),
+            done: document.getElementById("installDone"),
+            other: document.getElementById("installOther"),
+        };
+        const show = (name) => {
+            Object.entries(sections).forEach(([key, el]) => { el.hidden = key !== name; });
+        };
+
+        const isInstalled = window.matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
+        const isIos = /iphone|ipad|ipod/i.test(navigator.userAgent)
+            || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+
+        if (isInstalled) {
+            show("done");
+            return;
+        }
+        if (isIos) {
+            show("ios");
+        }
+
+        let installPrompt = null;
+        window.addEventListener("beforeinstallprompt", (event) => {
+            event.preventDefault();
+            installPrompt = event;
+            show("ready");
+        });
+
+        document.getElementById("installButton").addEventListener("click", async () => {
+            if (!installPrompt) {
+                return;
+            }
+            installPrompt.prompt();
+            await installPrompt.userChoice;
+            installPrompt = null;
+            show("other");
+        });
+
+        window.addEventListener("appinstalled", () => show("done"));
+    })();
+</script>
 {% endblock %}

@@ -7,7 +7,7 @@ from models import db, User, Shelf, Item, Purchase, ItemStatus, PurchaseType, Li
 from utilities import login_manager, parse_date, parse_decimal, parse_quantity, process_csv, currency_display, CURRENCY_SYMBOLS
 from translations import _, get_language, js_translations, LANGUAGES, LANGUAGE_COOKIE, HTML_LANG
 
-from flask import Flask, Response, abort, render_template, request, redirect, url_for, flash, g
+from flask import Flask, Response, abort, render_template, request, redirect, url_for, flash, g, send_from_directory
 from flask_login import login_user, logout_user, login_required, current_user
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
@@ -228,6 +228,20 @@ def too_many_requests(error):
 ##########################
 #        ROUTES
 ##########################
+
+# Installable app (PWA): https://developer.mozilla.org/en-US/docs/Web/Progressive_web_apps
+# The service worker only controls pages at or below its own URL, so it is
+# served from the site root instead of /static/.
+@app.route('/sw.js')
+def service_worker():
+    response = send_from_directory(app.static_folder, 'sw.js', mimetype='text/javascript')
+    response.headers['Cache-Control'] = 'no-cache'
+    return response
+
+# Fallback page the service worker shows when there is no connection
+@app.route('/offline')
+def offline():
+    return render_template('offline.html')
 
 @app.route('/')
 @login_required
