@@ -1109,6 +1109,24 @@ code.inv-code {
     display: none;
 }
 
+/* Fades hint that the row scrolls sideways (classes set by table_controls.js) */
+.filter-chips-more-end {
+    mask-image: linear-gradient(to right, #000 calc(100% - 2.5rem), transparent);
+}
+
+.filter-chips-more-start {
+    mask-image: linear-gradient(to right, transparent, #000 2.5rem);
+}
+
+.filter-chips-more-start.filter-chips-more-end {
+    mask-image: linear-gradient(to right, transparent, #000 2.5rem, #000 calc(100% - 2.5rem), transparent);
+}
+
+.filter-chips-dragging {
+    cursor: grabbing;
+    user-select: none;
+}
+
 .filter-chip {
     display: inline-flex;
     flex: none;

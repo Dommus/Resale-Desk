@@ -112,6 +112,66 @@
                 window.location.href = window.location.pathname;
             });
         }
+
+        form.querySelectorAll('.filter-chips').forEach(initializeChipRow);
+    }
+
+    // -------------------------------------------------------------
+    // CHIP ROW: sideways scrolling
+    // -------------------------------------------------------------
+
+    function initializeChipRow(row) {
+        // Fade the edges that have more chips past them
+        const updateFades = () => {
+            const maxScroll = row.scrollWidth - row.clientWidth;
+            row.classList.toggle('filter-chips-more-start', row.scrollLeft > 1);
+            row.classList.toggle('filter-chips-more-end', row.scrollLeft < maxScroll - 1);
+        };
+        row.addEventListener('scroll', updateFades, { passive: true });
+        window.addEventListener('resize', updateFades);
+
+        // Start with the selected chip in view, e.g. a status at the far end
+        const pressed = row.querySelector('[aria-pressed="true"]');
+        if (pressed && pressed.offsetLeft + pressed.offsetWidth > row.clientWidth) {
+            row.scrollLeft = pressed.offsetLeft + pressed.offsetWidth - row.clientWidth + 16;
+        }
+        updateFades();
+
+        // Touch screens scroll the row natively; a mouse can drag it instead.
+        // A drag doesn't count as a click on the chip where it started.
+        let drag = null;
+        let suppressClick = false;
+        row.addEventListener('click', event => {
+            if (!suppressClick) return;
+            event.preventDefault();
+            event.stopPropagation();
+        }, true);
+        row.addEventListener('pointerdown', event => {
+            if (event.pointerType !== 'mouse' || event.button !== 0) return;
+            drag = { x: event.clientX, scrollLeft: row.scrollLeft, moved: false };
+        });
+        row.addEventListener('pointermove', event => {
+            if (!drag) return;
+            const distance = event.clientX - drag.x;
+            if (!drag.moved && Math.abs(distance) < 5) return;
+            if (!drag.moved) {
+                drag.moved = true;
+                row.setPointerCapture(event.pointerId);
+                row.classList.add('filter-chips-dragging');
+            }
+            row.scrollLeft = drag.scrollLeft - distance;
+        });
+        const endDrag = () => {
+            if (drag?.moved) {
+                row.classList.remove('filter-chips-dragging');
+                // The click that follows this pointerup is part of the drag
+                suppressClick = true;
+                window.setTimeout(() => { suppressClick = false; }, 0);
+            }
+            drag = null;
+        };
+        row.addEventListener('pointerup', endDrag);
+        row.addEventListener('pointercancel', endDrag);
     }
 
     // -------------------------------------------------------------
