@@ -149,14 +149,27 @@ h5, .h5, .card-title { font-size: 0.95rem; }
     background-color: var(--paper);
 }
 
-@media (max-width: 991.98px) {
-    .header-search {
-        flex-basis: 100%;
-        max-width: none;
-        margin-left: 0 !important;
-        margin-right: 0 !important;
-        margin-top: 0.75rem;
-    }
+/* Mobile: search icon next to the menu toggler opens its own search bar */
+.navbar-search-toggle {
+    padding: 0.25rem 0.75rem;
+    font-size: 1.1rem;
+    line-height: 1.5;
+    color: var(--ink);
+    border: var(--bs-border-width) solid var(--rule);
+}
+
+.navbar-search-toggle:hover,
+.navbar-search-toggle[aria-expanded="true"] {
+    color: var(--accent);
+    border-color: var(--rule-strong);
+}
+
+.mobile-search {
+    padding-top: 0.75rem;
+}
+
+.mobile-search input {
+    background-color: var(--paper);
 }
 
 .theme-toggle {

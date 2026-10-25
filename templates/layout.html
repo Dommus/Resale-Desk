@@ -28,9 +28,21 @@
             <a class="navbar-brand fw-bold" href="{{ url_for('index') }}">
                 <i class="bi bi-box-seam"></i> Resale Desk
             </a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navMenu">
-                <span class="navbar-toggler-icon"></span>
-            </button>
+            <div class="d-flex align-items-center gap-2 d-lg-none">
+                <button class="btn navbar-search-toggle" type="button" data-bs-toggle="collapse" data-bs-target="#mobileSearch"
+                        aria-controls="mobileSearch" aria-expanded="false" aria-label="{{ _('Search') }}">
+                    <i class="bi bi-search" aria-hidden="true"></i>
+                </button>
+                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navMenu">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+            </div>
+            <div class="collapse w-100 d-lg-none" id="mobileSearch">
+                <form class="mobile-search" role="search" action="{{ url_for('inventory') }}" method="get">
+                    <input class="form-control" type="search" name="q" enterkeyhint="search"
+                           placeholder="{{ _('Search inventory or listing ID') }}" value="{{ request.args.get('q', '') }}">
+                </form>
+            </div>
             <div class="collapse navbar-collapse" id="navMenu">
                 {% set ep = request.endpoint %}
                 {% set nav_tabs = [
@@ -44,7 +56,7 @@
                     <li class="nav-item"><a class="nav-link{{ ' active' if ep in endpoints }}" href="{{ url_for(endpoint) }}"{{ ' aria-current="page"'|safe if ep in endpoints }}>{{ _(label) }}</a></li>
                     {% endfor %}
                 </ul>
-                <form class="d-flex flex-grow-1 header-search ms-3 me-3" role="search" action="{{ url_for('inventory') }}" method="get">
+                <form class="d-none d-lg-flex flex-grow-1 header-search ms-3 me-3" role="search" action="{{ url_for('inventory') }}" method="get">
                     <input class="form-control form-control-sm" type="search" name="q" placeholder="{{ _('Search inventory or listing ID') }}" value="{{ request.args.get('q', '') }}">
                 </form>
                 <div class="dropdown header-new-purchase">
@@ -148,6 +160,23 @@
             root.dataset.bsTheme = nextTheme;
             localStorage.setItem("resale-desk-theme", nextTheme);
             updateThemeToggle();
+        });
+    })();
+
+    // Mobile search: focus the field when opened, and keep only one of search/menu open
+    (() => {
+        const mobileSearch = document.getElementById("mobileSearch");
+        const navMenu = document.getElementById("navMenu");
+        if (!mobileSearch || !navMenu) return;
+
+        mobileSearch.addEventListener("shown.bs.collapse", () => {
+            mobileSearch.querySelector("input").focus();
+        });
+        mobileSearch.addEventListener("show.bs.collapse", () => {
+            bootstrap.Collapse.getInstance(navMenu)?.hide();
+        });
+        navMenu.addEventListener("show.bs.collapse", () => {
+            bootstrap.Collapse.getInstance(mobileSearch)?.hide();
         });
     })();
 
