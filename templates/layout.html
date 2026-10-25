@@ -41,6 +41,7 @@
                 <form class="mobile-search" role="search" action="{{ url_for('inventory') }}" method="get">
                     <input class="form-control" type="search" name="q" enterkeyhint="search"
                            placeholder="{{ _('Search inventory or listing ID') }}" value="{{ request.args.get('q', '') }}">
+                    <input type="hidden" name="status" value="On Sale">
                 </form>
             </div>
             <div class="collapse navbar-collapse" id="navMenu">
@@ -58,6 +59,7 @@
                 </ul>
                 <form class="d-none d-lg-flex flex-grow-1 header-search ms-3 me-3" role="search" action="{{ url_for('inventory') }}" method="get">
                     <input class="form-control form-control-sm" type="search" name="q" placeholder="{{ _('Search inventory or listing ID') }}" value="{{ request.args.get('q', '') }}">
+                    <input type="hidden" name="status" value="On Sale">
                 </form>
                 <div class="dropdown header-new-purchase">
                     <button class="btn btn-primary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
