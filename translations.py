@@ -145,6 +145,7 @@ PT = {
     "Username": "Nome de utilizador",
     "Password": "Palavra-passe",
     "Repeat Password": "Repetir palavra-passe",
+    "Remember me": "Manter sessão iniciada",
     "No account yet?": "Ainda não tem conta?",
     "Register here": "Registe-se aqui",
     "Register": "Registar",

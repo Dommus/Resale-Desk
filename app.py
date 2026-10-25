@@ -49,6 +49,8 @@ app.config['REMEMBER_COOKIE_SAMESITE'] = 'Lax'
 app.config['SESSION_COOKIE_SECURE'] = PRODUCTION
 app.config['REMEMBER_COOKIE_SECURE'] = PRODUCTION
 app.config['REMEMBER_COOKIE_HTTPONLY'] = True
+# "Remember me" keeps users logged in after closing the browser
+app.config['REMEMBER_COOKIE_DURATION'] = timedelta(days=90)
 # Limit uploads (CSV import) to 5 MB
 app.config['MAX_CONTENT_LENGTH'] = 5 * 1024 * 1024
 
@@ -1173,7 +1175,7 @@ def login():
             flash(_('Invalid username or password.'), 'danger')
         else:
             # Log-in the user
-            login_user(user)
+            login_user(user, remember=bool(request.form.get('remember')))
             flash(_('Logged in successfully.'), 'success')
             return redirect(url_for('index'))
 
