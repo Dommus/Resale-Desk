@@ -435,11 +435,14 @@ def inventory():
             print(f'QUERY: {query}')
 
     shelf_id = request.args.get("shelf_id")
-    if shelf_id:
-        query = query.filter(Item.shelf_id == int(shelf_id))
+    if shelf_id and shelf_id != 'all':
+        try:
+            query = query.filter(Item.shelf_id == int(shelf_id))
+        except ValueError:
+            shelf_id = None
 
     category = request.args.get("category")
-    if category:
+    if category and category != 'all':
         query = query.filter(Item.category == category)
 
     sort = request.args.get("sort", "newest")

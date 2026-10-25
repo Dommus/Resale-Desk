@@ -23,7 +23,7 @@
             <div class="col-md-2">
                 <label class="form-label small mb-1">{{ _('Shelf') }}</label>
                 <select class="form-select form-select-sm" name="shelf_id">
-                    <option value="all" {% if status == 'all' %}selected{% endif %}>{{ _('All') }}</option>
+                    <option value="all" {% if not shelf_id or shelf_id == 'all' %}selected{% endif %}>{{ _('All') }}</option>
                     {% for shelf in shelves %}
                     <option value="{{ shelf.id }}" {% if shelf_id == shelf.id|string %}selected{% endif %}>{{ shelf.name }}</option>
                     {% endfor %}
@@ -32,7 +32,7 @@
             <div class="col-md-2">
                 <label class="form-label small mb-1">{{ _('Category') }}</label>
                 <select class="form-select form-select-sm" name="category">
-                    <option value="all" {% if status == 'all' %}selected{% endif %}>{{ _('All') }}</option>
+                    <option value="all" {% if not category or category == 'all' %}selected{% endif %}>{{ _('All') }}</option>
                     {% for c in categories %}
                     <option value="{{ c }}" {% if category == c %}selected{% endif %}>{{ c }}</option>
                     {% endfor %}
