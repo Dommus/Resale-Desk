@@ -1147,6 +1147,15 @@ def undo_write_off(item_id):
 #########################
 #     Authentication
 
+# Language toggle on the login page, so the language can be picked before logging in
+@app.route('/language', methods=['POST'])
+def set_language():
+    language = request.form.get('language', '').strip()
+    response = redirect(url_for('login'))
+    if language in LANGUAGES:
+        response.set_cookie(LANGUAGE_COOKIE, language, max_age=60 * 60 * 24 * 365, samesite='Lax')
+    return response
+
 # https://flask-login.readthedocs.io/en/latest/#login-example
 @app.route('/login', methods=['GET', 'POST'])
 def login():

@@ -8,7 +8,7 @@ from flask import g, has_request_context, request
 
 LANGUAGES = {
     "en": "English",
-    "pt": "Português (Portugal)",
+    "pt": "Português",
 }
 DEFAULT_LANGUAGE = "en"
 LANGUAGE_COOKIE = "lang"

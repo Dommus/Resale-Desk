@@ -21,6 +21,15 @@
             {{ _('No account yet?') }} <a href="{{ url_for('register') }}">{{ _('Register here') }}</a>
         </p>
         {% endif %}
+        <form method="post" action="{{ url_for('set_language') }}" class="text-center mt-3 small">
+            {% for code, name in languages.items() %}
+            {% if code == current_language %}
+            <span class="fw-semibold mx-1">{{ name }}</span>
+            {% else %}
+            <button type="submit" name="language" value="{{ code }}" class="btn btn-link btn-sm p-0 mx-1 align-baseline">{{ name }}</button>
+            {% endif %}
+            {% endfor %}
+        </form>
     </div>
 </div>
 {% endblock %}
