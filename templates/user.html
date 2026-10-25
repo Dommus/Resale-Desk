@@ -38,10 +38,10 @@
             <div class="card-body">
                 <h6 class="card-title text-danger">Danger zone</h6>
                 <p class="text-muted mb-3">
-                    This will permanently delete ALL your data, including accounts, purchases, inventory, and shelves.
+                    This will permanently delete all your purchases, inventory, and shelves. Your account is kept.
                 </p>
-                <form method="post" action="{{ url_for('delete_database') }}" onsubmit="return confirm('Are you sure you want to delete the database? This cannot be undone.');">
-                    <button type="submit" class="btn btn-outline-danger">Delete database</button>
+                <form method="post" action="{{ url_for('delete_database') }}" onsubmit="return confirm('Are you sure you want to delete all your data? This cannot be undone.');">
+                    <button type="submit" class="btn btn-outline-danger">Delete my data</button>
                 </form>
             </div>
         </div>

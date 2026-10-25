@@ -94,7 +94,15 @@ flask run
 
 The database includes a demo account. Log in as `demo` with password `cs50` to explore it, or simply create a fresh empty account.
 
-If you need to reset the database, it can be deleted on the `/user` page.
+Your own data can be cleared on the `/user` page.
+
+#### Deploying
+
+On a public server (e.g. PythonAnywhere), set these environment variables:
+
+- `RESALE_DESK_PRODUCTION=1`: closes registration, skips the demo data and sends cookies over HTTPS only
+- `SECRET_KEY`: a long random string, e.g. from `python -c "import secrets; print(secrets.token_hex(32))"`
+- `ALLOW_REGISTRATION=1` (optional): reopen registration temporarily to create an account
 
   
 

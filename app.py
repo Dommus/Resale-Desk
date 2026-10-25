@@ -1,4 +1,4 @@
-import os, csv
+import os, csv, secrets
 from datetime import datetime, date, timedelta
 from urllib.parse import urlparse
 
@@ -6,7 +6,7 @@ from urllib.parse import urlparse
 from models import db, User, Shelf, Item, Purchase, ItemStatus, PurchaseType, Listing, ListingStatus, Sale
 from utilities import login_manager, parse_date, parse_decimal, parse_quantity, process_csv, currency_display, CURRENCY_SYMBOLS
 
-from flask import Flask, Response, render_template, request, redirect, url_for, flash
+from flask import Flask, Response, abort, render_template, request, redirect, url_for, flash
 from flask_login import login_user, logout_user, login_required, current_user
 from sqlalchemy import or_, cast, String
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -26,11 +26,30 @@ DB_PATH = os.path.join(BASE_DIR, 'instance', 'database.db')
 DEMO_DB_PATH = os.path.join(BASE_DIR, 'demo.db')
 os.makedirs(os.path.join(BASE_DIR, 'instance'), exist_ok=True)
 
+# Set RESALE_DESK_PRODUCTION=1 and SECRET_KEY on a public server.
+# Production mode closes registration, skips the demo data and only sends cookies over HTTPS.
+PRODUCTION = os.environ.get('RESALE_DESK_PRODUCTION') == '1'
+ALLOW_REGISTRATION = os.environ.get('ALLOW_REGISTRATION', '0' if PRODUCTION else '1') == '1'
+
 # App configs
 app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{DB_PATH}'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SQLALCHEMY_ECHO'] = False # Set to 'True' for debugging SQL queries
-app.secret_key = '4815_THISisCS50_162342'
+
+# Signs the session cookie, so it must be secret. Locally a random key is fine (logins reset on restart).
+secret_key = os.environ.get('SECRET_KEY')
+if PRODUCTION and not secret_key:
+    raise RuntimeError('SECRET_KEY must be set when RESALE_DESK_PRODUCTION=1')
+app.secret_key = secret_key or secrets.token_hex(32)
+
+# https://flask.palletsprojects.com/en/stable/security/#set-cookie-options
+app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
+app.config['REMEMBER_COOKIE_SAMESITE'] = 'Lax'
+app.config['SESSION_COOKIE_SECURE'] = PRODUCTION
+app.config['REMEMBER_COOKIE_SECURE'] = PRODUCTION
+app.config['REMEMBER_COOKIE_HTTPONLY'] = True
+# Limit uploads (CSV import) to 5 MB
+app.config['MAX_CONTENT_LENGTH'] = 5 * 1024 * 1024
 
 # Login Manager
 # https://flask-login.readthedocs.io/en/latest/
@@ -57,13 +76,6 @@ db.init_app(app)
 #       FUNCTIONS
 ##########################
 
-# Create test account for debugging
-def create_admin_account():
-    if not User.query.filter_by(username='admin').first():
-        user = User(username='admin', password_hash=generate_password_hash('123'))
-        db.session.add(user)
-        db.session.commit()
-
 # Create the physical database files
 def create_database(with_demo_data=True):
     if with_demo_data and not os.path.exists(DB_PATH) and os.path.exists(DEMO_DB_PATH):
@@ -71,35 +83,29 @@ def create_database(with_demo_data=True):
             copy.write(source.read())
     with app.app_context():
         db.create_all()
-        create_admin_account()
 
 
-create_database()
+# The demo data has accounts with public passwords, so never load it on a public server
+create_database(with_demo_data=not PRODUCTION)
 
-# Delete and recreate the database
-def reset_database():
-    db.session.remove()
+# Delete the user's own data, keeping their account and everyone else's data
+def reset_user_data(user):
+    # Deleting a purchase also deletes its items, listings and sales
+    for purchase in user.purchases:
+        db.session.delete(purchase)
+    db.session.flush()
+    for record in Item.query.filter_by(user_id=user.id).all() + user.shelves:
+        db.session.delete(record)
+    db.session.commit()
 
-    # Fixes file being locked, preventing deletion
-    if hasattr(db, 'engine'):
-        db.engine.dispose()
 
-    for file in (DB_PATH, os.path.join(BASE_DIR, 'database.db')):
-        if os.path.exists(file):
-            try:
-                # Try to grant read/write permission
-                os.chmod(file, 0o666)
-            except OSError:
-                pass
-            try:
-                os.remove(file)
-            except OSError:
-                pass
-
-    # Start empty: a reset shouldn't bring the demo data back
-    create_database(with_demo_data=False)
-
-    print(f"Database reset at {DB_PATH}")
+# Only the shelves the user owns can be assigned to their items
+def owned_shelf_id(shelf_id, user_id):
+    try:
+        shelf_id = int(shelf_id)
+    except (TypeError, ValueError):
+        return None
+    return shelf_id if Shelf.query.filter_by(id=shelf_id, user_id=user_id).first() else None
 
 # Helper functions
 ##########################
@@ -134,7 +140,7 @@ def create_purchase_item(purchase, user_id, name, category=None, brand=None, con
     return Item(
         user_id=user_id,
         purchase_id=purchase.id,
-        shelf_id=int(shelf_id) if shelf_id else None,
+        shelf_id=owned_shelf_id(shelf_id, user_id),
         name=name.strip(),
         quantity=quantity,
         quantity_sold=0,
@@ -166,6 +172,20 @@ def inject_currency():
     # user-entered text (item names, bundle names, ...) is never rewritten.
     symbol, code = currency_display()
     return {"currency_symbol": symbol, "currency_code": code}
+
+@app.context_processor
+def inject_registration():
+    return {"allow_registration": ALLOW_REGISTRATION}
+
+# CSRF protection: refuse form posts sent from another website
+# https://cheatsheetseries.owasp.org/cheatsheets/Cross-Site_Request_Forgery_Prevention_Cheat_Sheet.html#using-standard-headers-to-verify-origin
+@app.before_request
+def check_same_origin():
+    if request.method in ('GET', 'HEAD', 'OPTIONS'):
+        return
+    source = request.headers.get('Origin') or request.headers.get('Referer')
+    if not source or urlparse(source).netloc != request.host:
+        abort(403)
 
 
 ##########################
@@ -434,8 +454,7 @@ def edit_item(item_id):
     item.category = request.form.get('category', '').strip() or None
     item.brand = request.form.get('brand', '').strip() or None
     item.condition = request.form.get('condition', '').strip() or None
-    shelf_id = request.form.get('shelf_id')
-    item.shelf_id = int(shelf_id) if shelf_id else None
+    item.shelf_id = owned_shelf_id(request.form.get('shelf_id'), current_user.id)
     status = request.form.get('status')
 
     # Change item status. The field is absent when the status is automatic.
@@ -1132,6 +1151,10 @@ def register():
     if current_user.is_authenticated:
         return redirect(url_for('index'))
 
+    if not ALLOW_REGISTRATION:
+        flash('Registration is closed.', 'warning')
+        return redirect(url_for('login'))
+
     if request.method == "POST":
         # Sanitize inputs
         username = request.form.get('username', '').strip()
@@ -1141,6 +1164,8 @@ def register():
         # Validate the form
         if not username or not password:
             flash('Please insert username and password.', 'danger')
+        elif len(password) < 8:
+            flash('Password must be at least 8 characters.', 'danger')
         elif password != repeat_password:
             flash('Passwords do not match.', 'danger')
         elif User.query.filter_by(username=username).first():
@@ -1149,7 +1174,6 @@ def register():
         else:
             # Complete registration
             user = User(username=username, password_hash=generate_password_hash(password))
-            print(user)
             db.session.add(user)
             db.session.commit()
 
@@ -1181,10 +1205,12 @@ def user():
 @login_required
 def delete_database():
     try:
-        reset_database()
-        flash('Database deleted.', 'success')
-    except Exception as exc:
-        flash(f'Could not delete database: {exc}', 'danger')
+        reset_user_data(current_user)
+        flash('Your data was deleted.', 'success')
+    except Exception:
+        db.session.rollback()
+        app.logger.exception('Data reset failed')
+        flash('Could not delete your data.', 'danger')
 
     return redirect(url_for('user'))
 
