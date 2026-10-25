@@ -154,8 +154,9 @@
                                 <td data-label="{{ _('Quantity') }}"{% if sale.quantity > 1 %} data-mobile="meta" data-mobile-label="{{ _('Qty') }}"{% endif %}>{{ sale.quantity }}</td>
                                 <td data-label="{{ _('Net proceeds') }}" data-mobile="meta" data-mobile-label="{{ _('Net proceeds') }}">{{ currency_symbol }}{{ "%.2f"|format(sale.net_proceeds) }}</td>
                                 <td data-label="{{ _('Profit') }}" data-mobile="amount">
-                                    {% if sale.profit is not none %}
-                                    <span class="{{ 'text-success' if sale.profit >= 0 else 'text-danger' }}">{{ currency_symbol }}{{ "%.2f"|format(sale.profit) }}</span>
+                                    {% set profit = sale.profit %}
+                                    {% if profit is not none %}
+                                    <span class="{{ 'text-success' if profit >= 0 else 'text-danger' }}">{{ currency_symbol }}{{ "%.2f"|format(profit) }}</span>
                                     {% else %}
                                     <span class="text-muted">{{ _('Bundle-level') }}</span>
                                     {% endif %}
@@ -193,7 +194,8 @@
                         <td data-label="{{ _('Units sold') }}" data-mobile="meta" data-mobile-label="{{ _('Sold') }}">{{ purchase.items|sum(attribute='quantity_sold') }}/{{ purchase.items|sum(attribute='quantity') }}</td>
                         <td data-label="{{ _('Total cost') }}" data-mobile="meta" data-mobile-label="{{ _('Cost') }}">{{ currency_symbol }}{{ "%.2f"|format(purchase.total_cost) }}</td>
                         <td data-label="{{ _('Revenue') }}" data-mobile="meta" data-mobile-label="{{ _('Revenue') }}">{{ currency_symbol }}{{ "%.2f"|format(purchase.total_revenue) }}</td>
-                        <td data-label="{{ _('Profit') }}" data-mobile="amount"><span class="{{ 'text-success' if purchase.profit >= 0 else 'text-danger' }}">{{ currency_symbol }}{{ "%.2f"|format(purchase.profit) }}</span></td>
+                        {% set profit = purchase.profit %}
+                        <td data-label="{{ _('Profit') }}" data-mobile="amount"><span class="{{ 'text-success' if profit >= 0 else 'text-danger' }}">{{ currency_symbol }}{{ "%.2f"|format(profit) }}</span></td>
                     </tr>
                     {% endfor %}
                 </tbody>

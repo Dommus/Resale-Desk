@@ -165,11 +165,12 @@
                         {% endif %}
                     </td>
                     <!-- Profit -->
-                    <td data-label="{{ _('Profit') }}" data-mobile="amount" data-sort-value="{{ item.realized_profit if item.realized_profit is not none else '' }}">
+                    {% set profit = item.realized_profit %}
+                    <td data-label="{{ _('Profit') }}" data-mobile="amount" data-sort-value="{{ profit if profit is not none else '' }}">
                         {% if item.is_bundle %}
                             <span class="text-muted" title="{{ _('Calculated on the purchase') }}">{{ _('Bundle') }}</span>
-                        {% elif item.realized_profit is not none %}
-                            <span class="{{ 'text-success' if item.realized_profit >= 0 else 'text-danger' }}">{{ currency_symbol }}{{ "%.2f"|format(item.realized_profit) }}</span>
+                        {% elif profit is not none %}
+                            <span class="{{ 'text-success' if profit >= 0 else 'text-danger' }}">{{ currency_symbol }}{{ "%.2f"|format(profit) }}</span>
                         {% else %}
                             <span class="text-muted">-</span>
                         {% endif %}
@@ -177,7 +178,8 @@
                     <!-- Purchase Date -->
                     <td data-label="{{ _('Purchase date') }}" data-sort-value="{{ item.purchase.date.isoformat() if item.purchase.date else '' }}">{{ item.purchase.date.strftime('%Y-%m-%d') if item.purchase.date else '-' }}</td>
                     <!-- Sold Date -->
-                    <td data-label="{{ _('Sold date') }}" data-sort-value="{{ item.sale.sale_date.isoformat() if item.sale and item.sale.sale_date else '' }}">{{ item.sale.sale_date.strftime('%Y-%m-%d') if item.sale and item.sale.sale_date else '-' }}</td>
+                    {% set sale = item.sale %}
+                    <td data-label="{{ _('Sold date') }}" data-sort-value="{{ sale.sale_date.isoformat() if sale and sale.sale_date else '' }}">{{ sale.sale_date.strftime('%Y-%m-%d') if sale and sale.sale_date else '-' }}</td>
                     <td data-label="" data-mobile="link" class="text-end table-action-cell"><a href="{{ url_for('view_item', item_id=item.id) }}" class="btn btn-sm btn-outline-primary"><span class="table-action-label">{{ _('View') }}</span><i class="bi bi-chevron-right table-action-chevron" aria-hidden="true"></i></a></td>
                 </tr>
                 {% else %}

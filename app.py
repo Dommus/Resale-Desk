@@ -12,6 +12,7 @@ from flask_login import login_user, logout_user, login_required, current_user
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from sqlalchemy import or_, cast, String
+from sqlalchemy.orm import selectinload
 from werkzeug.security import generate_password_hash, check_password_hash
 
 from decimal import Decimal
@@ -127,9 +128,10 @@ def owned_shelf_id(shelf_id, user_id):
 ##########################
 
 def get_used_values(model, column_name, user_id):
-    items = model.query.filter_by(user_id=user_id).all()
-    values = {getattr(item, column_name) for item in items if getattr(item, column_name)}
-    return sorted(set(values))
+    # Let the database return the distinct values instead of loading every row
+    column = getattr(model, column_name)
+    rows = db.session.query(column).filter(model.user_id == user_id).distinct()
+    return sorted(value for (value,) in rows if value)
 
 
 def get_item_form_options(user_id):
@@ -246,8 +248,14 @@ def offline():
 @app.route('/')
 @login_required
 def index():
-    items = Item.query.filter_by(user_id=current_user.id).all()
-    purchases = Purchase.query.filter_by(user_id=current_user.id).all()
+    # Load the related rows up front, so the profit calculations below
+    # don't run a separate query for every item and purchase
+    items = Item.query.filter_by(user_id=current_user.id).options(
+        selectinload(Item.purchase), selectinload(Item.sales), selectinload(Item.listings),
+    ).all()
+    purchases = Purchase.query.filter_by(user_id=current_user.id).options(
+        selectinload(Purchase.items).selectinload(Item.sales),
+    ).all()
     sales = (
         Sale.query.join(Item)
         .filter(Item.user_id == current_user.id)
@@ -429,10 +437,8 @@ def inventory():
             status_enum = None
             flash(_('Status returned None'), 'danger')
 
-        print(f'status_enum is {status_enum}')
         if status_enum is not None:
             query = query.filter(Item.status == status_enum)
-            print(f'QUERY: {query}')
 
     shelf_id = request.args.get("shelf_id")
     if shelf_id and shelf_id != 'all':
@@ -451,7 +457,10 @@ def inventory():
     else:
         query = query.order_by(Item.created_at.desc())
 
-    results = query.all()
+    results = query.options(
+        selectinload(Item.purchase), selectinload(Item.shelf),
+        selectinload(Item.sales), selectinload(Item.listings),
+    ).all()
 
     if sort == "highest_profit":
         results.sort(
@@ -472,7 +481,7 @@ def inventory():
         )
 
     shelves_list = Shelf.query.filter_by(user_id=current_user.id).order_by(Shelf.name).all()
-    categories = sorted({i.category for i in Item.query.filter_by(user_id=current_user.id) if i.category})
+    categories = get_used_values(Item, 'category', current_user.id)
 
     return render_template(
         "inventory/inventory.html",
@@ -600,6 +609,7 @@ def purchases():
             purchase_type = ''
 
     sort = request.args.get('sort', 'newest')
+    query = query.options(selectinload(Purchase.items).selectinload(Item.sales))
     if sort == 'oldest':
         purchases = query.order_by(Purchase.date.asc()).all()
     else:
@@ -639,10 +649,8 @@ def new_purchase():
         purchase_type = None
         # Loop through values to validate each
         for enum_value in PurchaseType:
-            print(f'checking enum_value {enum_value}')
             if enum_value.value.lower() == purchase_type_raw.lower():
                 purchase_type = enum_value
-                print(f'purchase_type is {purchase_type}')
                 break
 
         if purchase_type is None:
@@ -650,7 +658,6 @@ def new_purchase():
             return _('Invalid purchase type submitted'), 400
 
         purchase_type_label = purchase_type.value.lower()
-        print(f'Purchase type is {purchase_type.value}')
 
         raw_purchase_date = request.form.get('date')
         purchase = Purchase(
@@ -761,7 +768,9 @@ def choose_purchase_type():
 @app.route('/purchases/<int:purchase_id>')
 @login_required
 def view_purchase(purchase_id):
-    purchase = Purchase.query.filter_by(id=purchase_id, user_id=current_user.id).first_or_404()
+    purchase = Purchase.query.filter_by(id=purchase_id, user_id=current_user.id).options(
+        selectinload(Purchase.items).selectinload(Item.sales),
+    ).first_or_404()
 
     # Convert purchase type to Single if needed
     if purchase.purchase_type == PurchaseType.BUNDLE and len(purchase.items) == 1:
@@ -1344,7 +1353,10 @@ def import_csv():
 @login_required
 def export_csv():
     purchases = Purchase.query.filter_by(user_id=current_user.id).all()
-    items = Item.query.filter_by(user_id=current_user.id).order_by(Item.id).all()
+    items = Item.query.filter_by(user_id=current_user.id).order_by(Item.id).options(
+        selectinload(Item.purchase), selectinload(Item.listings),
+        selectinload(Item.sales).selectinload(Sale.listing),
+    ).all()
 
     def csv_money(value):
         return f"{value:.2f}" if value is not None else ""

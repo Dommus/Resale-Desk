@@ -22,7 +22,11 @@ def get_language():
     if not has_request_context():
         return DEFAULT_LANGUAGE
     language = g.get("language") or request.cookies.get(LANGUAGE_COOKIE)
-    return language if language in LANGUAGES else DEFAULT_LANGUAGE
+    if language not in LANGUAGES:
+        language = DEFAULT_LANGUAGE
+    # Remember it for the rest of the request, since every _() call asks again
+    g.language = language
+    return language
 
 
 def _(text, **values):

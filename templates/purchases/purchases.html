@@ -102,8 +102,10 @@
                     <td data-label="{{ _('Platform') }}" data-mobile="meta" data-sort-value="{{ p.platform or '' }}">{{ p.platform or "-" }}</td>
                     <td data-label="{{ _('Type') }}" data-mobile="badge" data-sort-value="{{ _(p.purchase_type.value) }}"><span class="badge purchase-type-badge-{{ p.purchase_type.value }}">{{ _(p.purchase_type.value) }}</span></td>
                     <td data-label="{{ _('Total cost') }}" data-mobile="meta" data-mobile-label="{{ _('Cost') }}" data-sort-value="{{ p.total_cost }}">{{ currency_symbol }}{{ "%.2f"|format(p.total_cost) }}</td>
-                    <td data-label="{{ _('Profit') }}" data-mobile="amount" data-sort-value="{{ p.profit }}"><span class="{{ 'text-success' if p.profit >= 0 else 'text-danger' }}">{{ currency_symbol }}{{ "%.2f"|format(p.profit) }}</span></td>
-                    <td data-label="{{ _('# Units') }}" data-mobile="meta" data-mobile-label="{{ _('Sold') }}" data-sort-value="{{ p.items|sum(attribute='quantity') }}">{{ p.items|sum(attribute='quantity_sold') }}/{{ p.items|sum(attribute='quantity') }}</td>
+                    {% set profit = p.profit %}
+                    <td data-label="{{ _('Profit') }}" data-mobile="amount" data-sort-value="{{ profit }}"><span class="{{ 'text-success' if profit >= 0 else 'text-danger' }}">{{ currency_symbol }}{{ "%.2f"|format(profit) }}</span></td>
+                    {% set units = p.items|sum(attribute='quantity') %}
+                    <td data-label="{{ _('# Units') }}" data-mobile="meta" data-mobile-label="{{ _('Sold') }}" data-sort-value="{{ units }}">{{ p.items|sum(attribute='quantity_sold') }}/{{ units }}</td>
                     <td data-label="" data-mobile="link" class="text-end table-action-cell">
                         <a href="{{ url_for('view_purchase', purchase_id=p.id) }}" class="btn btn-sm btn-outline-primary"><span class="table-action-label">{{ _('View') }}</span><i class="bi bi-chevron-right table-action-chevron" aria-hidden="true"></i></a>
                     </td>
