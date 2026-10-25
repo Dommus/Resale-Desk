@@ -185,6 +185,258 @@ h5, .h5, .card-title { font-size: 0.95rem; }
     background-color: var(--paper);
 }
 
+/* ---------- Navbar search preview (static/js/search_preview.js) ----------
+   A panel under the search field. On phones it spans the field's width and
+   stops above the on-screen keyboard (the script sets --search-preview-space). */
+.header-search,
+.mobile-search {
+    position: relative;
+}
+
+.search-preview {
+    position: absolute;
+    top: calc(100% + 0.35rem);
+    left: 0;
+    /* Above the sticky table filters, below bottom sheets and modals */
+    z-index: 1025;
+    display: flex;
+    flex-direction: column;
+    width: max(100%, 30rem);
+    max-width: calc(100vw - 1.5rem);
+    max-height: min(var(--search-preview-space, 70vh), 34rem);
+    overflow: hidden;
+    border: 1px solid var(--rule-strong);
+    border-radius: 4px;
+    background: var(--sheet);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+    .search-preview {
+        animation: search-preview-in 0.12s ease-out;
+    }
+}
+
+@keyframes search-preview-in {
+    from {
+        opacity: 0;
+        transform: translateY(-4px);
+    }
+}
+
+.search-preview-list {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+}
+
+/* Waiting for new suggestions: dim the old ones, only if the answer is slow */
+.search-preview.is-loading .search-preview-list {
+    opacity: 0.55;
+    transition: opacity 0.15s 0.2s;
+}
+
+.search-preview-group {
+    padding: 0.25rem 0;
+}
+
+.search-preview-group + .search-preview-group {
+    border-top: 1px solid var(--rule);
+}
+
+.search-preview-heading,
+.search-preview-recent-head {
+    padding: 0.4rem 0.85rem 0.15rem;
+    color: var(--bs-secondary-color);
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.search-preview-recent-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-right: 0.35rem;
+}
+
+.search-preview-recent-head .btn-link {
+    text-decoration: none;
+}
+
+.search-preview-recent-head:not([hidden]) + .search-preview-list > .search-preview-group {
+    padding-top: 0;
+}
+
+.search-preview-option {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    width: 100%;
+    /* At least 44px tall, the usual minimum touch target */
+    min-height: 2.75rem;
+    padding: 0.35rem 0.85rem;
+    border: 0;
+    background: none;
+    color: var(--ink);
+    text-align: left;
+    text-decoration: none;
+}
+
+.search-preview-option[aria-selected="true"] {
+    background: var(--hover);
+    color: var(--ink);
+    box-shadow: inset 2px 0 0 var(--accent);
+}
+
+@media (hover: hover) {
+    .search-preview-option:hover {
+        background: var(--hover);
+        color: var(--ink);
+    }
+}
+
+@media (hover: none) {
+    .search-preview-option:active {
+        background: rgba(var(--accent-rgb), 0.08);
+    }
+}
+
+.search-preview-icon {
+    flex: none;
+    width: 1rem;
+    color: var(--bs-secondary-color);
+}
+
+.search-preview-text {
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    min-width: 0;
+    line-height: 1.3;
+}
+
+.search-preview-title,
+.search-preview-meta {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.search-preview-title {
+    font-weight: 500;
+}
+
+.search-preview-meta {
+    color: var(--bs-secondary-color);
+    font-size: 0.8rem;
+}
+
+.search-preview-meta > span + span::before {
+    margin: 0 0.35rem;
+    content: "·";
+}
+
+.search-preview-option .badge {
+    flex: none;
+}
+
+.search-preview mark {
+    padding: 0;
+    border-radius: 2px;
+    background: rgba(var(--accent-rgb), 0.16);
+    color: inherit;
+}
+
+.search-preview-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    padding: 0.3rem 0.85rem 0.45rem;
+}
+
+.search-preview-chips .filter-chip {
+    max-width: 100%;
+    text-decoration: none;
+}
+
+.search-preview-chips .filter-chip span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.search-preview-chips .filter-chip[aria-selected="true"] {
+    border-color: var(--accent);
+    background: rgba(var(--accent-rgb), 0.08);
+    color: var(--accent);
+}
+
+@media (hover: hover) {
+    .search-preview-chips .filter-chip:hover {
+        border-color: var(--accent);
+        color: var(--accent);
+    }
+}
+
+/* The "See results" links stay in view at the bottom while the list scrolls */
+.search-preview-footer {
+    position: sticky;
+    bottom: 0;
+    background: var(--sheet);
+}
+
+.search-preview-count {
+    flex: none;
+    min-width: 1.75rem;
+    padding: 0 0.45rem;
+    border: 1px solid var(--rule);
+    border-radius: 999px;
+    background: var(--head);
+    color: var(--bs-secondary-color);
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-align: center;
+}
+
+.search-preview-empty {
+    padding: 1.25rem 1rem;
+    color: var(--bs-secondary-color);
+    text-align: center;
+}
+
+.search-preview-empty .bi {
+    display: block;
+    margin-bottom: 0.35rem;
+    font-size: 1.4rem;
+}
+
+.search-preview-empty p:first-of-type {
+    color: var(--ink);
+    font-weight: 500;
+}
+
+@media (max-width: 991.98px) {
+    .mobile-search .search-preview {
+        right: 0;
+        width: auto;
+        max-width: none;
+        max-height: var(--search-preview-space, 60vh);
+    }
+
+    .search-preview-option {
+        min-height: 3rem;
+    }
+
+    .search-preview-recent-head {
+        padding-top: 0;
+        padding-bottom: 0;
+    }
+
+    .search-preview-recent-head .btn-link {
+        min-height: 2.75rem;
+    }
+}
+
 .theme-toggle {
     position: fixed;
     top: 0.75rem;

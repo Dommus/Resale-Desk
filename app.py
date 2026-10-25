@@ -1,4 +1,4 @@
-import os, csv, secrets
+import os, csv, re, secrets
 from datetime import datetime, date, timedelta
 from urllib.parse import urlparse
 
@@ -11,8 +11,9 @@ from flask import Flask, Response, abort, render_template, request, redirect, ur
 from flask_login import login_user, logout_user, login_required, current_user
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
-from sqlalchemy import or_, cast, String
-from sqlalchemy.orm import selectinload
+from sqlalchemy import or_, and_, case, cast, func, select, String
+from sqlalchemy.orm import joinedload, selectinload
+from markupsafe import Markup, escape
 from werkzeug.security import generate_password_hash, check_password_hash
 
 from decimal import Decimal
@@ -152,6 +153,28 @@ def get_purchase_form_options(user_id):
     return options
 
 
+def parse_item_code(q):
+    # "42", "I-000042" and "i42" all point to item 42
+    match = re.fullmatch(r'(?:i-?)?(\d{1,9})', q, re.IGNORECASE)
+    return int(match.group(1)) if match else None
+
+
+def item_search_filter(q):
+    # Inventory search: name, category, inventory ID or code, or listing ID.
+    # Shared by the inventory page and the navbar search preview, so both find the same items.
+    pattern = f'%{q}%'
+    conditions = [
+        Item.name.ilike(pattern),
+        cast(Item.id, String).ilike(pattern),
+        Item.category.ilike(pattern),
+        Item.id.in_(select(Listing.item_id).where(Listing.listing_id.ilike(pattern))),
+    ]
+    code = parse_item_code(q)
+    if code is not None:
+        conditions.append(Item.id == code)
+    return or_(*conditions)
+
+
 def create_purchase_item(purchase, user_id, name, category=None, brand=None, condition=None, 
                          shelf_id=None, notes=None, quantity=1):
     # Return new Item instance with sanitized inputs
@@ -208,6 +231,17 @@ def check_same_origin():
 # Templates translate their UI text with {{ _('...') }}. A global (rather than
 # a context processor) so imported macros can use it too.
 app.jinja_env.globals["_"] = _
+
+# Wrap the parts of text that match the search in <mark>, escaping the rest
+@app.template_filter('highlight')
+def highlight(text, q):
+    if not text or not q:
+        return text
+    parts = re.split(f'({re.escape(q)})', str(text), flags=re.IGNORECASE)
+    return Markup('').join(
+        Markup('<mark>{}</mark>').format(part) if i % 2 else escape(part)
+        for i, part in enumerate(parts)
+    )
 
 @app.context_processor
 def inject_language():
@@ -419,14 +453,7 @@ def inventory():
     query = Item.query.filter_by(user_id=current_user.id)
     q = request.args.get('q', '').strip()
     if q:
-        query = query.outerjoin(Listing).filter(
-            or_(
-                Item.name.ilike(f'%{q}%'),
-                cast(Item.id, String).ilike(f'%{q}%'),
-                Item.category.ilike(f'%{q}%'),
-                Listing.listing_id.ilike(f'%{q}%'),
-            )
-        ).distinct()
+        query = query.filter(item_search_filter(q))
 
     # Bare /inventory shows items on sale; links and searches with filters show all statuses
     status = request.args.get('status', 'all' if request.args else ItemStatus.ON_SALE.value)
@@ -493,6 +520,108 @@ def inventory():
         shelf_id=shelf_id,
         category=category,
         sort=sort,
+    )
+
+
+#    Inventory - Search preview
+
+# Suggestions shown under the navbar search while typing (AI-generated with Claude, see
+# static/js/search_preview.js). Returns an HTML fragment, so it reuses the templates'
+# translations and badges.
+@app.route('/search/preview')
+@login_required
+def search_preview():
+    q = request.args.get('q', '').strip()[:100]
+    if not q:
+        return ''
+    pattern = f'%{q}%'
+    match = item_search_filter(q)
+
+    # Best matches first: the exact ID, name or listing ID, then names that
+    # start with the text, then names with a word that starts with it
+    exact = [
+        func.lower(Item.name) == q.lower(),
+        Item.id.in_(select(Listing.item_id).where(func.lower(Listing.listing_id) == q.lower())),
+    ]
+    code = parse_item_code(q)
+    if code is not None:
+        exact.append(Item.id == code)
+    relevance = case(
+        (or_(*exact), 0),
+        (Item.name.ilike(f'{q}%'), 1),
+        (Item.name.ilike(f'% {q}%'), 2),
+        else_=3,
+    )
+    # Items that can still be sold come before sold and written-off ones
+    finished = case((Item.status.in_([ItemStatus.SOLD, ItemStatus.WRITTEN_OFF]), 1), else_=0)
+    items = (
+        Item.query.filter(Item.user_id == current_user.id, match)
+        .options(joinedload(Item.shelf))
+        .order_by(relevance, finished, Item.created_at.desc())
+        .limit(5)
+        .all()
+    )
+
+    # How many items match in each status, for the "See results" links
+    status_counts = dict(
+        db.session.query(Item.status, func.count(Item.id))
+        .filter(Item.user_id == current_user.id, match)
+        .group_by(Item.status)
+        .all()
+    )
+
+    # The listing whose ID matched, shown under the item name
+    matched_listings = {}
+    if items:
+        listings = Listing.query.filter(
+            Listing.item_id.in_([item.id for item in items]),
+            Listing.listing_id.ilike(pattern),
+        )
+        for listing in listings:
+            matched_listings.setdefault(listing.item_id, listing)
+
+    # Bundles by name or seller. A single purchase is named after its item,
+    # which is already listed above, so those only match by seller.
+    item_count = select(func.count(Item.id)).where(Item.purchase_id == Purchase.id).scalar_subquery()
+    purchases = (
+        db.session.query(Purchase, item_count)
+        .filter(
+            Purchase.user_id == current_user.id,
+            or_(
+                Purchase.seller.ilike(pattern),
+                and_(Purchase.purchase_type == PurchaseType.BUNDLE, Purchase.name.ilike(pattern)),
+            ),
+        )
+        .order_by(Purchase.date.desc(), Purchase.id.desc())
+        .limit(3)
+        .all()
+    )
+
+    shelves = (
+        Shelf.query.filter(Shelf.user_id == current_user.id, Shelf.name.ilike(pattern))
+        .order_by(Shelf.name)
+        .limit(3)
+        .all()
+    )
+    categories = [
+        category for (category,) in
+        db.session.query(Item.category)
+        .filter(Item.user_id == current_user.id, Item.category.ilike(pattern))
+        .distinct()
+        .order_by(Item.category)
+        .limit(3)
+    ]
+
+    return render_template(
+        'search_preview.html',
+        q=q,
+        items=items,
+        matched_listings=matched_listings,
+        total_count=sum(status_counts.values()),
+        on_sale_count=status_counts.get(ItemStatus.ON_SALE, 0),
+        purchases=purchases,
+        shelves=shelves,
+        categories=categories,
     )
 
 

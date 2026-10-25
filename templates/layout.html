@@ -38,8 +38,10 @@
                 </button>
             </div>
             <div class="collapse w-100 d-lg-none" id="mobileSearch">
-                <form class="mobile-search" role="search" action="{{ url_for('inventory') }}" method="get">
+                <form class="mobile-search" role="search" action="{{ url_for('inventory') }}" method="get"
+                      data-search-preview="{{ url_for('search_preview') }}" data-recent-key="resale-desk-recent-searches-{{ current_user.id }}">
                     <input class="form-control" type="search" name="q" enterkeyhint="search"
+                           autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false"
                            placeholder="{{ _('Search inventory or listing ID') }}" value="{{ request.args.get('q', '') }}">
                     <input type="hidden" name="status" value="On Sale">
                 </form>
@@ -57,8 +59,10 @@
                     <li class="nav-item"><a class="nav-link{{ ' active' if ep in endpoints }}" href="{{ url_for(endpoint) }}"{{ ' aria-current="page"'|safe if ep in endpoints }}>{{ _(label) }}</a></li>
                     {% endfor %}
                 </ul>
-                <form class="d-none d-lg-flex flex-grow-1 header-search ms-3 me-3" role="search" action="{{ url_for('inventory') }}" method="get">
-                    <input class="form-control form-control-sm" type="search" name="q" placeholder="{{ _('Search inventory or listing ID') }}" value="{{ request.args.get('q', '') }}">
+                <form class="d-none d-lg-flex flex-grow-1 header-search ms-3 me-3" role="search" action="{{ url_for('inventory') }}" method="get"
+                      data-search-preview="{{ url_for('search_preview') }}" data-recent-key="resale-desk-recent-searches-{{ current_user.id }}">
+                    <input class="form-control form-control-sm" type="search" name="q" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false"
+                           placeholder="{{ _('Search inventory or listing ID') }}" value="{{ request.args.get('q', '') }}">
                     <input type="hidden" name="status" value="On Sale">
                 </form>
                 <div class="dropdown header-new-purchase">
@@ -187,6 +191,9 @@
         navigator.serviceWorker.register("/sw.js");
     }
 </script>
+{% if current_user.is_authenticated %}
+<script src="{{ url_for('static', filename='js/search_preview.js') }}"></script>
+{% endif %}
 {% block scripts %}{% endblock %}
 
 </body>

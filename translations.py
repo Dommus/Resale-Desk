@@ -37,13 +37,17 @@ def _(text, **values):
     return text.format(**values) if values else text
 
 
-# Strings used by static/js/table_controls.js
+# Strings used by static/js/table_controls.js and static/js/search_preview.js
 JS_STRINGS = [
     "Actions",
     "Columns",
     "Toggle columns",
     "Reset columns",
     "Click to sort. Drag to reorder.",
+    "Search suggestions",
+    "Recent searches",
+    "Clear",
+    "Clear recent searches",
 ]
 
 
@@ -224,6 +228,22 @@ PT = {
     "No Code Assigned": "Sem código atribuído",
     "Bundle: {name}": "Lote: {name}",
     "No items match your filters.": "Nenhum artigo corresponde aos filtros.",
+
+    # Navbar search preview
+    "Items": "Artigos",
+    "Filter inventory": "Filtrar inventário",
+    "Shelf: {name}": "Prateleira: {name}",
+    "Category: {name}": "Categoria: {name}",
+    "1 item": "1 artigo",
+    "{count} items": "{count} artigos",
+    "All results": "Todos os resultados",
+    "See results on sale": "Ver resultados à venda",
+    "See results in all statuses": "Ver resultados em todos os estados",
+    "No matches for “{q}”": "Sem resultados para “{q}”",
+    "Try a name, category, item code (I-000042) or listing ID.":
+        "Experimente um nome, categoria, código do artigo (I-000042) ou ID do anúncio.",
+    "1 suggestion": "1 sugestão",
+    "{count} suggestions": "{count} sugestões",
 
     # Item page
     "Refund": "Reembolso",
@@ -441,6 +461,10 @@ PT = {
     "Toggle columns": "Mostrar/ocultar colunas",
     "Reset columns": "Repor colunas",
     "Click to sort. Drag to reorder.": "Clique para ordenar. Arraste para reordenar.",
+    "Search suggestions": "Sugestões de pesquisa",
+    "Recent searches": "Pesquisas recentes",
+    "Clear": "Limpar",
+    "Clear recent searches": "Limpar pesquisas recentes",
 
     # Flash messages
     "Please log in to continue.": "Inicie sessão para continuar.",

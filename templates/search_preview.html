@@ -1,0 +1,104 @@
+{# Suggestions under the navbar search (AI-generated with Claude), loaded while typing by static/js/search_preview.js.
+   The script puts this inside the search's listbox and moves the highlight between
+   the [role="option"] links with the arrow keys. #}
+{% set suggestion_count = items|length + purchases|length + shelves|length + categories|length %}
+{% if not suggestion_count %}
+    {% set announce = _('No matches for “{q}”', q=q) %}
+{% elif suggestion_count == 1 %}
+    {% set announce = _('1 suggestion') %}
+{% else %}
+    {% set announce = _('{count} suggestions', count=suggestion_count) %}
+{% endif %}
+<div class="search-preview-results" role="none" data-q="{{ q }}" data-total-count="{{ total_count }}"
+     data-on-sale-count="{{ on_sale_count }}" data-announce="{{ announce }}">
+
+    {% if items %}
+    <div class="search-preview-group" role="group" aria-label="{{ _('Items') }}">
+        <div class="search-preview-heading" aria-hidden="true">{{ _('Items') }}</div>
+        {% for item in items %}
+        {% set listing = matched_listings.get(item.id) %}
+        <a class="search-preview-option" role="option" tabindex="-1" href="{{ url_for('view_item', item_id=item.id) }}">
+            <i class="bi bi-box-seam search-preview-icon" aria-hidden="true"></i>
+            <span class="search-preview-text">
+                <span class="search-preview-title">{{ item.name|highlight(q) }}</span>
+                <span class="search-preview-meta">
+                    {# The "-" strips the spaces between parts, so CSS alone spaces the separators #}
+                    <span>{{ item.inventory_code|highlight(q) }}</span>
+                    {%- if listing %}<span>{{ listing.platform }} {{ listing.listing_id|highlight(q) }}</span>{% endif %}
+                    {%- if item.category %}<span>{{ item.category|highlight(q) }}</span>{% endif %}
+                    {%- if item.shelf %}<span>{{ item.shelf.name }}</span>{% endif %}
+                </span>
+            </span>
+            <span class="badge status-badge-{{ item.status.value|replace(' ', '-') }}">{{ _(item.status.value) }}</span>
+        </a>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    {% if shelves or categories %}
+    <div class="search-preview-group" role="group" aria-label="{{ _('Filter inventory') }}">
+        <div class="search-preview-heading" aria-hidden="true">{{ _('Filter inventory') }}</div>
+        <div class="search-preview-chips" role="none">
+            {% for shelf in shelves %}
+            <a class="filter-chip" role="option" tabindex="-1" href="{{ url_for('inventory', shelf_id=shelf.id) }}" aria-label="{{ _('Shelf: {name}', name=shelf.name) }}">
+                <i class="bi bi-bookshelf" aria-hidden="true"></i> <span>{{ shelf.name|highlight(q) }}</span>
+            </a>
+            {% endfor %}
+            {% for category in categories %}
+            <a class="filter-chip" role="option" tabindex="-1" href="{{ url_for('inventory', category=category) }}" aria-label="{{ _('Category: {name}', name=category) }}">
+                <i class="bi bi-tag" aria-hidden="true"></i> <span>{{ category|highlight(q) }}</span>
+            </a>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    {% if purchases %}
+    <div class="search-preview-group" role="group" aria-label="{{ _('Purchases') }}">
+        <div class="search-preview-heading" aria-hidden="true">{{ _('Purchases') }}</div>
+        {% for purchase, item_count in purchases %}
+        <a class="search-preview-option" role="option" tabindex="-1" href="{{ url_for('view_purchase', purchase_id=purchase.id) }}">
+            <i class="bi {{ 'bi-boxes' if purchase.purchase_type.value == 'Bundle' else 'bi-box-seam' }} search-preview-icon" aria-hidden="true"></i>
+            <span class="search-preview-text">
+                <span class="search-preview-title">{{ purchase.display_name|highlight(q) }}</span>
+                <span class="search-preview-meta">
+                    <span>{{ _('Purchase #{id}', id=purchase.id) }}</span>
+                    {%- if purchase.seller %}<span>{{ purchase.seller|highlight(q) }}</span>{% endif %}
+                    {%- if purchase.date %}<span>{{ purchase.date.strftime('%Y-%m-%d') }}</span>{% endif -%}
+                    <span>{{ _('1 item') if item_count == 1 else _('{count} items', count=item_count) }}</span>
+                </span>
+            </span>
+            <span class="badge purchase-type-badge-{{ purchase.purchase_type.value }}">{{ _(purchase.purchase_type.value) }}</span>
+        </a>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    {% if total_count %}
+    {# The navbar search shows items on sale, so say when more match in other statuses #}
+    <div class="search-preview-group search-preview-footer" role="group" aria-label="{{ _('All results') }}">
+        {% if on_sale_count %}
+        <a class="search-preview-option" role="option" tabindex="-1" href="{{ url_for('inventory', q=q, status='On Sale') }}">
+            <i class="bi bi-search search-preview-icon" aria-hidden="true"></i>
+            <span class="search-preview-text"><span class="search-preview-title">{{ _('See results on sale') }}</span></span>
+            <span class="search-preview-count">{{ on_sale_count }}</span>
+        </a>
+        {% endif %}
+        {% if total_count > on_sale_count %}
+        <a class="search-preview-option" role="option" tabindex="-1" href="{{ url_for('inventory', q=q, status='all') }}">
+            <i class="bi bi-list-ul search-preview-icon" aria-hidden="true"></i>
+            <span class="search-preview-text"><span class="search-preview-title">{{ _('See results in all statuses') }}</span></span>
+            <span class="search-preview-count">{{ total_count }}</span>
+        </a>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    {% if not suggestion_count %}
+    <div class="search-preview-empty">
+        <i class="bi bi-search" aria-hidden="true"></i>
+        <p class="mb-1">{{ _('No matches for “{q}”', q=q) }}</p>
+        <p class="small mb-0">{{ _('Try a name, category, item code (I-000042) or listing ID.') }}</p>
+    </div>
+    {% endif %}
+</div>
