@@ -211,6 +211,7 @@ PT = {
     "Purchase cost": "Custo de compra",
     "Cost": "Custo",
     "Qty": "Qtd.",
+    "Open listing on {platform}": "Abrir anúncio em {platform}",
     "Profit (total)": "Lucro (total)",
     "Purchase Date": "Data de compra",
     "Purchase date": "Data de compra",

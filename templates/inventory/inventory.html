@@ -133,6 +133,9 @@
                         {% set first_listing_url = (item.listings | selectattr('listing_url') | first) %}
                         {% if first_listing_url %}
                         <a href="{{ first_listing_url.listing_url }}" target="_blank" rel="noopener noreferrer">{{ item.name }}</a>
+                        {# On phones the row opens the item page, so the listing gets its own button #}
+                        {% set open_listing_label = _('Open listing on {platform}', platform=first_listing_url.platform) %}
+                        <a href="{{ first_listing_url.listing_url }}" target="_blank" rel="noopener noreferrer" class="listing-open-button" aria-label="{{ open_listing_label }}" title="{{ open_listing_label }}"><i class="bi bi-box-arrow-up-right" aria-hidden="true"></i></a>
                         {% else %}
                         {{ item.name }}
                         {% endif %}

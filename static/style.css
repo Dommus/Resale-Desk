@@ -930,7 +930,8 @@ code.inv-code {
    below, and the whole row opens the record. Cells choose their place with
    data-mobile="title|amount|badge|meta|link"; cells without it are left
    out, and meta cells can show a short data-mobile-label before the value. */
-.table-action-chevron {
+.table-action-chevron,
+.listing-open-button {
     display: none;
 }
 
@@ -1083,6 +1084,38 @@ code.inv-code {
 
     .table-action-chevron {
         display: inline-block;
+    }
+
+    /* Secondary action: opens the marketplace listing, sitting above the row link */
+    .app-list-table tbody tr:has(.listing-open-button) {
+        padding-right: 5rem;
+    }
+
+    .app-list-table td[data-mobile] .listing-open-button {
+        position: absolute;
+        top: 50%;
+        right: 2.1rem;
+        z-index: 2;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 2.5rem;
+        height: 2.5rem;
+        border: 1px solid var(--rule-strong);
+        border-radius: 4px;
+        background: var(--sheet);
+        color: var(--accent);
+        font-weight: 400;
+        transform: translateY(-50%);
+    }
+
+    .app-list-table td[data-mobile] .listing-open-button:active {
+        background: var(--hover);
+    }
+
+    .app-list-table td[data-mobile] .listing-open-button:focus-visible {
+        outline: 2px solid var(--accent);
+        outline-offset: 2px;
     }
 }
 
