@@ -6,11 +6,11 @@
 
   
 
-Resale Desk is a web application for people who buy second-hand items and resell them on marketplaces such as Vinted, eBay, OLX, etc. My family members have a reselling gig and everything was being tracked on a spreadsheet, but as the number of items grew it became hard to answer simple questions: how much profit did they make this month, which purchases paid off, what is sitting on a shelf without being listed anywhere, and how much money was lost on items that were damaged or refunded. Resale Desk replaces that spreadsheet with an inventory and sales system built with Python, Flask, SQLAlchemy and SQLite.
+Resale Desk is a web application for people who buy second-hand items and resell them on marketplaces such as Vinted, eBay, OLX, etc.
 
   
 
-Each user has their own account. The workflow follows the life-cycle of an item: First you record a **purchase**: either a single item, or a bundle of several items bought together for one price. Items can be placed on **shelves** so you know where they are physically. Each item can have one or more **listings** on different platforms, with a price, URL and status (Active, Removed, Expired, Sold). When an item sells, you record a **sale** with the sale price, shipping collected and paid, and platform and payment fees. The app then calculates net proceeds, profit, ROI and margin. If a buyer gets a **refund**, you record it on the sale, and say whether the item came back or not. If an item will never sell because it was lost, damaged or kept, you **write it off**, and its cost is counted as a loss.
+The workflow follows the life-cycle of an item: First you record a **purchase**: either a single item, or a bundle of several items bought together for one price. Items can be placed on **shelves** so you know where they are physically. Each item can have one or more **listings** on different platforms, with a price, URL and status (Active, Removed, Expired, Sold). When an item sells, you record a **sale** with the sale price, shipping collected and paid, and platform and payment fees. The app then calculates net proceeds, profit, ROI and margin. If a buyer gets a **refund**, you record it on the sale, and say whether the item came back or not. If an item will never sell because it was lost, damaged or kept, you **write it off**, and its cost is counted as a loss.
 
   
 
