@@ -150,12 +150,25 @@ h5, .h5, .card-title { font-size: 0.95rem; }
 }
 
 /* Mobile: search icon next to the menu toggler opens its own search bar */
+/* Same box as the menu toggler next to it: its padding and font size,
+   around an icon box the size of the toggler's 1.5em icon */
 .navbar-search-toggle {
-    padding: 0.25rem 0.75rem;
-    font-size: 1.1rem;
-    line-height: 1.5;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: var(--bs-navbar-toggler-padding-y) var(--bs-navbar-toggler-padding-x);
+    font-size: var(--bs-navbar-toggler-font-size);
+    line-height: 1;
     color: var(--ink);
     border: var(--bs-border-width) solid var(--rule);
+}
+
+.navbar-search-toggle .bi {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.5em;
+    height: 1.5em;
 }
 
 .navbar-search-toggle:hover,
