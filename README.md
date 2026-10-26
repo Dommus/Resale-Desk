@@ -103,6 +103,7 @@ On a public server (e.g. PythonAnywhere), set these environment variables:
 - `RESALE_DESK_PRODUCTION=1`: closes registration, skips the demo data and sends cookies over HTTPS only
 - `SECRET_KEY`: a long random string, e.g. from `python -c "import secrets; print(secrets.token_hex(32))"`
 - `ALLOW_REGISTRATION=1` (optional): reopen registration temporarily to create an account
+- `DEMO_LOGIN=1` (optional): show a one-click demo login on the login page. The `demo` account (password `cs50`) must already exist in the live database, and anyone can log in and change its data
 
   
 

@@ -35,7 +35,8 @@ os.makedirs(os.path.join(BASE_DIR, 'instance'), exist_ok=True)
 # Production mode closes registration, skips the demo data and only sends cookies over HTTPS.
 PRODUCTION = os.environ.get('RESALE_DESK_PRODUCTION') == '1'
 ALLOW_REGISTRATION = os.environ.get('ALLOW_REGISTRATION', '0' if PRODUCTION else '1') == '1'
-# Public demo account from demo.db, offered on the login page when the demo data is loaded
+# One-click login to the public demo account from demo.db. Off in production unless DEMO_LOGIN=1.
+DEMO_LOGIN = os.environ.get('DEMO_LOGIN', '0' if PRODUCTION else '1') == '1'
 DEMO_USERNAME, DEMO_PASSWORD = 'demo', 'cs50'
 
 # App configs
@@ -1362,7 +1363,10 @@ def login():
             flash(_('Logged in successfully.'), 'success')
             return redirect(url_for('index'))
 
-    demo_login = None if PRODUCTION else {'username': DEMO_USERNAME, 'password': DEMO_PASSWORD}
+    # Only offer the button when the demo account actually exists in this database
+    demo_login = None
+    if DEMO_LOGIN and User.query.filter_by(username=DEMO_USERNAME).first():
+        demo_login = {'username': DEMO_USERNAME, 'password': DEMO_PASSWORD}
     return render_template("login.html", demo_login=demo_login)
 
 @app.route('/logout')
