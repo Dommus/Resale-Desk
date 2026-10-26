@@ -1715,6 +1715,20 @@ code.inv-code {
     margin: 5rem auto;
 }
 
+/* "or" with a rule on each side, between the login form and the demo button */
+.auth-divider {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.auth-divider::before,
+.auth-divider::after {
+    content: "";
+    flex: 1;
+    border-top: 1px solid var(--bs-border-color);
+}
+
 .badge {
     border-radius: 2px;
     font-weight: 500;

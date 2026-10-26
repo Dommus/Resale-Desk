@@ -35,6 +35,8 @@ os.makedirs(os.path.join(BASE_DIR, 'instance'), exist_ok=True)
 # Production mode closes registration, skips the demo data and only sends cookies over HTTPS.
 PRODUCTION = os.environ.get('RESALE_DESK_PRODUCTION') == '1'
 ALLOW_REGISTRATION = os.environ.get('ALLOW_REGISTRATION', '0' if PRODUCTION else '1') == '1'
+# Public demo account from demo.db, offered on the login page when the demo data is loaded
+DEMO_USERNAME, DEMO_PASSWORD = 'demo', 'cs50'
 
 # App configs
 app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{DB_PATH}'
@@ -1360,7 +1362,8 @@ def login():
             flash(_('Logged in successfully.'), 'success')
             return redirect(url_for('index'))
 
-    return render_template("login.html")
+    demo_login = None if PRODUCTION else {'username': DEMO_USERNAME, 'password': DEMO_PASSWORD}
+    return render_template("login.html", demo_login=demo_login)
 
 @app.route('/logout')
 @login_required

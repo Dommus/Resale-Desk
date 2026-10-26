@@ -164,6 +164,8 @@ PT = {
     "Create an Account": "Criar uma conta",
     "Already have an account?": "Já tem conta?",
     "Log in": "Iniciar sessão",
+    "or": "ou",
+    "Try the demo account": "Experimentar a conta de demonstração",
 
     # Dashboard
     "Business overview": "Visão geral do negócio",
