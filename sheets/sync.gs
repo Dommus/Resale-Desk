@@ -22,6 +22,8 @@ function onOpen() {
   SpreadsheetApp.getUi()
     .createMenu('Resale Desk')
     .addItem('Sync from app', 'syncFromApp')
+    // From backup.gs
+    .addItem('Back up now', 'backupNow')
     .addToUi();
 }
 

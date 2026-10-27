@@ -44,6 +44,7 @@ It runs on a free [PythonAnywhere](https://www.pythonanywhere.com) account. Set 
 | `ALLOW_REGISTRATION=1` | Optional. Opens sign-ups for a moment, e.g. to create your own account |
 | `DEMO_LOGIN=1` | Optional. Adds a one-click demo login. Anyone can then change the demo account's data |
 | `SHEETS_SYNC_TOKEN`, `SHEETS_SYNC_USER` | Optional. Turn on the Google Sheets copy (see below) |
+| `BACKUP_TOKEN` | Optional. Turns on daily backups to Google Drive (see below) |
 
 ## Copy your data into Google Sheets
 
@@ -59,6 +60,28 @@ You can copy one account's data into a tab called `App` in a Google Sheet, whene
 
 Each sync replaces what's in the `App` tab.
 
+## Daily backups to Google Drive
+
+Every night, a full copy of the database (all accounts) is saved to a Google Drive folder called **Resale Desk backups**. Copies older than 30 days are deleted. If a backup fails, Google emails you.
+
+### Turn it on
+
+1. Make a **new** token, different from the sync one: `python -c "import secrets; print(secrets.token_urlsafe(32))"`.
+2. On the server, set `BACKUP_TOKEN` to that token, then reload the app.
+3. In the same Apps Script project as the sync, click **+** next to **Files**, choose **Script**, name it `backup`, and paste in [`sheets/backup.gs`](sheets/backup.gs). Also paste the latest [`sheets/sync.gs`](sheets/sync.gs) over the old one, to get the **Back up now** menu item.
+4. In **Project Settings → Script Properties**, add:
+   - `BACKUP_URL`: e.g. `https://<username>.pythonanywhere.com/backup/database`
+   - `BACKUP_TOKEN`: the same token
+5. Back in the editor, pick `installDailyBackup` in the function list at the top and click **Run**. Allow access when Google asks.
+6. To check it works, reload the sheet and click **Resale Desk → Back up now**.
+
+### Restore a backup
+
+1. In Google Drive, open **Resale Desk backups** and download the copy you want (`resale-desk-YYYY-MM-DD.db.gz`).
+2. Unzip it (on Windows, 7-Zip; on Mac or Linux, `gunzip`) and rename the file to `database.db`.
+3. On PythonAnywhere, open the **Files** tab and go to your project's `instance` folder. Rename the current `database.db` (e.g. to `database-old.db`) so you keep it, then upload your backup there as `database.db`.
+4. Go to the **Web** tab and click **Reload**.
+
 ## How it's built
 
 - **Flask** (Python) for the web app, and **SQLite** for the database, through **SQLAlchemy**.
@@ -73,6 +96,7 @@ Each sync replaces what's in the `App` tab.
 | `templates/` | The HTML pages |
 | `static/` | Styles, scripts, icons and the installable-app files |
 | `sheets/sync.gs` | The Google Sheets script |
+| `sheets/backup.gs` | The Google Drive backup script |
 
 A few choices worth knowing:
 - **A bundle's cost isn't split between its items.** If ten things cost €50 together, any split per item would be made up. So profit for a bundle is counted on the whole bundle.

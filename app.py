@@ -1,4 +1,4 @@
-import os, csv, re, secrets
+import os, csv, re, secrets, sqlite3, gzip, tempfile
 from datetime import datetime, date, timedelta
 from urllib.parse import urlparse
 
@@ -42,6 +42,9 @@ DEMO_USERNAME, DEMO_PASSWORD = 'demo', 'cs50'
 # Leave either unset to turn the sync endpoint off.
 SHEETS_SYNC_TOKEN = os.environ.get('SHEETS_SYNC_TOKEN')
 SHEETS_SYNC_USER = os.environ.get('SHEETS_SYNC_USER')
+# Database backups: the sheet's script downloads a full copy with this token.
+# It is separate from the sync token because the copy holds every account.
+BACKUP_TOKEN = os.environ.get('BACKUP_TOKEN')
 
 # App configs
 app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{DB_PATH}'
@@ -264,8 +267,8 @@ def inject_language():
 # The redirect is a GET, which is never limited, so it cannot loop.
 @app.errorhandler(429)
 def too_many_requests(error):
-    # The sheet sync is a limited GET, so redirecting it would loop
-    if request.endpoint == 'sync_sheet':
+    # The sheet sync and backup are limited GETs, so redirecting them would loop
+    if request.endpoint in ('sync_sheet', 'backup_database'):
         return error
     flash(_('Too many attempts. Please wait a moment and try again.'), 'danger')
     return redirect(request.path)
@@ -1625,13 +1628,54 @@ def sheet_rows(user_id):
     return {"items": item_rows, "bundles": bundle_rows}
 
 
+# Checks the "Authorization: Bearer <token>" header sent by the sheet's script
+def bearer_token_matches(expected):
+    token = request.headers.get('Authorization', '').removeprefix('Bearer ').strip()
+    return secrets.compare_digest(token.encode(), expected.encode())
+
+
 @app.route('/sync/sheet')
 @limiter.limit("30 per hour")
 def sync_sheet():
     if not SHEETS_SYNC_TOKEN or not SHEETS_SYNC_USER:
         abort(404)
-    token = request.headers.get('Authorization', '').removeprefix('Bearer ').strip()
-    if not secrets.compare_digest(token.encode(), SHEETS_SYNC_TOKEN.encode()):
+    if not bearer_token_matches(SHEETS_SYNC_TOKEN):
         abort(401)
     user = User.query.filter_by(username=SHEETS_SYNC_USER).first_or_404()
     return jsonify(sheet_rows(user.id))
+
+
+@app.route('/backup/database')
+@limiter.limit("5 per hour")
+def backup_database():
+    if not BACKUP_TOKEN:
+        abort(404)
+    if not bearer_token_matches(BACKUP_TOKEN):
+        abort(401)
+
+    # SQLite's backup API takes a consistent copy even while other requests are writing
+    handle, copy_path = tempfile.mkstemp(suffix='.db')
+    os.close(handle)
+    try:
+        source = sqlite3.connect(DB_PATH)
+        copy = sqlite3.connect(copy_path)
+        try:
+            source.backup(copy)
+            check = copy.execute('PRAGMA integrity_check').fetchone()[0]
+        finally:
+            copy.close()
+            source.close()
+        # Never hand out a broken copy, or it would replace good backups
+        if check != 'ok':
+            app.logger.error('Backup integrity check failed: %s', check)
+            abort(500)
+        with open(copy_path, 'rb') as file:
+            data = gzip.compress(file.read())
+    finally:
+        os.remove(copy_path)
+
+    response = Response(data, mimetype='application/gzip')
+    response.headers['Content-Disposition'] = (
+        f'attachment; filename=resale-desk-{date.today().isoformat()}.db.gz'
+    )
+    return response
