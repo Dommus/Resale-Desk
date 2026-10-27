@@ -7,7 +7,7 @@ from models import db, User, Shelf, Item, Purchase, ItemStatus, PurchaseType, Li
 from utilities import login_manager, parse_date, parse_decimal, parse_quantity, process_csv, currency_display, CURRENCY_SYMBOLS
 from translations import _, get_language, js_translations, LANGUAGES, LANGUAGE_COOKIE, HTML_LANG
 
-from flask import Flask, Response, abort, render_template, request, redirect, url_for, flash, g, send_from_directory
+from flask import Flask, Response, abort, jsonify, render_template, request, redirect, url_for, flash, g, send_from_directory
 from flask_login import login_user, logout_user, login_required, current_user
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
@@ -38,6 +38,10 @@ ALLOW_REGISTRATION = os.environ.get('ALLOW_REGISTRATION', '0' if PRODUCTION else
 # One-click login to the public demo account from demo.db. Off in production unless DEMO_LOGIN=1.
 DEMO_LOGIN = os.environ.get('DEMO_LOGIN', '0' if PRODUCTION else '1') == '1'
 DEMO_USERNAME, DEMO_PASSWORD = 'demo', 'cs50'
+# Google Sheets sync: the sheet's script fetches this user's data with the token.
+# Leave either unset to turn the sync endpoint off.
+SHEETS_SYNC_TOKEN = os.environ.get('SHEETS_SYNC_TOKEN')
+SHEETS_SYNC_USER = os.environ.get('SHEETS_SYNC_USER')
 
 # App configs
 app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{DB_PATH}'
@@ -260,6 +264,9 @@ def inject_language():
 # The redirect is a GET, which is never limited, so it cannot loop.
 @app.errorhandler(429)
 def too_many_requests(error):
+    # The sheet sync is a limited GET, so redirecting it would loop
+    if request.endpoint == 'sync_sheet':
+        return error
     flash(_('Too many attempts. Please wait a moment and try again.'), 'danger')
     return redirect(request.path)
 
@@ -1485,6 +1492,16 @@ def import_csv():
     flash(message, 'success')
     return redirect(url_for('user'))
 
+# The listing an exported item row shows: the one it sold on, else an active one, else any
+def item_listing(item):
+    if item.sale and item.sale.listing:
+        return item.sale.listing
+    active_listing = next(
+        (listing for listing in item.listings if listing.status == ListingStatus.ACTIVE),
+        None,
+    )
+    return active_listing or (item.listings[0] if item.listings else None)
+
 @app.route('/user/export-csv')
 @login_required
 def export_csv():
@@ -1499,15 +1516,6 @@ def export_csv():
 
     def csv_date(value):
         return value.isoformat() if value else ""
-
-    def item_listing(item):
-        if item.sale and item.sale.listing:
-            return item.sale.listing
-        active_listing = next(
-            (listing for listing in item.listings if listing.status == ListingStatus.ACTIVE),
-            None,
-        )
-        return active_listing or (item.listings[0] if item.listings else None)
 
     output = StringIO(newline="")
     writer = csv.writer(output, lineterminator="\n")
@@ -1568,3 +1576,62 @@ def export_csv():
         f"attachment; filename=resale-desk-export-{date.today().isoformat()}.csv"
     )
     return response
+
+
+# Rows for the "App" tab of the Google Sheet, in the same column order as its Vendas tab
+def sheet_rows(user_id):
+    def money(value):
+        return float(value) if value is not None else None
+
+    def iso(value):
+        return value.isoformat() if value else None
+
+    items = Item.query.filter_by(user_id=user_id).order_by(Item.id).options(
+        selectinload(Item.purchase), selectinload(Item.shelf), selectinload(Item.listings),
+        selectinload(Item.sales).selectinload(Sale.listing),
+    ).all()
+    item_rows = []
+    for item in items:
+        purchase = item.purchase
+        listing = item_listing(item)
+        sale = item.sale
+        single = purchase.purchase_type == PurchaseType.SINGLE
+        item_rows.append([
+            "Individual" if single else purchase.display_name,
+            item.quantity,
+            item.quantity_sold,
+            item.name,
+            iso(sale.sale_date if sale else None),
+            item.status.value,
+            (listing.platform if listing else None) or purchase.platform,
+            item.shelf.name if item.shelf else None,
+            money(purchase.total_cost / item.quantity) if single and item.quantity else None,
+            money(listing.listing_price if listing else None),
+            money(sale.sale_price if sale else None),
+            money(item.realized_profit),
+            listing.listing_url if listing else None,
+            iso(purchase.date),
+            money(sale.refund_amount if sale and sale.refund_amount else None),
+            item.notes or None,
+        ])
+
+    bundles = Purchase.query.filter_by(user_id=user_id, purchase_type=PurchaseType.BUNDLE).order_by(Purchase.id).options(
+        selectinload(Purchase.items).selectinload(Item.sales),
+    ).all()
+    bundle_rows = [
+        [purchase.display_name, money(purchase.total_cost), money(purchase.total_revenue), money(purchase.profit)]
+        for purchase in bundles
+    ]
+    return {"items": item_rows, "bundles": bundle_rows}
+
+
+@app.route('/sync/sheet')
+@limiter.limit("30 per hour")
+def sync_sheet():
+    if not SHEETS_SYNC_TOKEN or not SHEETS_SYNC_USER:
+        abort(404)
+    token = request.headers.get('Authorization', '').removeprefix('Bearer ').strip()
+    if not secrets.compare_digest(token.encode(), SHEETS_SYNC_TOKEN.encode()):
+        abort(401)
+    user = User.query.filter_by(username=SHEETS_SYNC_USER).first_or_404()
+    return jsonify(sheet_rows(user.id))

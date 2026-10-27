@@ -1,114 +1,84 @@
 # Resale Desk
 
-#### Video Demo:  https://www.youtube.com/watch?v=MQevm5aZ92I
+A simple web app for keeping track of things you buy second-hand and resell on sites like Vinted, eBay or OLX. It shows what you have, where it is, what sold, and how much money you actually made.
 
-#### Description:
+It started as my CS50 final project ([video demo](https://www.youtube.com/watch?v=MQevm5aZ92I)) and is now the tool I use day to day.
 
-  
+## What it does
 
-Resale Desk is a web application for people who buy second-hand items and resell them on marketplaces such as Vinted, eBay, OLX, etc.
+- **Purchases:** record what you bought and what it cost. A purchase can be one item, or a bundle of many items bought together for one price.
+- **Shelves:** say where each item is stored, so you can find it later.
+- **Listings:** note where an item is for sale, at what price, with a link to the ad.
+- **Sales:** record the sale price, shipping and fees. The app works out the profit for you.
+- **Refunds and write-offs:** if a buyer gets a refund, or an item gets lost, broken or kept, record it so your profit stays honest.
+- **Dashboard:** your profit, a monthly chart, recent sales, best purchases, and items that still need listing.
+- **Your data, your way:**
+  - import from and export to CSV
+  - optionally copy everything into a Google Sheet
+  - pick your currency symbol
+  - use it in English or Portuguese
+  - light or dark theme
+- **Works on your phone:** the tables turn into simple lists on small screens, and you can install it like an app.
 
-  
+## Try it on your computer
 
-The workflow follows the life-cycle of an item: First you record a **purchase**: either a single item, or a bundle of several items bought together for one price. Items can be placed on **shelves** so you know where they are physically. Each item can have one or more **listings** on different platforms, with a price, URL and status (Active, Removed, Expired, Sold). When an item sells, you record a **sale** with the sale price, shipping collected and paid, and platform and payment fees. The app then calculates net proceeds, profit, ROI and margin. If a buyer gets a **refund**, you record it on the sale, and say whether the item came back or not. If an item will never sell because it was lost, damaged or kept, you **write it off**, and its cost is counted as a loss.
-
-  
-
-The **dashboard** brings it all together: realized profit, profit over the last 30 days, a monthly profit chart, net revenue, total invested, sell-through rate, average sale value, write-off losses, inventory by status, recent sales, the most profitable purchases, and a list of items that have stock but no active listing. Data can be **imported from and exported to CSV**, which is how I moved my existing spreadsheet into the app. Users can also pick the currency symbol used throughout the interface, and switch between light and dark themes.
-
-  
-
-#### Files
-
-  
-
-**`app.py`** is the Flask application. It configures the app, the SQLite database and Flask-Login, creates the tables on startup, and defines every route: the dashboard; the inventory list (with search, status, shelf and category filters, and sorting by date or profit) and the item page; creating purchases and adding items to them; shelves; creating, editing and deleting listings; recording and editing sales; refunds; write-offs and undoing them; login, logout and registration; and the user page with currency settings, CSV import, CSV export and database reset. It also contains `refresh_item_status`, which keeps an item's status consistent with how many units have been sold or written off.
-
-  
-
-**`models.py`** defines the database with SQLAlchemy's ORM: `User`, `Shelf`, `Purchase`, `Item`, `Listing` and `Sale`, plus the `ItemStatus`, `ListingStatus` and `PurchaseType` enums. Most of the business logic lives here as properties, for example `Purchase.total_cost`, `Purchase.profit`, `Item.available_quantity`, `Item.unit_cost`, `Item.write_off_loss`, `Item.realized_profit`, and `Sale.net_proceeds`, `Sale.profit`, `Sale.roi` and `Sale.margin`. Keeping the calculations in the models means every page shows the same numbers.
-
-  
-
-**`utilities.py`** holds the helpers shared by the routes: the login manager, currency symbols, functions that safely parse dates, money and quantities from forms, and `process_csv`. The importer reads a CSV with an items table and a separate bundles table, validates every row, creates purchases, items, shelves, listings and sales, and reports any rows it had to skip along with the reason.
-
-  
-
-**`templates/`** contains the Jinja templates. `layout.html` is the shared page with the navigation bar and theme toggle. `index.html` is the dashboard. `inventory/` has the inventory table and the item detail page, where listings, the sale, refunds and write-offs are managed. `purchases/` holds the purchase list, the purchase type choice, the forms for a new purchase and for adding items, and the purchase detail page. `listings/` and `sales/` hold the forms for new listings and sales. `shelves.html`, `user.html`, `login.html` and `register.html` cover the remaining pages, and `helpers/form_macros.html` has a macro for inputs that suggest values used before.
-
-  
-
-**`static/style.css`** is the app's styling on top of Bootstrap, including the colours for each status and the dark theme. **`static/js/suggestions.js`** powers the dropdowns that suggest previously used categories and brands. **`static/js/table_controls.js`** adds filtering, sorting, and draggable, hideable columns to the data tables, and remembers each table's column layout in the browser.
-
-  
-
-#### Design choices
-
-  
-
-**Purchases, items, listings and sales are separate tables.** It would have been simpler to have one big "item" row, like my spreadsheet. But an item can be listed on several platforms at once, and one purchase can contain many items, so modelling each concept separately avoids duplicated data and makes the profit calculations reliable.
-
-  
-
-**Bundle costs are not split between items.** When I buy ten items for €50, any split (€5 each, by weight, by expected value) would be invented. So a bundle's cost belongs to the purchase, and its profit is calculated as total revenue minus total cost. Single purchases calculate profit per item. This is why bundle items show "Bundle" instead of a profit figure.
-
-  
-
-**Money uses `Decimal`, never floats.** All amounts are stored with `Numeric(x, y)` and handled as Python `Decimal` values, to avoid the rounding errors floating point numbers can cause with currency. In fact, this was a later addition to address that very problem.
-
-  
-
-**Some statuses are automatic.** "Sold" and "Written Off" cannot be chosen by hand. They are set when a sale or write-off is recorded, so an item can never show as sold without a sale behind it.
-
-  
-
-**Losses are recorded as events, not just statuses.** At first I had "Refunded" and "Not Sold" statuses, but they did not affect the numbers, so unsold items quietly disappeared from the profit. Now a refund is part of the sale it belongs to (amount, and whether the item came back), and a write-off removes the remaining units and counts their cost as a loss. This follows how sales software usually treats returns and inventory write-offs.
-
-  
-
-**SQLAlchemy instead of raw SQL.** The course used the CS50 SQL library, but I wanted to learn an ORM. It let me define the relationships once and put calculations on the models as properties.
-
-  
-
-**Settings live in the database.** The currency preference used to be stored in a cookie, which meant it was lost on another browser. I moved it to the `User` table so it follows the account.
-
-  
-
-#### How to run it
-
-  
+You need Python 3.
 
 ```
-
 python -m venv .venv
-
 source .venv/bin/activate
-
 pip install -r requirements.txt
-
 flask run
-
 ```
 
-  
+Open the address it prints. To look around, log in as `demo` with password `cs50`, or create your own account.
 
-The database includes a demo account. Log in as `demo` with password `cs50` to explore it, or simply create a fresh empty account.
+## Put it online
 
-Your own data can be cleared on the `/user` page.
+It runs on a free [PythonAnywhere](https://www.pythonanywhere.com) account. Set these environment variables there:
 
-#### Deploying
+| Variable | What it's for |
+|---|---|
+| `RESALE_DESK_PRODUCTION=1` | Turns on "live" mode: no sign-ups, no demo data, secure cookies |
+| `SECRET_KEY` | A long random password the app uses to keep logins safe. Make one with `python -c "import secrets; print(secrets.token_hex(32))"` |
+| `ALLOW_REGISTRATION=1` | Optional. Opens sign-ups for a moment, e.g. to create your own account |
+| `DEMO_LOGIN=1` | Optional. Adds a one-click demo login. Anyone can then change the demo account's data |
+| `SHEETS_SYNC_TOKEN`, `SHEETS_SYNC_USER` | Optional. Turn on the Google Sheets copy (see below) |
 
-On a public server (e.g. PythonAnywhere), set these environment variables:
+## Copy your data into Google Sheets
 
-- `RESALE_DESK_PRODUCTION=1`: closes registration, skips the demo data and sends cookies over HTTPS only
-- `SECRET_KEY`: a long random string, e.g. from `python -c "import secrets; print(secrets.token_hex(32))"`
-- `ALLOW_REGISTRATION=1` (optional): reopen registration temporarily to create an account
-- `DEMO_LOGIN=1` (optional): show a one-click demo login on the login page. The `demo` account (password `cs50`) must already exist in the live database, and anyone can log in and change its data
+You can copy one account's data into a tab called `App` in a Google Sheet, whenever you click a button. Your other tabs aren't touched.
 
-  
+1. Make a token (a long random password): `python -c "import secrets; print(secrets.token_urlsafe(32))"`.
+2. On the server, set `SHEETS_SYNC_TOKEN` to that token and `SHEETS_SYNC_USER` to your username, then reload the app.
+3. In your sheet, open **Extensions → Apps Script** and paste in [`sheets/sync.gs`](sheets/sync.gs).
+4. In the script's **Project Settings → Script Properties**, add:
+   - `SYNC_URL`: e.g. `https://<username>.pythonanywhere.com/sync/sheet`
+   - `SYNC_TOKEN`: the same token
+5. Reload the sheet and click **Resale Desk → Sync from app**. The first time, Google asks for permission.
 
-#### Use of AI
+Each sync replaces what's in the `App` tab.
 
-  
+## How it's built
 
-As allowed for the final project, I used AI tools to help with parts of this project, and those parts are cited in the code comments. The script `static/js/table_controls.js` was AI-generated, because it is a quality-of-life feature that would have taken a lot of time (complex with big scope) without teaching me much about my main goals for this project. Most CSS was AI generated. I also initially used Claude to outline the project's skeleton and ensure usage of the correct tools. The overall design, the data model and the rest of the application are my own work.
+- **Flask** (Python) for the web app, and **SQLite** for the database, through **SQLAlchemy**.
+- **Bootstrap** for the look, plus a little custom CSS and JavaScript.
+
+| File | What's in it |
+|---|---|
+| `app.py` | All the pages and what happens when you click things |
+| `models.py` | The database tables, and the profit maths |
+| `utilities.py` | Small helpers, and the CSV import |
+| `translations.py` | The Portuguese translation |
+| `templates/` | The HTML pages |
+| `static/` | Styles, scripts, icons and the installable-app files |
+| `sheets/sync.gs` | The Google Sheets script |
+
+A few choices worth knowing:
+- **A bundle's cost isn't split between its items.** If ten things cost €50 together, any split per item would be made up. So profit for a bundle is counted on the whole bundle.
+- **Money is stored exactly** (as decimals, not floating point), so cents never go missing.
+- **"Sold" and "Written off" are set automatically** when you record a sale or a write-off, so the numbers always match.
+
+## Credits
+
+Parts of this project were written with help from AI tools, mainly `static/js/table_controls.js` and most of the CSS. The design, data model and the rest of the app are my own work.
