@@ -32,9 +32,17 @@
             &middot; {{ _('Shelf:') }} {% if item.shelf %}<a href="{{ url_for('inventory', shelf_id=item.shelf.id) }}">{{ item.shelf.name }}</a>{% else %}-{% endif %}
         </p>
     </div>
-    <form method="post" action="{{ url_for('delete_item', item_id=item.id) }}" onsubmit='return confirm({{ _("Delete this item permanently?")|tojson }});'>
-        <button class="btn btn-outline-danger btn-sm"><i class="bi bi-trash"></i> {{ _('Delete') }}</button>
-    </form>
+    <div class="d-flex flex-wrap justify-content-end gap-2">
+        {# Prefer the live listing; fall back to any listing that has a link #}
+        {% set linked_listings = item.listings | selectattr('listing_url') | list %}
+        {% set header_listing = (linked_listings | selectattr('status', 'equalto', ListingStatus.ACTIVE) | first) or (linked_listings | first) %}
+        {% if header_listing %}
+        <a href="{{ header_listing.listing_url }}" target="_blank" rel="noopener noreferrer" class="btn btn-primary btn-sm"><i class="bi bi-box-arrow-up-right" aria-hidden="true"></i> {{ _('View on {platform}', platform=header_listing.platform) }}</a>
+        {% endif %}
+        <form method="post" action="{{ url_for('delete_item', item_id=item.id) }}" onsubmit='return confirm({{ _("Delete this item permanently?")|tojson }});'>
+            <button class="btn btn-outline-danger btn-sm"><i class="bi bi-trash"></i> {{ _('Delete') }}</button>
+        </form>
+    </div>
 </div>
 
 <div class="row g-3 mb-4">
@@ -165,6 +173,9 @@
                         </div>
                     </div>
                     <div class="card-footer d-flex flex-wrap justify-content-end gap-1">
+                        {% if l.listing_url %}
+                        <a href="{{ l.listing_url }}" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-outline-secondary me-auto" title="{{ _('Open listing on {platform}', platform=l.platform) }}"><i class="bi bi-box-arrow-up-right" aria-hidden="true"></i> {{ _('Open') }}</a>
+                        {% endif %}
                         <button form="edit-listing-{{ l.id }}" type="submit" class="btn btn-sm btn-primary">{{ _('Save') }}</button>
                         <form method="post" action="{{ url_for('delete_listing', listing_id=l.id) }}"
                               onsubmit='return confirm({{ _("Delete this marketplace listing?")|tojson }});'>
