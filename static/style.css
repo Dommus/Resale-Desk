@@ -14,6 +14,7 @@
     --accent-rgb: 31, 78, 121;
     --accent-soft: #9aafc3;
     --pos: #1e6b3a;
+    --pos-soft: #9abca6;
     --neg: #a8322d;
 
     --bs-body-font-family: "Source Sans 3", system-ui, -apple-system, "Segoe UI", sans-serif;
@@ -56,6 +57,7 @@
     --accent-rgb: 127, 176, 220;
     --accent-soft: #bfd8ee;
     --pos: #6cc28a;
+    --pos-soft: #b5e0c4;
     --neg: #e8807a;
 
     --bs-body-color: var(--ink);

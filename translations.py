@@ -198,6 +198,7 @@ PT = {
     "All months": "Todos os meses",
     "Monthly net revenue": "Receita líquida mensal",
     "Includes bundle sales": "Inclui vendas de lotes",
+    "Bundle sales count once the bundle has covered its cost": "As vendas de lotes contam depois de o lote cobrir o seu custo",
     "Net revenue per month": "Receita líquida por mês",
     "Single items": "Artigos individuais",
     "Bundle items": "Artigos de lotes",

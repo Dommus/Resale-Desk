@@ -103,7 +103,10 @@
 
 <div class="dashboard-panel mb-4">
     <div class="d-flex justify-content-between align-items-center mb-3">
-        <h5 class="card-title mb-0">{{ _('Monthly profit') }}</h5>
+        <div>
+            <h5 class="card-title mb-0">{{ _('Monthly profit') }}</h5>
+            <small class="text-muted">{{ _('Bundle sales count once the bundle has covered its cost') }}</small>
+        </div>
         <form method="get" action="{{ url_for('index') }}">
             <label for="months" class="visually-hidden">{{ _('Months to show') }}</label>
             <select id="months" name="months" class="form-select form-select-sm" onchange="this.form.submit()">
@@ -214,25 +217,44 @@
 <script>
     const labels = {{ chart_labels|tojson }};
     const values = {{ chart_values|tojson }};
+    const bundleValues = {{ bundle_chart_values|tojson }};
     const styles = getComputedStyle(document.documentElement);
+    const posColor = styles.getPropertyValue("--pos");
+    const posSoftColor = styles.getPropertyValue("--pos-soft");
 
     new Chart(document.getElementById("profitChart"), {
         type: "bar",
         data: {
             labels: labels,
             datasets: [{
-                label: {{ _('Profit')|tojson }},
+                label: {{ _('Single items')|tojson }},
                 data: values,
                 // Green bars for profit, red bars for loss
-                backgroundColor: values.map(v => v >= 0 ? styles.getPropertyValue("--pos") : styles.getPropertyValue("--neg")),
+                backgroundColor: values.map(v => v >= 0 ? posColor : styles.getPropertyValue("--neg")),
+                borderRadius: 2
+            }, {
+                label: {{ _('Bundle items')|tojson }},
+                data: bundleValues,
+                // Lighter shade of the same green, stacked on top
+                backgroundColor: bundleValues.map(v => v >= 0 ? posSoftColor : styles.getPropertyValue("--neg")),
                 borderRadius: 2
             }]
         },
         options: {
             maintainAspectRatio: false,
-            plugins: { legend: { display: false } },
+            plugins: {
+                legend: { display: true, position: "bottom" },
+                tooltip: {
+                    callbacks: {
+                        footer: items => {{ (_('Total') ~ ': ' ~ currency_symbol)|tojson }} +
+                            (values[items[0].dataIndex] + bundleValues[items[0].dataIndex]).toFixed(2)
+                    }
+                }
+            },
+            interaction: { mode: "index", intersect: false },
             scales: {
-                y: { ticks: { callback: value => "{{ currency_symbol }}" + value } }
+                x: { stacked: true },
+                y: { stacked: true, ticks: { callback: value => "{{ currency_symbol }}" + value } }
             }
         }
     });

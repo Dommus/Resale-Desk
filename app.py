@@ -403,9 +403,26 @@ def index():
             month = 12
             year -= 1
 
+    # Bundle sales have no profit of their own, since the cost belongs to the
+    # whole bundle. Each one only counts as profit for the part of its proceeds
+    # that comes after the bundle's revenue has covered its cost.
+    bundle_sale_profit = {}
+    bundle_sales = {}
+    for sale in sales:
+        if sale.item.is_bundle:
+            bundle_sales.setdefault(sale.item.purchase, []).append(sale)
+    for purchase, purchase_sales in bundle_sales.items():
+        cost = purchase.total_cost
+        revenue = Decimal("0.00")
+        # Undated sales still count towards the cost, after the dated ones
+        for sale in sorted(purchase_sales, key=lambda s: (s.sale_date is None, s.sale_date or date.min, s.id)):
+            before = max(revenue - cost, Decimal("0.00"))
+            revenue += sale.net_proceeds
+            bundle_sale_profit[sale.id] = max(revenue - cost, Decimal("0.00")) - before
+
     # Add up the profit and net revenue of each sale into its month.
-    # Bundle sales have no profit of their own, but they do count as revenue.
     monthly_profit = {label: 0 for label in chart_labels}
+    monthly_bundle_profit = {label: 0 for label in chart_labels}
     monthly_revenue = {label: 0 for label in chart_labels}
     monthly_bundle_revenue = {label: 0 for label in chart_labels}
     for sale in sales:
@@ -416,11 +433,14 @@ def index():
             continue
         if sale.item.is_bundle:
             monthly_bundle_revenue[label] += float(sale.net_proceeds)
+            monthly_bundle_profit[label] += float(bundle_sale_profit[sale.id])
         else:
             monthly_revenue[label] += float(sale.net_proceeds)
         if sale.profit is not None:
             monthly_profit[label] += float(sale.profit)
+    # Profit is split the same way as revenue, so bundles stack on top
     chart_values = [round(monthly_profit[label], 2) for label in chart_labels]
+    bundle_chart_values = [round(monthly_bundle_profit[label], 2) for label in chart_labels]
     # Revenue is split so the chart can stack bundle sales on top of single items
     revenue_values = [round(monthly_revenue[label], 2) for label in chart_labels]
     bundle_revenue_values = [round(monthly_bundle_revenue[label], 2) for label in chart_labels]
@@ -431,6 +451,7 @@ def index():
         months=months,
         chart_labels=chart_labels,
         chart_values=chart_values,
+        bundle_chart_values=bundle_chart_values,
         revenue_values=revenue_values,
         bundle_revenue_values=bundle_revenue_values,
         total_units=total_units,
