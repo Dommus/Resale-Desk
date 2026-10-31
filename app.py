@@ -380,6 +380,15 @@ def inject_currency():
     symbol, code = currency_display()
     return {"currency_symbol": symbol, "currency_code": code}
 
+# Add the file's modification time to static URLs (/static/style.css?v=1730...),
+# so browsers fetch a fresh copy after every update instead of a cached old one
+@app.url_defaults
+def static_file_version(endpoint, values):
+    if endpoint == 'static' and 'filename' in values:
+        path = os.path.join(app.static_folder, values['filename'])
+        if os.path.isfile(path):
+            values['v'] = int(os.stat(path).st_mtime)
+
 @app.context_processor
 def inject_registration():
     return {"allow_registration": ALLOW_REGISTRATION}
