@@ -145,10 +145,16 @@ def get_used_values(model, column_name, user_id):
     return sorted(value for (value,) in rows if value)
 
 
+COMMON_LISTING_PLATFORMS = ['Vinted', 'eBay', 'OLX', 'Facebook Marketplace']
+
+
 def get_item_form_options(user_id):
+    # Listings have no user_id, so their platforms are found through the items
+    listing_platforms = db.session.query(Listing.platform).join(Item).filter(Item.user_id == user_id).distinct()
     return {
         'used_categories': get_used_values(Item, 'category', user_id),
         'used_brands': get_used_values(Item, 'brand', user_id),
+        'used_listing_platforms': sorted(set(COMMON_LISTING_PLATFORMS) | {value for (value,) in listing_platforms if value}),
     }
 
 
@@ -195,6 +201,9 @@ def create_purchase_item(purchase, user_id, name, category=None, brand=None, con
         name=name.strip(),
         quantity=quantity,
         quantity_sold=0,
+        # Set here rather than left to the column default, so a sale can be
+        # recorded on the new item before it is flushed
+        quantity_written_off=0,
         category=category.strip() or None if category else None,
         condition=condition.strip() or None if condition else None,
         brand=brand.strip() or None if brand else None,
@@ -212,6 +221,153 @@ def refresh_item_status(item):
     elif item.status in (ItemStatus.SOLD, ItemStatus.WRITTEN_OFF):
         has_active_listing = any(l.status == ListingStatus.ACTIVE for l in item.listings)
         item.status = ItemStatus.ON_SALE if has_active_listing else ItemStatus.IN_STORAGE
+
+
+# Shared by the listing form and the purchase form. fields uses the listing form's names.
+def add_listing(item, fields):
+    listing = Listing(
+        platform=fields.get("platform", "").strip(),
+        listing_id=fields.get("listing_id", "").strip() or None,
+        listing_url=fields.get("listing_url", "").strip() or None,
+        listing_price=parse_decimal(fields.get("listing_price")),
+        date_listed=parse_date(fields.get("date_listed")),
+        status=ListingStatus.ACTIVE,
+    )
+    item.listings.append(listing)
+    if item.status == ItemStatus.IN_STORAGE:
+        item.status = ItemStatus.ON_SALE
+    return listing
+
+
+# Shared by the sale form and the purchase form. fields uses the sale form's names.
+def add_sale(item, fields, quantity, listing=None):
+    sale = Sale(
+        item=item,
+        listing=listing,
+        sale_date=parse_date(fields.get("sale_date")),
+        sale_price=parse_decimal(fields.get("sale_price")),
+        shipping_collected=parse_decimal(fields.get("shipping_collected")),
+        shipping_paid=parse_decimal(fields.get("shipping_paid")),
+        platform_fee=parse_decimal(fields.get("platform_fee")),
+        payment_fee=parse_decimal(fields.get("payment_fee")),
+        quantity=quantity,
+        notes=fields.get("notes", "").strip(),
+    )
+    db.session.add(sale)
+    item.quantity_sold += quantity
+    refresh_item_status(item)
+    if listing:
+        listing.status = ListingStatus.SOLD if item.available_quantity == 0 else ListingStatus.ACTIVE
+    for l in item.listings:
+        if item.available_quantity == 0 and l is not listing and l.status == ListingStatus.ACTIVE:
+            l.status = ListingStatus.REMOVED
+    return sale
+
+
+# Item cards on the purchase forms
+#
+# Each card's fields are numbered, so the server can tell which listings and
+# sale belong to which item:
+#   items-<i>-name, items-<i>-quantity, ...
+#   items-<i>-listings-<j>-platform, ...  (the listing form's names)
+#   items-<i>-sale-on, items-<i>-sale-sale_price, ...  (the sale form's names)
+
+ITEM_CARD_NAME = re.compile(r'items-(\d+)-name')
+LISTING_FIELDS = ('platform', 'listing_id', 'listing_url', 'listing_price')
+
+
+def form_group(form, prefix):
+    # The fields under one prefix, without it: "items-0-name" -> "name"
+    return {key[len(prefix):]: value for key, value in form.items() if key.startswith(prefix)}
+
+
+def parse_item_cards(form):
+    cards = []
+    indices = sorted({int(match.group(1)) for key in form if (match := ITEM_CARD_NAME.fullmatch(key))})
+    for i in indices:
+        prefix = f'items-{i}-'
+        listing_name = re.compile(rf'{prefix}listings-(\d+)-platform')
+        listing_indices = sorted({int(match.group(1)) for key in form if (match := listing_name.fullmatch(key))})
+        cards.append({
+            'index': i,
+            'fields': form_group(form, prefix),
+            'listings': [{'index': j, 'fields': form_group(form, f'{prefix}listings-{j}-')} for j in listing_indices],
+            'sale': form_group(form, f'{prefix}sale-') if form.get(f'{prefix}sale-on') else None,
+        })
+    return cards
+
+
+def listing_is_blank(fields):
+    # The date is filled in for you, so it doesn't count
+    return not any(fields.get(field, '').strip() for field in LISTING_FIELDS)
+
+
+def card_is_blank(card):
+    # A card left empty is skipped, like an empty spreadsheet row
+    return (not card['fields'].get('name', '').strip()
+            and card['sale'] is None
+            and all(listing_is_blank(listing['fields']) for listing in card['listings']))
+
+
+def validate_item_cards(cards):
+    # Check every card before saving anything, so a mistake never saves half a purchase
+    errors = []
+    for number, card in enumerate(cards, start=1):
+        if card_is_blank(card):
+            continue
+        fields = card['fields']
+        name = fields.get('name', '').strip()
+        label = name or _('Item {number}', number=number)
+        if not name:
+            errors.append(_('{item}: the item name is required.', item=label))
+
+        quantity = parse_quantity(fields.get('quantity'))
+        if quantity is None:
+            errors.append(_('{item}: quantity must be a positive whole number.', item=label))
+
+        if any(not listing_is_blank(l['fields']) and not l['fields'].get('platform', '').strip()
+               for l in card['listings']):
+            errors.append(_('{item}: every listing needs a platform.', item=label))
+
+        sale = card['sale']
+        if sale is not None:
+            if not sale.get('sale_price', '').strip():
+                errors.append(_('{item}: the sale needs a sale price.', item=label))
+            sale_quantity = parse_quantity(sale.get('quantity'))
+            if quantity is not None and (sale_quantity is None or sale_quantity > quantity):
+                errors.append(_('{item}: sale quantity must be between 1 and {maximum}.', item=label, maximum=quantity))
+    return errors
+
+
+def save_item_cards(purchase, user_id, cards):
+    # Run validate_item_cards first. Returns the number of items added.
+    count = 0
+    for card in cards:
+        if card_is_blank(card):
+            continue
+        fields = card['fields']
+        item = create_purchase_item(
+            purchase, user_id, fields.get('name', ''),
+            category=fields.get('category'),
+            brand=fields.get('brand'),
+            condition=fields.get('condition'),
+            shelf_id=fields.get('shelf_id'),
+            notes=fields.get('notes'),
+            quantity=parse_quantity(fields.get('quantity')),
+        )
+        db.session.add(item)
+
+        listings = {}
+        for listing in card['listings']:
+            if not listing_is_blank(listing['fields']):
+                listings[str(listing['index'])] = add_listing(item, listing['fields'])
+
+        sale = card['sale']
+        if sale is not None:
+            # The sale picks one of this card's listings by its number
+            add_sale(item, sale, parse_quantity(sale.get('quantity')), listings.get(sale.get('listing', '')))
+        count += 1
+    return count
 
 @app.context_processor
 def inject_today():
@@ -803,138 +959,73 @@ def purchases():
 @app.route("/purchases/new", methods=["GET", "POST"])
 @login_required
 def new_purchase():
-
-    # Exported variables
-    shelves = (
-        Shelf.query.filter_by(user_id=current_user.id).order_by(Shelf.name.desc()).all()
-    )
+    shelves = Shelf.query.filter_by(user_id=current_user.id).order_by(Shelf.name).all()
     purchase_type = request.args.get('purchase_type', 'single').lower()
     if purchase_type not in ('single', 'bundle'):
         purchase_type = 'single'
-
-    form_options = get_purchase_form_options(current_user.id)
+    cards = []
 
     if request.method == 'POST':
-
-        # Validate the purchase type
-        purchase_type_raw = request.form.get('purchase_type', '').strip()
-        purchase_type = None
-        # Loop through values to validate each
-        for enum_value in PurchaseType:
-            if enum_value.value.lower() == purchase_type_raw.lower():
-                purchase_type = enum_value
-                break
-
+        purchase_type = next((t for t in PurchaseType
+                              if t.value.lower() == request.form.get('purchase_type', '').strip().lower()), None)
         if purchase_type is None:
-            flash(_('Invalid purchase type'), 'danger')
             return _('Invalid purchase type submitted'), 400
 
-        purchase_type_label = purchase_type.value.lower()
+        # "Save without items" leaves the items for later, on the add-items page
+        save_items = 'no_items' not in request.form
+        cards = parse_item_cards(request.form)
+        filled_cards = [card for card in cards if not card_is_blank(card)]
+        errors = validate_item_cards(cards) if save_items else []
+        if save_items and not filled_cards:
+            errors.insert(0, _('Add at least one item, or save the purchase without items.'))
 
-        raw_purchase_date = request.form.get('date')
-        purchase = Purchase(
-            user_id = current_user.id,
-            date = parse_date(raw_purchase_date) if raw_purchase_date else None,
-            name = request.form.get('name', '').strip() or None,
-            seller = request.form.get('seller', '').strip(),
-            platform = request.form.get('platform', '').strip(),
-            purchase_type = purchase_type,
-            purchase_price = parse_decimal(request.form.get('purchase_price')),
-            shipping_cost = parse_decimal(request.form.get('shipping_cost')),
-            notes = request.form.get('purchaseNotes', '').strip(),
-        )
+        if not errors:
+            # A single purchase holds one item, so more than one makes it a bundle
+            if save_items and len(filled_cards) > 1:
+                purchase_type = PurchaseType.BUNDLE
 
-        db.session.add(purchase)
-        db.session.flush()
+            raw_purchase_date = request.form.get('date')
+            purchase = Purchase(
+                user_id=current_user.id,
+                date=parse_date(raw_purchase_date) if raw_purchase_date else None,
+                name=request.form.get('name', '').strip() or None,
+                seller=request.form.get('seller', '').strip() or None,
+                platform=request.form.get('platform', '').strip() or None,
+                purchase_type=purchase_type,
+                purchase_price=parse_decimal(request.form.get('purchase_price')),
+                shipping_cost=parse_decimal(request.form.get('shipping_cost')),
+                notes=request.form.get('purchaseNotes', '').strip() or None,
+            )
+            db.session.add(purchase)
+            db.session.flush()
 
-        # A single purchase may contain at most one item. A bundle may
-        # contain any number of items, but there is no per-item allocation.
-        checked_add_items = request.form.get('addItemsToggle') is not None
-        if checked_add_items and purchase_type == PurchaseType.SINGLE:
-            name = request.form.get('itemName', '').strip()
-            if not name:
-                db.session.rollback()
-                flash(_('Item name is required.'), 'danger')
-                return render_template("purchases/purchases_new.html",
-                                       shelves=shelves, purchase_type=purchase_type_label,
-                                       **form_options)
+            count = save_item_cards(purchase, current_user.id, cards) if save_items else 0
+            db.session.commit()
+            if count:
+                flash(_('{count} item(s) added to the purchase.', count=count), 'success')
+            else:
+                flash(_('Purchase saved.'), 'success')
+            return redirect(url_for('view_purchase', purchase_id=purchase.id))
 
-            quantity = parse_quantity(request.form.get('itemQuantity'))
-            if quantity is None:
-                db.session.rollback()
-                flash(_('Quantity must be a positive whole number.'), 'danger')
-                return render_template("purchases/purchases_new.html",
-                                       shelves=shelves, purchase_type=purchase_type_label,
-                                       **form_options)
+        # Show the form again with everything that was typed
+        for error in errors:
+            flash(error, 'danger')
+        purchase_type = purchase_type.value.lower()
 
-            db.session.add(create_purchase_item(
-                purchase, current_user.id, name,
-                category=request.form.get('category'),
-                brand=request.form.get('brand'),
-                condition=request.form.get('condition'),
-                shelf_id=request.form.get('shelf_id'),
-                notes=request.form.get('itemNotes'),
-                quantity=quantity,
-            ))
-            flash(_('{name} added to the purchase.', name=name), 'success')
+    return render_template(
+        "purchases/purchases_new.html",
+        shelves=shelves,
+        purchase_type=purchase_type,
+        form=request.form,
+        cards=cards,
+        **get_purchase_form_options(current_user.id),
+    )
 
-        elif checked_add_items and purchase_type == PurchaseType.BUNDLE:
-            names = request.form.getlist('itemName[]')
-            categories = request.form.getlist('category[]')
-            brands = request.form.getlist('brand[]')
-            conditions = request.form.getlist('condition[]')
-            shelves_for_items = request.form.getlist('shelf_id[]')
-            notes = request.form.getlist('itemNotes[]')
-            quantities = request.form.getlist('itemQuantity[]')
-
-            valid_names = [name.strip() for name in names if name.strip()]
-            if not valid_names:
-                db.session.rollback()
-                flash(_('Add at least one item to this bundle.'), 'danger')
-                return render_template("purchases/purchases_new.html",
-                                       shelves=shelves, purchase_type=purchase_type_label,
-                                       **form_options)
-
-            parsed_quantities = {}
-            for index, name in enumerate(names):
-                if not name.strip():
-                    continue
-                quantity = parse_quantity(quantities[index] if index < len(quantities) else None)
-                if quantity is None:
-                    db.session.rollback()
-                    flash(_('Every item quantity must be a positive whole number.'), 'danger')
-                    return render_template("purchases/purchases_new.html",
-                                           shelves=shelves, purchase_type=purchase_type_label,
-                                           **form_options)
-                parsed_quantities[index] = quantity
-
-            for index, name in enumerate(names):
-                name = name.strip()
-                if not name:
-                    continue
-                db.session.add(create_purchase_item(
-                    purchase, current_user.id, name,
-                    category=categories[index] if index < len(categories) else None,
-                    brand=brands[index] if index < len(brands) else None,
-                    condition=conditions[index] if index < len(conditions) else None,
-                    shelf_id=shelves_for_items[index] if index < len(shelves_for_items) else None,
-                    notes=notes[index] if index < len(notes) else None,
-                    quantity=parsed_quantities[index],
-                ))
-            flash(_('{count} item(s) added to the purchase.', count=len(valid_names)), 'success')
-
-        db.session.commit()
-        return redirect(url_for('view_purchase', purchase_id=purchase.id))
-
-    
-    return render_template("purchases/purchases_new.html", shelves=shelves,
-                           purchase_type=purchase_type_label if isinstance(purchase_type, PurchaseType) else purchase_type,
-                           **form_options)
-
+# The type is now picked on the new purchase page itself
 @app.route("/purchases/new/type")
 @login_required
 def choose_purchase_type():
-    return render_template("purchases/purchases_type.html")
+    return redirect(url_for('new_purchase'))
 
 
 @app.route('/purchases/<int:purchase_id>')
@@ -986,64 +1077,37 @@ def add_items(purchase_id):
     ).first_or_404()
 
     single_purchase = purchase.purchase_type == PurchaseType.SINGLE
+    cards = []
 
     if request.method == 'POST':
+        cards = parse_item_cards(request.form)
+        filled_count = sum(1 for card in cards if not card_is_blank(card))
+        errors = validate_item_cards(cards)
+        if not filled_count:
+            errors.insert(0, _('Add at least one item to this bundle.'))
 
-        names = request.form.getlist('itemName[]')
-        categories = request.form.getlist('category[]')
-        brands = request.form.getlist('brand[]')
-        conditions = request.form.getlist('condition[]')
-        shelves_for_items = request.form.getlist('shelf_id[]')
-        notes = request.form.getlist('itemNotes[]')
-        quantities = request.form.getlist('itemQuantity[]')
-
-        valid_names = [name.strip() for name in names if name.strip()]
-        if not valid_names:
-            flash(_('Add at least one item to this bundle.'), 'danger')
-        else:
-            parsed_quantities = {}
-            for index, name in enumerate(names):
-                if not name.strip():
-                    continue
-                quantity = parse_quantity(quantities[index] if index < len(quantities) else None)
-                if quantity is None:
-                    flash(_('Every item quantity must be a positive whole number.'), 'danger')
-                    return render_template(
-                        "purchases/purchases_add_items.html",
-                        purchase=purchase,
-                        shelves=Shelf.query.filter_by(user_id=current_user.id).order_by(Shelf.name).all(),
-                        **get_item_form_options(current_user.id), single_purchase=single_purchase
-                    )
-                parsed_quantities[index] = quantity
-
+        if not errors:
             # Convert a Single to Bundle when the completed purchase has multiple items.
-            if single_purchase and len(purchase.items) + len(valid_names) > 1:
+            if single_purchase and len(purchase.items) + filled_count > 1:
                 purchase.purchase_type = PurchaseType.BUNDLE
 
-            for index, name in enumerate(names):
-                name = name.strip()
-                if not name:
-                    continue
-                db.session.add(create_purchase_item(
-                    purchase, current_user.id, name,
-                    category=categories[index] if index < len(categories) else None,
-                    brand=brands[index] if index < len(brands) else None,
-                    condition=conditions[index] if index < len(conditions) else None,
-                    shelf_id=shelves_for_items[index] if index < len(shelves_for_items) else None,
-                    notes=notes[index] if index < len(notes) else None,
-                    quantity=parsed_quantities[index],
-                ))
+            count = save_item_cards(purchase, current_user.id, cards)
             db.session.commit()
-            flash(_('{count} item(s) added to the purchase.', count=len(valid_names)), 'success')
+            flash(_('{count} item(s) added to the purchase.', count=count), 'success')
             return redirect(url_for('view_purchase', purchase_id=purchase.id))
+
+        for error in errors:
+            flash(error, 'danger')
 
     return render_template(
         "purchases/purchases_add_items.html",
         purchase=purchase,
         shelves=Shelf.query.filter_by(user_id=current_user.id).order_by(Shelf.name).all(),
-        **get_item_form_options(current_user.id), single_purchase=single_purchase
+        form=request.form,
+        cards=cards,
+        single_purchase=single_purchase,
+        **get_item_form_options(current_user.id),
     )
-
 
 #########################
 #        Shelves
@@ -1098,22 +1162,11 @@ def new_listing(item_id):
     item = Item.query.filter_by(id=item_id, user_id=current_user.id).first_or_404()
 
     if request.method == "POST":
-        listing = Listing(
-            item_id=item.id,
-            platform=request.form.get("platform", "").strip(),
-            listing_id=request.form.get("listing_id", "").strip() or None,
-            listing_url=request.form.get("listing_url", "").strip() or None,
-            listing_price=parse_decimal(request.form.get("listing_price")),
-            date_listed=parse_date(request.form.get("date_listed")),
-            status=ListingStatus.ACTIVE,
-        )
-        if not listing.platform:
+        if not request.form.get("platform", "").strip():
             flash(_("Platform is required."), "danger")
             return render_template("listings/listings_new.html", item=item)
 
-        db.session.add(listing)
-        if item.status == ItemStatus.IN_STORAGE:
-            item.status = ItemStatus.ON_SALE
+        add_listing(item, request.form)
         db.session.commit()
         flash(_("Listing added."), "success")
         return redirect(url_for("view_item", item_id=item.id))
@@ -1215,26 +1268,7 @@ def new_sale(item_id):
                 flash(_("Invalid listing selected."), "danger")
                 return render_template("sales/sales_new.html", item=item)
 
-        sale = Sale(
-            item=item,
-            listing_id=listing.id if listing else None,
-            sale_date=parse_date(request.form.get("sale_date")),
-            sale_price=parse_decimal(request.form.get("sale_price")),
-            shipping_collected=parse_decimal(request.form.get("shipping_collected")),
-            shipping_paid=parse_decimal(request.form.get("shipping_paid")),
-            platform_fee=parse_decimal(request.form.get("platform_fee")),
-            payment_fee=parse_decimal(request.form.get("payment_fee")),
-            quantity=sale_quantity,
-            notes=request.form.get("notes", "").strip(),
-        )
-        db.session.add(sale)
-        item.quantity_sold += sale.quantity
-        refresh_item_status(item)
-        if listing:
-            listing.status = ListingStatus.SOLD if item.available_quantity == 0 else ListingStatus.ACTIVE
-        for l in item.listings:
-            if item.available_quantity == 0 and l.id != sale.listing_id and l.status == ListingStatus.ACTIVE:
-                l.status = ListingStatus.REMOVED
+        add_sale(item, request.form, sale_quantity, listing)
         db.session.commit()
         flash(_("Sale recorded."), "success")
         return redirect(url_for("view_item", item_id=item.id))

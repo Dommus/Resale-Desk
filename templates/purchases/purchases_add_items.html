@@ -1,15 +1,17 @@
 {% extends "layout.html" %}
-{% from "helpers/form_macros.html" import suggestion_input, suggestion_datalist %}
+{% from "helpers/form_macros.html" import suggestion_datalist %}
+{% from "helpers/purchase_items.html" import item_cards, item_templates with context %}
 {% block title %}{{ _('Add Items') }}{% endblock %}
 {% block content %}
 
-<div class="d-flex justify-content-between align-items-start mb-3">
+<div class="d-flex justify-content-between align-items-start gap-2 mb-3">
     <div>
         <h3 class="mb-1">{{ _('Add Items to Purchase #{id}', id=purchase.id) }}</h3>
         <p class="text-muted mb-0">
             {{ purchase.date or _('Unassigned') }}
             &middot; {{ purchase.seller or _('Unknown seller') }}
             &middot; <span class="badge purchase-type-badge-{{ purchase.purchase_type.value }}">{{ _(purchase.purchase_type.value) }}</span>
+            &middot; {{ _('Purchase cost') }} <strong>{{ currency_symbol }}{{ "%.2f"|format(purchase.total_cost or 0) }}</strong>
         </p>
     </div>
     <a href="{{ url_for('view_purchase', purchase_id=purchase.id) }}" class="btn btn-outline-secondary btn-sm">
@@ -17,126 +19,32 @@
     </a>
 </div>
 
-<div class="alert alert-info d-flex justify-content-between align-items-center mb-4" role="status">
-    <span>{{ _('Purchase cost') }}</span>
-    <strong>{{ currency_symbol }}{{ "%.2f"|format(purchase.total_cost or 0) }}</strong>
-</div>
-
-<div class="card shadow-sm">
-    <div class="card-body">
-        <form method="post" id="itemsForm" data-existing-item-count="{{ purchase.items|length }}" {% if single_purchase %}onsubmit="return confirmMultipleItems();"{% endif %}>
-            <div class="d-flex justify-content-between align-items-center border-bottom pb-3 mb-3">
-                <div>
-                    <h6 class="mb-1">{{ _('Bundle Items') }}</h6>
-                    <p class="text-muted small mb-0">{{ _('Add each item included in this purchase.') }}</p>
-                </div>
-                <span class="text-muted small">{{ _('Required fields marked') }} <span class="required-symbol">*</span></span>
-            </div>
-
-            <div class="app-form-table-wrap">
-                <table class="table align-middle app-form-table mb-2" id="itemsTable">
-                    <thead>
-                        <tr>
-                            <th>{{ _('Item Name') }}</th>
-                            <th>{{ _('Quantity') }}</th>
-                            <th>{{ _('Category') }}</th>
-                            <th>{{ _('Brand') }}</th>
-                            <th>{{ _('Condition') }}</th>
-                            <th>{{ _('Shelf') }}</th>
-                            <th>{{ _('Notes') }}</th>
-                            <th></th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr class="item-row">
-                            <td data-label="{{ _('Item name') }}">
-                                <label class="visually-hidden">{{ _('Item Name') }}</label>
-                                <input type="text" class="form-control" name="itemName[]" required>
-                            </td>
-                            <td data-label="{{ _('Quantity') }}"><input type="number" min="1" step="1" value="1" class="form-control" name="itemQuantity[]" required></td>
-                            <td data-label="{{ _('Category') }}">{{ suggestion_input('category[]', option_id='category-options', placeholder=_('e.g. Video Game')) }}</td>
-                            <td data-label="{{ _('Brand') }}">{{ suggestion_input('brand[]', option_id='brand-options', placeholder=_('e.g. Nike')) }}</td>
-                            <td data-label="{{ _('Condition') }}">
-                                <select class="form-select" name="condition[]">
-                                    <option value="">-</option>
-                                    {% for c in ["New", "Like New", "Good", "Fair", "Poor"] %}<option value="{{ c }}">{{ _(c) }}</option>{% endfor %}
-                                </select>
-                            </td>
-                            <td data-label="{{ _('Shelf') }}">
-                                <select class="form-select" name="shelf_id[]">
-                                    <option value="">-</option>
-                                    {% for shelf in shelves %}<option value="{{ shelf.id }}">{{ shelf.name }}</option>{% endfor %}
-                                </select>
-                            </td>
-                            <td data-label="{{ _('Notes') }}"><input type="text" class="form-control" name="itemNotes[]" placeholder="{{ _('e.g. Broken') }}"></td>
-                            <td data-label="">
-                                <button type="button" class="btn btn-sm btn-outline-danger remove-row d-none" aria-label="{{ _('Remove item') }}">
-                                    <i class="bi bi-x-lg"></i>
-                                </button>
-                            </td>
-                        </tr>
-                        <tr id="addRow" class="bundle-add-row text-body-secondary" role="button" tabindex="0" aria-label="{{ _('Add another item') }}">
-                            <td data-label="" colspan="8" class="text-center py-3">
-                                <i class="bi bi-plus-lg"></i> {{ _('Click to add another item') }}
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-
-            <div class="mt-4">
-                <button type="submit" class="btn btn-primary">{{ _('Save Items') }}</button>
-                <a href="{{ url_for('view_purchase', purchase_id=purchase.id) }}" class="btn btn-link">{{ _('Cancel') }}</a>
-            </div>
-        </form>
-
-        {{ suggestion_datalist('category-options', used_categories|default([])) }}
-        {{ suggestion_datalist('brand-options', used_brands|default([])) }}
+<form method="post" class="purchase-form" data-purchase-form data-type="bundle"
+      data-existing-item-count="{{ purchase.items|length }}"
+      {% if single_purchase %}data-confirm-bundle="{{ _('This purchase will be converted to a Bundle.') }}"{% endif %}>
+    <div data-item-list>
+        {{ item_cards(cards, shelves) }}
     </div>
-</div>
+    <button type="button" class="btn purchase-add-item mb-3" data-action="add-item" data-bundle-only>
+        <i class="bi bi-plus-lg" aria-hidden="true"></i> {{ _('Add another item') }}
+    </button>
+
+    <div class="purchase-form-bar">
+        <div class="purchase-form-summary" aria-live="polite"
+             data-summary data-one-item="{{ _('1 item') }}" data-many-items="{{ _('{count} items', count='{count}') }}">
+        </div>
+        <button type="submit" class="btn btn-primary">{{ _('Save Items') }}</button>
+    </div>
+</form>
+
+{{ item_templates(shelves) }}
+{{ suggestion_datalist('category-options', used_categories) }}
+{{ suggestion_datalist('brand-options', used_brands) }}
+{{ suggestion_datalist('listing-platform-options', used_listing_platforms) }}
 
 {% endblock %}
 
 {% block scripts %}
 <script src="{{ url_for('static', filename='js/suggestions.js') }}"></script>
-<script>
-function confirmMultipleItems() {
-    const itemCount = Array.from(document.querySelectorAll('input[name="itemName[]"]'))
-        .filter(input => input.value.trim() !== '').length;
-    const existingItemCount = Number(document.getElementById('itemsForm').dataset.existingItemCount);
-    const totalItemCount = existingItemCount + itemCount;
-    return totalItemCount <= 1 || confirm({{ _('This purchase will be converted to a Bundle.')|tojson }});
-}
-
-const table = document.getElementById('itemsTable');
-const body = table.querySelector('tbody');
-const addRow = document.getElementById('addRow');
-
-function addItemRow() {
-    const sourceRow = body.querySelector('.item-row');
-    const row = sourceRow.cloneNode(true);
-
-    row.querySelectorAll('input').forEach(input => input.value = '');
-    row.querySelectorAll('select').forEach(select => select.selectedIndex = 0);
-    row.querySelector('input[name="itemQuantity[]"]').value = '1';
-    row.querySelector('.remove-row').classList.remove('d-none');
-    body.insertBefore(row, addRow);
-}
-
-addRow.addEventListener('click', addItemRow);
-addRow.addEventListener('keydown', event => {
-    if (event.key === 'Enter' || event.key === ' ') {
-        event.preventDefault();
-        addItemRow();
-    }
-});
-
-body.addEventListener('click', event => {
-    const removeButton = event.target.closest('.remove-row');
-    const rows = body.querySelectorAll('.item-row');
-    if (removeButton && rows.length > 1) {
-        removeButton.closest('.item-row').remove();
-    }
-});
-</script>
+<script src="{{ url_for('static', filename='js/purchase_form.js') }}"></script>
 {% endblock %}

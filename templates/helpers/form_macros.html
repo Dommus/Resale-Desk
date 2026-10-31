@@ -1,7 +1,7 @@
-{% macro suggestion_input(name, value='', option_id='', placeholder='') %}
+{% macro suggestion_input(name, value='', option_id='', placeholder='', id='') %}
 <div class="position-relative previous-value-wrapper">
     <div class="input-group">
-        <input type="text" class="form-control previous-value-input" name="{{ name }}"
+        <input type="text" class="form-control previous-value-input" name="{{ name }}"{% if id %} id="{{ id }}"{% endif %}
                value="{{ value or '' }}" list="{{ option_id }}" data-options="{{ option_id }}"
                {% if placeholder %}placeholder="{{ placeholder }}"{% endif %}>
         <button type="button" class="btn btn-outline-secondary suggestion-toggle"

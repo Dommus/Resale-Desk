@@ -1027,16 +1027,14 @@ code.inv-code {
 /* Data tables stay inside their cards. On small screens each row becomes a
    compact card instead of forcing the page to scroll horizontally.
    overflow: clip (not hidden) so the sticky header still works. */
-.app-fit-table-wrap,
-.app-form-table-wrap {
+.app-fit-table-wrap {
     width: 100%;
     max-width: 100%;
     min-width: 0;
     overflow: clip;
 }
 
-.app-fit-table,
-.app-form-table {
+.app-fit-table {
     width: 100%;
     max-width: 100%;
     table-layout: fixed;
@@ -1067,24 +1065,8 @@ code.inv-code {
     white-space: nowrap;
 }
 
-.app-form-table th,
-.app-form-table td {
-    min-width: 0;
-    white-space: normal;
-    overflow-wrap: anywhere;
-    vertical-align: middle;
-}
-
-.app-form-table input,
-.app-form-table select,
-.app-form-table textarea {
-    min-width: 0;
-    max-width: 100%;
-}
-
 @media (max-width: 767.98px) {
-    .app-fit-table thead,
-    .app-form-table thead {
+    .app-fit-table thead {
         position: absolute;
         width: 1px;
         height: 1px;
@@ -1099,23 +1081,16 @@ code.inv-code {
     .app-fit-table,
     .app-fit-table tbody,
     .app-fit-table:not(.app-list-table) tr,
-    .app-fit-table:not(.app-list-table) td,
-    .app-form-table,
-    .app-form-table tbody,
-    .app-form-table tr,
-    .app-form-table td {
+    .app-fit-table:not(.app-list-table) td {
         display: block;
         width: 100%;
     }
 
-    .table.app-fit-table,
-    .table.app-form-table {
+    .table.app-fit-table {
         border: 0;
     }
 
-    .app-fit-table:not(.app-list-table) tbody tr,
-    .app-form-table tbody tr.item-row,
-    .app-form-table tbody tr.bundle-item-row {
+    .app-fit-table:not(.app-list-table) tbody tr {
         margin-bottom: 0.6rem;
         padding: 0.4rem 0.6rem;
         border: 1px solid var(--rule);
@@ -1160,33 +1135,6 @@ code.inv-code {
 
     .app-fit-table:not(.app-list-table) tbody td.table-action-cell::before,
     .app-fit-table:not(.app-list-table) tbody td[data-label=""]::before {
-        content: none;
-    }
-
-    .app-form-table tbody tr.item-row td,
-    .app-form-table tbody tr.bundle-item-row td {
-        padding: 0.3rem 0 !important;
-        border: 0 !important;
-    }
-
-    .app-form-table tbody tr.item-row td::before,
-    .app-form-table tbody tr.bundle-item-row td::before {
-        display: block;
-        margin-bottom: 0.2rem;
-        color: var(--bs-secondary-color);
-        content: attr(data-label);
-        font-size: 0.8rem;
-        font-weight: 500;
-    }
-
-    .app-form-table tbody tr.item-row td:last-child,
-    .app-form-table tbody tr.bundle-item-row td:last-child {
-        text-align: right;
-    }
-
-    .app-form-table tbody tr.item-row td[data-label=""]::before,
-    .app-form-table tbody tr.bundle-item-row td[data-label=""]::before,
-    .app-form-table tbody tr.bundle-add-row td::before {
         content: none;
     }
 }
@@ -1671,45 +1619,256 @@ code.inv-code {
     opacity: 0.7;
 }
 
-.bundle-add-row,
 .purchase-add-row {
     cursor: pointer;
 }
 
-.bundle-add-row td,
 .purchase-add-row td {
     background-color: var(--paper) !important;
     border: 1px dashed var(--rule-strong) !important;
     color: var(--bs-secondary-color) !important;
 }
 
-.bundle-add-row:hover td,
-.bundle-add-row:focus td,
 .purchase-add-row:hover td,
 .purchase-add-row:focus td {
     background-color: var(--hover) !important;
     color: var(--accent) !important;
 }
 
-.bundle-add-row:focus,
 .purchase-add-row:focus {
     outline: 2px solid var(--accent);
     outline-offset: 2px;
 }
 
-.purchase-type-card {
-    color: var(--ink);
+/* ---------- Purchase form (new purchase, add items) ----------
+   Mobile first: fields stay at 1rem so iOS doesn't zoom in, buttons are
+   finger sized, and the save bar sticks to the bottom of the screen. */
+.purchase-form-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    margin-bottom: 0.5rem;
 }
 
-.purchase-type-card:hover,
-.purchase-type-card:focus {
-    border-color: var(--accent);
-    background: var(--hover);
+.purchase-type-toggle .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+    min-width: 7.5rem;
+    min-height: 44px;
 }
 
-.purchase-type-card:focus-visible {
+/* A label that wraps onto two lines keeps its field level with its neighbours */
+.purchase-form .row > [class*="col"] {
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+}
+
+.purchase-form-hint {
+    margin-bottom: 1rem;
+    color: var(--bs-secondary-color);
+    font-size: 0.9rem;
+}
+
+.purchase-more {
+    margin-top: 0.75rem;
+}
+
+.purchase-more > summary,
+.item-card > summary {
+    cursor: pointer;
+    min-height: 44px;
+}
+
+.purchase-more > summary {
+    display: inline-flex;
+    align-items: center;
+    color: var(--accent);
+    font-weight: 500;
+}
+
+.item-card > summary {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1.1rem;
+    border-bottom: 1px solid var(--rule);
+    background: var(--head);
+    list-style: none;
+}
+
+.item-card > summary::-webkit-details-marker {
+    display: none;
+}
+
+.item-card:not([open]) > summary {
+    border-bottom: 0;
+}
+
+.item-card > summary:focus-visible,
+.purchase-more > summary:focus-visible {
     outline: 2px solid var(--accent);
     outline-offset: 2px;
+}
+
+.item-card-number {
+    flex: none;
+    font-weight: 600;
+}
+
+.item-card-title {
+    min-width: 0;
+    color: var(--bs-secondary-color);
+}
+
+.item-card-chevron {
+    margin-left: auto;
+    transition: transform 0.15s ease;
+}
+
+.item-card[open] .item-card-chevron {
+    transform: rotate(180deg);
+}
+
+.item-card-section {
+    margin-top: 1rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid var(--rule);
+}
+
+.item-card-section-title {
+    margin-bottom: 0.6rem;
+    color: var(--bs-secondary-color);
+    font-size: 0.8rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+.item-card-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    min-height: 40px;
+}
+
+.item-card-actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 0.5rem;
+    margin-top: 1rem;
+}
+
+.listing-row,
+.item-sale {
+    margin-bottom: 0.6rem;
+    padding: 0.6rem;
+    border: 1px solid var(--rule);
+    border-radius: var(--bs-border-radius-lg);
+    background: var(--paper);
+}
+
+.item-subcard-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 0.4rem;
+    font-weight: 600;
+}
+
+.item-subcard-head .btn {
+    min-width: 36px;
+    min-height: 36px;
+}
+
+.item-sale {
+    border-color: var(--pos-soft);
+}
+
+.purchase-add-item {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+    width: 100%;
+    min-height: 3rem;
+    border: 1px dashed var(--rule-strong);
+    background: var(--paper);
+    color: var(--bs-secondary-color);
+}
+
+.purchase-add-item:hover,
+.purchase-add-item:focus-visible {
+    border-color: var(--accent);
+    background: var(--hover);
+    color: var(--accent);
+}
+
+.purchase-form-bar {
+    position: sticky;
+    bottom: 0;
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 0.75rem 1.1rem;
+    padding-bottom: calc(0.75rem + env(safe-area-inset-bottom));
+    border: 1px solid var(--rule);
+    border-radius: var(--bs-border-radius-lg);
+    background: var(--sheet);
+}
+
+.purchase-form-bar .btn-primary {
+    min-height: 44px;
+    padding-inline: 1.5rem;
+}
+
+.purchase-form-summary {
+    font-weight: 500;
+}
+
+.purchase-form-secondary {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+}
+
+@media (max-width: 575.98px) {
+    .purchase-type-toggle {
+        width: 100%;
+    }
+
+    .purchase-type-toggle .btn {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .item-card > summary {
+        padding-inline: 0.75rem;
+    }
+
+    .item-card .card-body {
+        padding: 0.75rem;
+    }
+
+    /* Full width along the bottom edge, like an app's toolbar */
+    .purchase-form-bar {
+        margin-inline: calc(var(--bs-gutter-x, 1.5rem) * -0.5);
+        border-width: 1px 0 0;
+        border-radius: 0;
+    }
+
+    .item-card-actions .btn {
+        flex: 1;
+        justify-content: center;
+    }
 }
 
 .auth-card {
@@ -1763,7 +1922,6 @@ code.inv-code {
     .table-column-picker,
     .table-action-cell,
     .table-actions-header,
-    .bundle-add-row,
     .purchase-add-row {
         display: none !important;
     }

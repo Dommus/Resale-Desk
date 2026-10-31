@@ -1,216 +1,102 @@
 {% extends "layout.html" %}
 {% from "helpers/form_macros.html" import suggestion_input, suggestion_datalist %}
+{% from "helpers/purchase_items.html" import item_cards, item_templates with context %}
 {% block title %}{{ _('New Purchase') }}{% endblock %}
 {% block content %}
 
-<h3 class="mb-3">{{ _('Add a bundle purchase') if purchase_type == 'bundle' else _('Add a single purchase') }}</h3>
-
-<div class="card shadow-sm">
-    <div class="card-body">
-        <form method="post">
-            <div class="row g-3">
-                <div class="col-md-4">
-                    <label class="form-label">{{ _('Date') }}</label>
-                    <input type="date" class="form-control" name="date" value="{{ today }}">
-                </div>
-                <div class="col-md-4">
-                    <label class="form-label">{{ _('Purchase Name') }} <span class="text-muted">{{ _('(optional)') }}</span></label>
-                    <input type="text" class="form-control" name="name" maxlength="128" placeholder="{{ _('e.g. 50{symbol} Box', symbol=currency_symbol) }}">
-                </div>
-                <div class="col-md-4">
-                    <label class="form-label">{{ _('Seller') }} <span class="text-muted">{{ _('(optional)') }}</span></label>
-                    {{ suggestion_input('seller', option_id='seller-options', placeholder=_('e.g. livestream, Vinted user...')) }}
-                </div>
-                <div class="col-md-4">
-                    <label class="form-label">{{ _('Source Platform') }} <span class="text-muted">{{ _('(optional)') }}</span></label>
-                    {{ suggestion_input('platform', option_id='platform-options', placeholder=_('e.g. TikTok, Vinted...')) }}
-                </div>
-
-                <input type="hidden" name="purchase_type" value="{{ purchase_type }}">
-                <div class="col-md-4">
-                    <label class="form-label">{{ _('Purchase Price ({symbol})', symbol=currency_symbol) }}</label>
-                    <input type="number" step="0.01" min="0" class="form-control" name="purchase_price" value="0" required>
-                </div>
-                <div class="col-md-4">
-                    <label class="form-label">{{ _('Shipping Cost ({symbol})', symbol=currency_symbol) }}</label>
-                    <input type="number" step="0.01" min="0" class="form-control" name="shipping_cost" value="0">
-                </div>
-
-                <div class="col-12">
-                    <label class="form-label">{{ _('Purchase Notes') }} <span class="text-muted">{{ _('(optional)') }}</span></label>
-                    <textarea class="form-control" name="purchaseNotes" rows="2"></textarea>
-                </div>
-
-                <div class="col-12">
-                    <div class="form-check">
-                        <input class="form-check-input" type="checkbox" id="addItemsToggle" name="addItemsToggle" checked>
-                        <label class="form-check-label" for="addItemsToggle">
-                            {{ _('Add Items') }}
-                        </label>
-                    </div>
-                </div>
-            </div>
-
-            <div id="singleItemFields" class="border-top mt-4 pt-3">
-                <h6 class="mb-3">{{ _('Item Details') }}</h6>
-                <div class="row g-3">
-                    <div class="col-md-6">
-                        <label class="form-label">{{ _('Item Name') }} <span class="required-symbol"> * </span></label>
-                        <input type="text" class="form-control" name="itemName" id="itemName" required>
-                    </div>
-                    <div class="col-md-1">
-                        <label class="form-label">{{ _('Quantity') }}</label>
-                        <input type="number" min="1" step="1" value="1" class="form-control" name="itemQuantity" id="itemQuantity" required>
-                    </div>
-                    <div class="col-md-3">
-                        <label class="form-label">{{ _('Category') }} <span class="text-muted">{{ _('(optional)') }}</span></label>
-                        {{ suggestion_input('category', option_id='category-options', placeholder=_('e.g. Video Game')) }}
-                    </div>
-                    <div class="col-md-3">
-                        <label class="form-label">{{ _('Brand') }} <span class="text-muted">{{ _('(optional)') }}</span></label>
-                        {{ suggestion_input('brand', option_id='brand-options', placeholder=_('e.g. Nike')) }}
-                    </div>
-                    <div class="col-md-3">
-                        <label class="form-label">{{ _('Condition') }}</label>
-                        <select class="form-select" name="condition">
-                            <option value="">-</option>
-                            {% for c in ["New", "Like New", "Good", "Fair", "Poor"] %}
-                            <option value="{{ c }}">{{ _(c) }}</option>
-                            {% endfor %}
-                        </select>
-                    </div>
-                    <div class="col-md-3">
-                        <label class="form-label">{{ _('Shelf') }} <span class="text-muted">{{ _('(optional)') }}</span></label>
-                        <select class="form-select" name="shelf_id">
-                            <option value="">-</option>
-                            {% for shelf in shelves %}
-                            <option value="{{ shelf.id }}">{{ shelf.name }}</option>
-                            {% endfor %}
-                        </select>
-                    </div>
-                    <div class="col-md-6">
-                        <label class="form-label">{{ _('Notes') }} <span class="text-muted">{{ _('(optional)') }}</span></label>
-                        <input type="text" class="form-control" name="itemNotes" placeholder="{{ _('e.g. Broken') }}">
-                    </div>
-                </div>
-            </div>
-
-            <div id="bundleItemFields" class="border-top mt-4 pt-3 d-none">
-                <h6 class="mb-3">{{ _('Bundle Items') }}</h6>
-                <div class="app-form-table-wrap">
-                    <table class="table align-middle app-form-table mb-2" id="bundleItemsTable">
-                        <thead>
-                            <tr>
-                                <th>{{ _('Item Name') }}</th>
-                                <th>{{ _('Quantity') }}</th>
-                                <th>{{ _('Category') }}</th>
-                                <th>{{ _('Brand') }}</th>
-                                <th>{{ _('Condition') }}</th>
-                                <th>{{ _('Shelf') }}</th>
-                                <th>{{ _('Notes') }}</th>
-                                <th></th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr class="bundle-item-row">
-                                <td data-label="{{ _('Item name') }}"><input type="text" class="form-control" name="itemName[]" required></td>
-                                <td data-label="{{ _('Quantity') }}"><input type="number" min="1" step="1" value="1" class="form-control" name="itemQuantity[]" required></td>
-                                <td data-label="{{ _('Category') }}">
-                                    {{ suggestion_input('category[]', option_id='category-options', placeholder=_('e.g. Video Game')) }}
-                                </td>
-                                <td data-label="{{ _('Brand') }}">
-                                    {{ suggestion_input('brand[]', option_id='brand-options', placeholder=_('e.g. Nike')) }}
-                                </td>
-                                <td data-label="{{ _('Condition') }}">
-                                    <select class="form-select" name="condition[]">
-                                        <option value="">-</option>
-                                        {% for c in ["New", "Like New", "Good", "Fair", "Poor"] %}<option value="{{ c }}">{{ _(c) }}</option>{% endfor %}
-                                    </select>
-                                </td>
-                                <td data-label="{{ _('Shelf') }}">
-                                    <select class="form-select" name="shelf_id[]">
-                                        <option value="">-</option>
-                                        {% for shelf in shelves %}<option value="{{ shelf.id }}">{{ shelf.name }}</option>{% endfor %}
-                                    </select>
-                                </td>
-                                <td data-label="{{ _('Notes') }}"><input type="text" class="form-control" name="itemNotes[]" placeholder="{{ _('e.g. Broken') }}"></td>
-                                <td data-label=""><button type="button" class="btn btn-sm btn-outline-danger remove-bundle-row d-none" aria-label="{{ _('Remove item') }}">&times;</button></td>
-                            </tr>
-                            <tr id="addBundleRow" class="bundle-add-row text-body-secondary" role="button" tabindex="0" aria-label="{{ _('Add another bundle item') }}">
-                                <td data-label="" colspan="8" class="text-center py-3">
-                                    <i class="bi bi-plus-lg"></i> {{ _('Click to add another item') }}
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-
-            <button type="submit" class="btn btn-primary mt-4" id="submitBtn">{{ _('Save Purchase with Items') }}</button>
-        </form>
-
-        {{ suggestion_datalist('seller-options', used_sellers) }}
-        {{ suggestion_datalist('platform-options', used_platforms) }}
-        {{ suggestion_datalist('category-options', used_categories) }}
-        {{ suggestion_datalist('brand-options', used_brands) }}
+<form method="post" class="purchase-form" data-purchase-form data-type="{{ purchase_type }}">
+    <div class="purchase-form-head">
+        <h3 class="mb-0">{{ _('New Purchase') }}</h3>
+        <div class="btn-group purchase-type-toggle" role="group" aria-label="{{ _('Purchase type') }}">
+            <input type="radio" class="btn-check" name="purchase_type" id="purchaseTypeSingle" value="single"
+                   autocomplete="off" data-type-toggle{% if purchase_type != 'bundle' %} checked{% endif %}>
+            <label class="btn btn-outline-primary" for="purchaseTypeSingle"><i class="bi bi-box-seam" aria-hidden="true"></i> {{ _('Single') }}</label>
+            <input type="radio" class="btn-check" name="purchase_type" id="purchaseTypeBundle" value="bundle"
+                   autocomplete="off" data-type-toggle{% if purchase_type == 'bundle' %} checked{% endif %}>
+            <label class="btn btn-outline-primary" for="purchaseTypeBundle"><i class="bi bi-boxes" aria-hidden="true"></i> {{ _('Bundle') }}</label>
+        </div>
     </div>
-</div>
+    <p class="purchase-form-hint">
+        <span data-single-only>{{ _('One item, with its own cost.') }}</span>
+        <span data-bundle-only>{{ _('Several items bought together for one price.') }}</span>
+        {{ _('Only the item name is required. Add listings or a sale now, or later.') }}
+    </p>
+
+    <section class="card mb-3">
+        <div class="card-body">
+            <h6 class="item-card-section-title">{{ _('Purchase') }}</h6>
+            <div class="row g-2 g-md-3">
+                <div class="col-6 col-md-2">
+                    <label class="form-label" for="purchasePrice">{{ _('Purchase Price ({symbol})', symbol=currency_symbol) }}</label>
+                    <input type="number" step="0.01" min="0" inputmode="decimal" class="form-control" name="purchase_price" id="purchasePrice"
+                           value="{{ form.get('purchase_price', '') }}" placeholder="0.00" data-cost>
+                </div>
+                <div class="col-6 col-md-2">
+                    <label class="form-label" for="shippingCost">{{ _('Shipping Cost ({symbol})', symbol=currency_symbol) }}</label>
+                    <input type="number" step="0.01" min="0" inputmode="decimal" class="form-control" name="shipping_cost" id="shippingCost"
+                           value="{{ form.get('shipping_cost', '') }}" placeholder="0.00" data-cost>
+                </div>
+                <div class="col-6 col-md-2">
+                    <label class="form-label" for="purchaseDate">{{ _('Date') }}</label>
+                    <input type="date" class="form-control" name="date" id="purchaseDate" value="{{ form.get('date', today) }}">
+                </div>
+                <div class="col-6 col-md-3">
+                    <label class="form-label" for="purchasePlatform">{{ _('Source Platform') }}</label>
+                    {{ suggestion_input('platform', form.get('platform'), option_id='platform-options', placeholder=_('e.g. TikTok, Vinted...'), id='purchasePlatform') }}
+                </div>
+                <div class="col-12 col-md-3">
+                    <label class="form-label" for="purchaseSeller">{{ _('Seller') }}</label>
+                    {{ suggestion_input('seller', form.get('seller'), option_id='seller-options', placeholder=_('e.g. livestream, Vinted user...'), id='purchaseSeller') }}
+                </div>
+            </div>
+            <details class="purchase-more"{% if form.get('name') or form.get('purchaseNotes') %} open{% endif %}>
+                <summary>{{ _('More details') }}</summary>
+                <div class="row g-2 g-md-3 pt-2">
+                    <div class="col-md-5">
+                        <label class="form-label" for="purchaseName">{{ _('Purchase Name') }}</label>
+                        <input type="text" class="form-control" name="name" id="purchaseName" maxlength="128"
+                               value="{{ form.get('name', '') }}" placeholder="{{ _('e.g. 50{symbol} Box', symbol=currency_symbol) }}">
+                    </div>
+                    <div class="col-md-7">
+                        <label class="form-label" for="purchaseNotes">{{ _('Purchase Notes') }}</label>
+                        <textarea class="form-control" name="purchaseNotes" id="purchaseNotes" rows="2">{{ form.get('purchaseNotes', '') }}</textarea>
+                    </div>
+                </div>
+            </details>
+        </div>
+    </section>
+
+    <div data-item-list>
+        {{ item_cards(cards, shelves) }}
+    </div>
+    <button type="button" class="btn purchase-add-item mb-3" data-action="add-item" data-bundle-only>
+        <i class="bi bi-plus-lg" aria-hidden="true"></i> {{ _('Add another item') }}
+    </button>
+
+    {# The main button comes first, so pressing Enter in a field saves the items #}
+    <div class="purchase-form-bar">
+        <div class="purchase-form-summary" aria-live="polite"
+             data-summary data-currency="{{ currency_symbol }}"
+             data-one-item="{{ _('1 item') }}" data-many-items="{{ _('{count} items', count='{count}') }}">
+        </div>
+        <button type="submit" class="btn btn-primary">{{ _('Save Purchase') }}</button>
+    </div>
+    <div class="purchase-form-secondary">
+        <button type="submit" name="no_items" value="1" class="btn btn-link btn-sm" formnovalidate>{{ _('Save without items') }}</button>
+        <a href="{{ url_for('purchases') }}" class="btn btn-link btn-sm">{{ _('Cancel') }}</a>
+    </div>
+</form>
+
+{{ item_templates(shelves) }}
+{{ suggestion_datalist('seller-options', used_sellers) }}
+{{ suggestion_datalist('platform-options', used_platforms) }}
+{{ suggestion_datalist('category-options', used_categories) }}
+{{ suggestion_datalist('brand-options', used_brands) }}
+{{ suggestion_datalist('listing-platform-options', used_listing_platforms) }}
 
 {% endblock %}
 
 {% block scripts %}
 <script src="{{ url_for('static', filename='js/suggestions.js') }}"></script>
-<script>
-const typeSelect = document.querySelector('input[name="purchase_type"]');
-const addItemsToggle = document.getElementById('addItemsToggle');
-const singleFields = document.getElementById('singleItemFields');
-const bundleFields = document.getElementById('bundleItemFields');
-const bundleTable = document.querySelector('#bundleItemsTable tbody');
-const addBundleRow = document.getElementById('addBundleRow');
-const nameInput = document.getElementById('itemName');
-const submitBtn = document.getElementById('submitBtn');
-
-function toggleSingleFields() {
-    const shouldShowDetails = addItemsToggle.checked && typeSelect.value === 'single';
-    const shouldShowBundle = addItemsToggle.checked && typeSelect.value === 'bundle';
-    singleFields.classList.toggle('d-none', !shouldShowDetails);
-    bundleFields.classList.toggle('d-none', !shouldShowBundle);
-    nameInput.required = shouldShowDetails;
-    bundleFields.querySelectorAll('input, select').forEach(field => {
-        field.disabled = !shouldShowBundle;
-    });
-    bundleFields.querySelector('.bundle-item-row input[name="itemName[]"]').required = shouldShowBundle;
-    submitBtn.textContent = (shouldShowDetails || shouldShowBundle) ? {{ _('Save Purchase with Items')|tojson }} : {{ _('Save Purchase')|tojson }};
-}
-
-addItemsToggle.addEventListener('change', toggleSingleFields);
-toggleSingleFields();
-
-function addBundleItem() {
-    const sourceRow = bundleTable.querySelector('.bundle-item-row');
-    const row = sourceRow.cloneNode(true);
-    row.querySelectorAll('input').forEach(input => input.value = '');
-    row.querySelectorAll('select').forEach(select => select.selectedIndex = 0);
-    row.querySelector('input[name="itemQuantity[]"]').value = '1';
-    row.querySelector('.remove-bundle-row').classList.remove('d-none');
-    bundleTable.insertBefore(row, addBundleRow);
-    toggleSingleFields();
-}
-
-addBundleRow.addEventListener('click', addBundleItem);
-addBundleRow.addEventListener('keydown', event => {
-    if (event.key === 'Enter' || event.key === ' ') {
-        event.preventDefault();
-        addBundleItem();
-    }
-});
-
-bundleTable.addEventListener('click', event => {
-    const removeButton = event.target.closest('.remove-bundle-row');
-    if (removeButton && bundleTable.querySelectorAll('.bundle-item-row').length > 1) {
-        removeButton.closest('.bundle-item-row').remove();
-    }
-});
-
-</script>
+<script src="{{ url_for('static', filename='js/purchase_form.js') }}"></script>
 {% endblock %}

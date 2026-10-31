@@ -1,0 +1,207 @@
+{# Item cards for the new purchase and add-items pages.
+   Field names are numbered (items-<i>-..., items-<i>-listings-<j>-...) so the
+   server can tell which listings and sale belong to which item; see
+   parse_item_cards in app.py. static/js/purchase_form.js adds and removes
+   cards and listings by copying the <template>s below.
+   Import "with context", for currency_symbol and today. #}
+{% from "helpers/form_macros.html" import suggestion_input %}
+
+{% macro item_card(i, values={}, listings=[], sale=none, shelves=[]) %}
+{% set p = 'items-%s-'|format(i) %}
+<details class="card item-card mb-3" data-item-card data-index="{{ i }}" open>
+    <summary class="item-card-header">
+        <span class="item-card-number">{{ _('Item') }}<span data-bundle-only> <span data-item-number>1</span></span></span>
+        <span class="item-card-title text-truncate" data-item-title>{{ values.get('name', '') }}</span>
+        <i class="bi bi-chevron-down item-card-chevron" aria-hidden="true"></i>
+    </summary>
+    <fieldset class="card-body" data-card-fields>
+        <div class="row g-2 g-md-3">
+            <div class="col-8 col-md-6">
+                <label class="form-label" for="{{ p }}name">{{ _('Item Name') }} <span class="required-symbol">*</span></label>
+                <input type="text" class="form-control" name="{{ p }}name" id="{{ p }}name" maxlength="64"
+                       value="{{ values.get('name', '') }}" data-item-name required>
+            </div>
+            <div class="col-4 col-md-2">
+                <label class="form-label" for="{{ p }}quantity">{{ _('Quantity') }}</label>
+                <input type="number" min="1" step="1" inputmode="numeric" class="form-control" name="{{ p }}quantity" id="{{ p }}quantity"
+                       value="{{ values.get('quantity', '1') }}" data-item-quantity required>
+            </div>
+            <div class="col-6 col-md-4">
+                <label class="form-label" for="{{ p }}category">{{ _('Category') }}</label>
+                {{ suggestion_input(p ~ 'category', values.get('category'), option_id='category-options', placeholder=_('e.g. Video Game'), id=p ~ 'category') }}
+            </div>
+            <div class="col-6 col-md-4">
+                <label class="form-label" for="{{ p }}brand">{{ _('Brand') }}</label>
+                {{ suggestion_input(p ~ 'brand', values.get('brand'), option_id='brand-options', placeholder=_('e.g. Nike'), id=p ~ 'brand') }}
+            </div>
+            <div class="col-6 col-md-4">
+                <label class="form-label" for="{{ p }}condition">{{ _('Condition') }}</label>
+                <select class="form-select" name="{{ p }}condition" id="{{ p }}condition">
+                    <option value="">-</option>
+                    {% for c in ["New", "Like New", "Good", "Fair", "Poor"] %}
+                    <option value="{{ c }}"{% if values.get('condition') == c %} selected{% endif %}>{{ _(c) }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-6 col-md-4">
+                <label class="form-label" for="{{ p }}shelf_id">{{ _('Shelf') }}</label>
+                <select class="form-select" name="{{ p }}shelf_id" id="{{ p }}shelf_id">
+                    <option value="">-</option>
+                    {% for shelf in shelves %}
+                    <option value="{{ shelf.id }}"{% if values.get('shelf_id') == shelf.id|string %} selected{% endif %}>{{ shelf.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-12">
+                <label class="form-label" for="{{ p }}notes">{{ _('Notes') }}</label>
+                <input type="text" class="form-control" name="{{ p }}notes" id="{{ p }}notes"
+                       value="{{ values.get('notes', '') }}" placeholder="{{ _('e.g. Broken') }}">
+            </div>
+        </div>
+
+        <div class="item-card-section">
+            <h6 class="item-card-section-title">{{ _('Listings') }}</h6>
+            <div data-listing-list>
+                {% for listing in listings %}{{ listing_row(i, listing.index, listing.fields) }}{% endfor %}
+            </div>
+            <button type="button" class="btn btn-outline-primary btn-sm item-card-button" data-action="add-listing">
+                <i class="bi bi-plus-lg" aria-hidden="true"></i> {{ _('Add Listing') }}
+            </button>
+        </div>
+
+        <div class="item-card-section">
+            <button type="button" class="btn btn-outline-success btn-sm item-card-button" data-action="add-sale"{% if sale is not none %} hidden{% endif %}>
+                <i class="bi bi-cash-coin" aria-hidden="true"></i> {{ _('Record Sale') }}
+            </button>
+            <fieldset class="item-sale" data-sale{% if sale is none %} disabled hidden{% endif %}>
+                {{ sale_fields(i, sale or {}, listings) }}
+            </fieldset>
+        </div>
+
+        <div class="item-card-actions" data-bundle-only>
+            <button type="button" class="btn btn-outline-secondary btn-sm item-card-button" data-action="duplicate-item">
+                <i class="bi bi-copy" aria-hidden="true"></i> {{ _('Duplicate') }}
+            </button>
+            <button type="button" class="btn btn-outline-danger btn-sm item-card-button" data-action="remove-item"
+                    data-confirm="{{ _('Remove this item and its listings?') }}">
+                <i class="bi bi-trash" aria-hidden="true"></i> {{ _('Remove item') }}
+            </button>
+        </div>
+    </fieldset>
+</details>
+{% endmacro %}
+
+
+{% macro listing_row(i, j, values={}) %}
+{% set p = 'items-%s-listings-%s-'|format(i, j) %}
+<div class="listing-row" data-listing-row data-index="{{ j }}">
+    <div class="item-subcard-head">
+        <span>{{ _('Listing') }}</span>
+        <button type="button" class="btn btn-sm btn-outline-danger" data-action="remove-listing"
+                aria-label="{{ _('Remove listing') }}" title="{{ _('Remove listing') }}">
+            <i class="bi bi-x-lg" aria-hidden="true"></i>
+        </button>
+    </div>
+    <div class="row g-2">
+        <div class="col-7 col-md-4">
+            <label class="form-label" for="{{ p }}platform">{{ _('Platform') }} <span class="required-symbol">*</span></label>
+            <input type="text" class="form-control" name="{{ p }}platform" id="{{ p }}platform" maxlength="80"
+                   list="listing-platform-options" value="{{ values.get('platform', '') }}"
+                   placeholder="{{ _('e.g. Vinted, eBay, OLX') }}" data-listing-platform required>
+        </div>
+        <div class="col-5 col-md-2">
+            <label class="form-label" for="{{ p }}listing_price">{{ _('Price ({symbol})', symbol=currency_symbol) }}</label>
+            <input type="number" step="0.01" min="0" inputmode="decimal" class="form-control" name="{{ p }}listing_price" id="{{ p }}listing_price"
+                   value="{{ values.get('listing_price', '') }}">
+        </div>
+        <div class="col-6 col-md-3">
+            <label class="form-label" for="{{ p }}listing_id">{{ _('Listing ID') }}</label>
+            <input type="text" class="form-control" name="{{ p }}listing_id" id="{{ p }}listing_id" maxlength="120"
+                   value="{{ values.get('listing_id', '') }}">
+        </div>
+        <div class="col-6 col-md-3">
+            <label class="form-label" for="{{ p }}date_listed">{{ _('Date Listed') }}</label>
+            <input type="date" class="form-control" name="{{ p }}date_listed" id="{{ p }}date_listed"
+                   value="{{ values.get('date_listed', today) }}">
+        </div>
+        <div class="col-12">
+            <label class="form-label" for="{{ p }}listing_url">{{ _('Listing URL') }}</label>
+            <input type="url" inputmode="url" class="form-control" name="{{ p }}listing_url" id="{{ p }}listing_url" maxlength="500"
+                   value="{{ values.get('listing_url', '') }}" placeholder="https://...">
+        </div>
+    </div>
+</div>
+{% endmacro %}
+
+
+{% macro sale_fields(i, values={}, listings=[]) %}
+{% set p = 'items-%s-sale-'|format(i) %}
+<input type="hidden" name="{{ p }}on" value="1">
+<div class="item-subcard-head">
+    <span>{{ _('Sale') }}</span>
+    <button type="button" class="btn btn-sm btn-outline-danger" data-action="remove-sale"
+            aria-label="{{ _('Remove sale') }}" title="{{ _('Remove sale') }}">
+        <i class="bi bi-x-lg" aria-hidden="true"></i>
+    </button>
+</div>
+<div class="row g-2">
+    <div class="col-12 col-md-6">
+        <label class="form-label" for="{{ p }}listing">{{ _('Sold via Listing') }}</label>
+        <select class="form-select" name="{{ p }}listing" id="{{ p }}listing" data-sale-listing data-unnamed="{{ _('Listing') }}"
+                {% if values.get('listing') %}data-touched{% endif %}>
+            <option value="">{{ _('Not linked to a specific listing') }}</option>
+            {% for listing in listings %}
+            <option value="{{ listing.index }}"{% if values.get('listing') == listing.index|string %} selected{% endif %}>{{ listing.fields.get('platform') or _('Listing') }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="col-6 col-md-3">
+        <label class="form-label" for="{{ p }}sale_date">{{ _('Sale Date') }}</label>
+        <input type="date" class="form-control" name="{{ p }}sale_date" id="{{ p }}sale_date"
+               value="{{ values.get('sale_date', today) }}" required>
+    </div>
+    <div class="col-6 col-md-3">
+        <label class="form-label" for="{{ p }}quantity">{{ _('Quantity') }}</label>
+        <input type="number" min="1" step="1" inputmode="numeric" class="form-control" name="{{ p }}quantity" id="{{ p }}quantity"
+               value="{{ values.get('quantity', '1') }}" data-sale-quantity required>
+    </div>
+    <div class="col-6 col-md-4">
+        <label class="form-label" for="{{ p }}sale_price">{{ _('Sale Price ({symbol})', symbol=currency_symbol) }} <span class="required-symbol">*</span></label>
+        <input type="number" step="0.01" min="0" inputmode="decimal" class="form-control" name="{{ p }}sale_price" id="{{ p }}sale_price"
+               value="{{ values.get('sale_price', '') }}" required>
+    </div>
+    {% for field, label in [
+        ('shipping_collected', _('Shipping Charged to Buyer ({symbol})', symbol=currency_symbol)),
+        ('shipping_paid', _('Shipping Cost Paid ({symbol})', symbol=currency_symbol)),
+        ('platform_fee', _('Platform Fee ({symbol})', symbol=currency_symbol)),
+        ('payment_fee', _('Payment Processing Fee ({symbol})', symbol=currency_symbol)),
+    ] %}
+    <div class="col-6 col-md-4">
+        <label class="form-label" for="{{ p }}{{ field }}">{{ label }}</label>
+        <input type="number" step="0.01" min="0" inputmode="decimal" class="form-control" name="{{ p }}{{ field }}" id="{{ p }}{{ field }}"
+               value="{{ values.get(field, '0') }}">
+    </div>
+    {% endfor %}
+    <div class="col-12 col-md-8">
+        <label class="form-label" for="{{ p }}notes">{{ _('Sale Notes') }}</label>
+        <input type="text" class="form-control" name="{{ p }}notes" id="{{ p }}notes" value="{{ values.get('notes', '') }}">
+    </div>
+</div>
+{% endmacro %}
+
+
+{# The cards already on the page: the ones sent back after a mistake, or one empty card #}
+{% macro item_cards(cards, shelves) %}
+{% for card in cards %}
+{{ item_card(card.index, card.fields, card.listings, card.sale, shelves) }}
+{% else %}
+{{ item_card(0, shelves=shelves) }}
+{% endfor %}
+{% endmacro %}
+
+
+{# Blank copies for purchase_form.js. __I__ and __L__ become the item and listing numbers. #}
+{% macro item_templates(shelves) %}
+<template id="item-card-template">{{ item_card('__I__', shelves=shelves) }}</template>
+<template id="listing-row-template">{{ listing_row('__I__', '__L__') }}</template>
+{% endmacro %}

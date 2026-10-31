@@ -4,7 +4,7 @@
 
 <div class="d-flex justify-content-between align-items-center mb-3">
     <h3 class="mb-1">{{ _('Purchases') }}</h3>
-    <a href="{{ url_for('choose_purchase_type') }}" class="btn btn-primary"><i class="bi bi-plus-lg"></i> {{ _('New Purchase') }}</a>
+    <a href="{{ url_for('new_purchase') }}" class="btn btn-primary"><i class="bi bi-plus-lg"></i> {{ _('New Purchase') }}</a>
 </div>
 
 {# Mobile layout (AI-generated with Claude): see the matching comment in inventory/inventory.html #}
@@ -111,9 +111,9 @@
                     </td>
                 </tr>
                 {% else %}
-                <tr><td colspan="10" class="text-center text-muted py-4">{{ _('No purchases recorded yet.') }} <a href="{{ url_for('choose_purchase_type') }}">{{ _('Add your first purchase') }}</a>.</td></tr>
+                <tr><td colspan="10" class="text-center text-muted py-4">{{ _('No purchases recorded yet.') }} <a href="{{ url_for('new_purchase') }}">{{ _('Add your first purchase') }}</a>.</td></tr>
                 {% endfor %}
-                <tr id="addPurchaseRow" class="purchase-add-row text-body-secondary" data-sort-pinned-bottom data-href="{{ url_for('choose_purchase_type') }}" role="button" tabindex="0" aria-label="{{ _('Add a new purchase') }}">
+                <tr id="addPurchaseRow" class="purchase-add-row text-body-secondary" data-sort-pinned-bottom data-href="{{ url_for('new_purchase') }}" role="button" tabindex="0" aria-label="{{ _('Add a new purchase') }}">
                     <td colspan="10" class="text-center py-3">
                         <i class="bi bi-plus-lg"></i> {{ _('Click to add a new purchase') }}
                     </td>
