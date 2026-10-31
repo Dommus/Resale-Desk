@@ -80,7 +80,7 @@
                                 <td data-label="" class="text-end table-action-cell">
                                     <div class="d-inline-flex gap-1">
                                         <a href="{{ url_for('view_item', item_id=item.id) }}" class="btn btn-sm btn-outline-primary">{{ _('View') }}</a>
-                                        <form method="post" action="{{ url_for('delete_item', item_id=item.id) }}" onsubmit='return confirm({{ _("Delete this item permanently?")|tojson }});'>
+                                        <form method="post" action="{{ url_for('delete_item', item_id=item.id) }}" onsubmit='return confirm({{ (_("Delete this item permanently? It is the only item in its purchase, so the purchase will be deleted too.") if purchase.items|length == 1 else _("Delete this item permanently?"))|tojson }});'>
                                             <button type="submit" class="btn btn-sm btn-outline-danger" title="{{ _('Delete item') }}" aria-label="{{ _('Delete {name}', name=item.name) }}">
                                                 <i class="bi bi-trash"></i>
                                             </button>

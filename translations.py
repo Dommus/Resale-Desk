@@ -149,6 +149,11 @@ PT = {
     "e.g. TikTok, Vinted...": "ex.: TikTok, Vinted...",
     "e.g. 50{symbol} Box": "ex.: Caixa de 50{symbol}",
     "Delete this item permanently?": "Eliminar este artigo permanentemente?",
+    "Delete this item permanently? It is the only item in its purchase, so the purchase will be deleted too.":
+        "Eliminar este artigo permanentemente? É o único artigo da compra, por isso a compra também será eliminada.",
+    "Delete this sale? Only do this if it was recorded by mistake. If the sale really happened and was undone, record a refund instead.":
+        "Eliminar esta venda? Faça-o apenas se foi registada por engano. Se a venda aconteceu e foi anulada, registe antes um reembolso.",
+    "Delete sale": "Eliminar venda",
     "Back to Inventory": "Voltar ao Inventário",
     "Back to Purchases": "Voltar às Compras",
 
@@ -483,6 +488,7 @@ PT = {
         'Use "Abater" no artigo para o registar como perda.',
     "Item updated.": "Artigo atualizado.",
     "Item deleted.": "Artigo eliminado.",
+    "Item and its purchase deleted.": "Artigo e respetiva compra eliminados.",
     "Invalid purchase type": "Tipo de compra inválido",
     "Invalid purchase type submitted": "Foi enviado um tipo de compra inválido",
     "Item name is required.": "O nome do artigo é obrigatório.",
@@ -517,6 +523,7 @@ PT = {
         "As unidades devolvidas foram entretanto vendidas ou abatidas, por isso esta devolução não pode ser anulada.",
     "Refund saved.": "Reembolso guardado.",
     "Refund removed.": "Reembolso removido.",
+    "Sale deleted.": "Venda eliminada.",
     "There are no available units to write off.": "Não há unidades disponíveis para abater.",
     "Item written off. Its cost now counts as a loss.": "Artigo abatido. O seu custo conta agora como perda.",
     "Write-off undone. The units are back in inventory.": "Abate anulado. As unidades voltaram ao inventário.",

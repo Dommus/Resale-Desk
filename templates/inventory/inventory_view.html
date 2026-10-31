@@ -23,6 +23,15 @@
 </form>
 {% endmacro %}
 
+{% macro delete_sale_form(sale) %}
+<form method="post" action="{{ url_for('delete_sale', sale_id=sale.id) }}" class="mt-2"
+      onsubmit='return confirm({{ _("Delete this sale? Only do this if it was recorded by mistake. If the sale really happened and was undone, record a refund instead.")|tojson }});'>
+    <button type="submit" class="btn btn-link btn-sm text-danger p-0"><i class="bi bi-trash"></i> {{ _('Delete sale') }}</button>
+</form>
+{% endmacro %}
+
+{% set delete_item_message = _("Delete this item permanently? It is the only item in its purchase, so the purchase will be deleted too.") if item.purchase.items|length == 1 else _("Delete this item permanently?") %}
+
 <div class="d-flex justify-content-between align-items-start mb-3">
     <div>
         <h3 class="mb-1">{{ item.name }}</h3>
@@ -39,7 +48,7 @@
         {% if header_listing %}
         <a href="{{ header_listing.listing_url }}" target="_blank" rel="noopener noreferrer" class="btn btn-primary btn-sm"><i class="bi bi-box-arrow-up-right" aria-hidden="true"></i> {{ _('View on {platform}', platform=header_listing.platform) }}</a>
         {% endif %}
-        <form method="post" action="{{ url_for('delete_item', item_id=item.id) }}" onsubmit='return confirm({{ _("Delete this item permanently?")|tojson }});'>
+        <form method="post" action="{{ url_for('delete_item', item_id=item.id) }}" onsubmit='return confirm({{ delete_item_message|tojson }});'>
             <button class="btn btn-outline-danger btn-sm"><i class="bi bi-trash"></i> {{ _('Delete') }}</button>
         </form>
     </div>
@@ -251,6 +260,7 @@
                     <button type="submit" class="btn btn-success mt-3">{{ _('Save Sale') }}</button>
                 </form>
                 {{ refund_form(item.sale) }}
+                {{ delete_sale_form(item.sale) }}
                 {% elif item.is_written_off %}
                 <p class="text-muted mb-0">{{ _('Written off.') }}</p>
                 {% else %}
@@ -267,6 +277,7 @@
                             {{ _('Result:') }} <span class="{{ 'text-success' if s.profit >= 0 else 'text-danger' }}">{{ currency_symbol }}{{ "%.2f"|format(s.profit) }}</span>
                         </p>
                         {{ refund_form(s) }}
+                        {{ delete_sale_form(s) }}
                     </div>
                     {% endfor %}
                 </details>

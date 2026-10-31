@@ -727,21 +727,30 @@ def edit_item(item_id):
 def delete_item(item_id):
     item = Item.query.filter_by(id=item_id, user_id=current_user.id).first_or_404()
 
-    # Convert purchase type to Single if needed
     purchase = item.purchase
-    if (purchase and purchase.purchase_type == PurchaseType.BUNDLE and len(purchase.items) == 2):
-        purchase.purchase_type = PurchaseType.SINGLE
-
-    db.session.delete(item)
+    purchase_page = url_for("view_purchase", purchase_id=purchase.id)
+    # A purchase left without items would only hold a stray cost, so it goes too
+    # (deleting the purchase also deletes the item)
+    deleting_purchase = len(purchase.items) == 1
+    if deleting_purchase:
+        db.session.delete(purchase)
+    else:
+        # Convert purchase type to Single if needed
+        if purchase.purchase_type == PurchaseType.BUNDLE and len(purchase.items) == 2:
+            purchase.purchase_type = PurchaseType.SINGLE
+        db.session.delete(item)
     db.session.commit()
-    flash(_("Item deleted."), "success")
+    flash(_("Item and its purchase deleted.") if deleting_purchase else _("Item deleted."), "success")
 
-    # Redirect to current page
+    # Redirect to current page, unless that page was deleted
     referrer = request.referrer
     if referrer:
         parsed_referrer = urlparse(referrer)
         if parsed_referrer.netloc in ("", request.host):
-            return redirect(referrer)
+            if deleting_purchase and parsed_referrer.path == purchase_page:
+                return redirect(url_for("purchases"))
+            if parsed_referrer.path != url_for("view_item", item_id=item_id):
+                return redirect(referrer)
 
     # Fallback
     return redirect(url_for("inventory"))
@@ -1322,6 +1331,27 @@ def refund_sale(sale_id):
     refresh_item_status(item)
     db.session.commit()
     flash(_("Refund saved.") if sale.is_refunded else _("Refund removed."), "success")
+    return redirect(url_for("view_item", item_id=item.id))
+
+
+# For sales recorded by mistake. A sale that really happened and was undone is a refund.
+@app.route("/sales/<int:sale_id>/delete", methods=["POST"])
+@login_required
+def delete_sale(sale_id):
+    sale = Sale.query.join(Item).filter(Sale.id == sale_id, Item.user_id == current_user.id).first_or_404()
+    item = sale.item
+
+    if not sale.item_returned:
+        # Its units go back into stock, and its listing is live again
+        item.quantity_sold = max(item.quantity_sold - sale.quantity, 0)
+        if sale.listing and sale.listing.status == ListingStatus.SOLD:
+            sale.listing.status = ListingStatus.ACTIVE
+
+    item.sales.remove(sale)
+    db.session.delete(sale)
+    refresh_item_status(item)
+    db.session.commit()
+    flash(_("Sale deleted."), "success")
     return redirect(url_for("view_item", item_id=item.id))
 
 
