@@ -256,12 +256,24 @@ def add_sale(item, fields, quantity, listing=None):
     db.session.add(sale)
     item.quantity_sold += quantity
     refresh_item_status(item)
-    if listing:
-        listing.status = ListingStatus.SOLD if item.available_quantity == 0 else ListingStatus.ACTIVE
-    for l in item.listings:
-        if item.available_quantity == 0 and l is not listing and l.status == ListingStatus.ACTIVE:
-            l.status = ListingStatus.REMOVED
+    refresh_listing_statuses(item, listing)
     return sale
+
+
+def refresh_listing_statuses(item, listing=None):
+    # listing is the one a sale was just recorded or edited on
+    if item.available_quantity > 0:
+        # Units are left, so the listing stays live for them
+        if listing:
+            listing.status = ListingStatus.ACTIVE
+        return
+    # Nothing left: listings that sold units are Sold, the other live ones are Removed
+    sold_on = {sale.listing for sale in item.kept_sales if sale.listing}
+    for l in item.listings:
+        if l in sold_on:
+            l.status = ListingStatus.SOLD
+        elif l.status in (ListingStatus.ACTIVE, ListingStatus.SOLD):
+            l.status = ListingStatus.REMOVED
 
 
 # Item cards on the purchase forms
@@ -1252,9 +1264,6 @@ def new_sale(item_id):
     if item.available_quantity <= 0:
         flash(_("There are no available units to sell."), "warning")
         return redirect(url_for("view_item", item_id=item.id))
-    if item.sale is not None:
-        flash(_("This item has already been sold."), "warning")
-        return redirect(url_for("view_item", item_id=item.id))
 
     if request.method == "POST":
         listing_id = request.form.get("listing_id")
@@ -1333,12 +1342,7 @@ def edit_sale(sale_id):
     item.quantity_sold += sale_quantity - sale.quantity
     sale.quantity = sale_quantity
     refresh_item_status(item)
-
-    for listing in item.listings:
-        if listing.id == sale.listing_id:
-            listing.status = ListingStatus.SOLD if item.available_quantity == 0 else ListingStatus.ACTIVE
-        elif item.available_quantity == 0 and listing.status in (ListingStatus.ACTIVE, ListingStatus.SOLD):
-            listing.status = ListingStatus.REMOVED
+    refresh_listing_statuses(item, listing)
 
     db.session.commit()
     flash(_("Sale updated."), "success")
@@ -1364,7 +1368,7 @@ def refund_sale(sale_id):
             sale.listing.status = ListingStatus.REMOVED
     elif sale.item_returned and not item_returned:
         # Undo return
-        if item.sale is not None or item.available_quantity < sale.quantity:
+        if item.available_quantity < sale.quantity:
             flash(_("The returned units have been sold or written off since, so this return can't be undone."), "danger")
             return redirect(url_for("view_item", item_id=item.id))
         item.quantity_sold += sale.quantity
@@ -1589,15 +1593,29 @@ def import_csv():
     flash(message, 'success')
     return redirect(url_for('user'))
 
-# The listing an exported item row shows: the one it sold on, else an active one, else any
+# The listing an exported item row shows: the one it last sold on, else an active one, else any
 def item_listing(item):
-    if item.sale and item.sale.listing:
-        return item.sale.listing
+    sold_on = [sale.listing for sale in item.kept_sales if sale.listing]
+    if sold_on:
+        return sold_on[-1]
     active_listing = next(
         (listing for listing in item.listings if listing.status == ListingStatus.ACTIVE),
         None,
     )
     return active_listing or (item.listings[0] if item.listings else None)
+
+# An item with several sales is exported as one row: the sale prices and
+# refunds are added up, and the sold date is the latest sale's
+def kept_sale_price(item):
+    if not item.kept_sales:
+        return None
+    return sum((sale.sale_price or Decimal("0.00") for sale in item.kept_sales), Decimal("0.00"))
+
+
+def kept_refund(item):
+    refund = sum((sale.refund_amount or Decimal("0.00") for sale in item.kept_sales), Decimal("0.00"))
+    return refund or None
+
 
 @app.route('/user/export-csv')
 @login_required
@@ -1641,12 +1659,12 @@ def export_csv():
             item.status.value,
             platform,
             csv_date(purchase.date if purchase else None),
-            csv_date(item.sale.sale_date if item.sale else None),
+            csv_date(item.last_sale_date),
             buy_price_unit,
             csv_money(listing.listing_price if listing else None),
-            csv_money(item.sale.sale_price if item.sale else None),
+            csv_money(kept_sale_price(item)),
             csv_money(item.realized_profit),
-            csv_money(item.sale.refund_amount if item.sale and item.sale.refund_amount else None),
+            csv_money(kept_refund(item)),
             item.notes or "",
             "",
             "",
@@ -1691,24 +1709,23 @@ def sheet_rows(user_id):
     for item in items:
         purchase = item.purchase
         listing = item_listing(item)
-        sale = item.sale
         single = purchase.purchase_type == PurchaseType.SINGLE
         item_rows.append([
             "Individual" if single else purchase.display_name,
             item.quantity,
             item.quantity_sold,
             item.name,
-            iso(sale.sale_date if sale else None),
+            iso(item.last_sale_date),
             item.status.value,
             (listing.platform if listing else None) or purchase.platform,
             item.shelf.name if item.shelf else None,
             money(purchase.total_cost / item.quantity) if single and item.quantity else None,
             money(listing.listing_price if listing else None),
-            money(sale.sale_price if sale else None),
+            money(kept_sale_price(item)),
             money(item.realized_profit),
             listing.listing_url if listing else None,
             iso(purchase.date),
-            money(sale.refund_amount if sale and sale.refund_amount else None),
+            money(kept_refund(item)),
             item.notes or None,
         ])
 

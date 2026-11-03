@@ -177,13 +177,39 @@ class Item(db.Model):
 
     listings: Mapped[List["Listing"]] = relationship("Listing", back_populates="item", cascade="all, delete-orphan", lazy=True)
     # Every sale ever recorded, including ones refunded with the item returned.
-    # Use Item.sale for the sale that currently holds the units.
+    # Use Item.kept_sales for the sales that currently hold units.
     sales: Mapped[List["Sale"]] = relationship("Sale", back_populates="item", cascade="all, delete-orphan", order_by="Sale.id")
 
     @property
-    def sale(self) -> Optional["Sale"]:
-        # The current sale. Sales whose item came back are only kept as history.
-        return next((sale for sale in reversed(self.sales) if not sale.item_returned), None)
+    def kept_sales(self) -> List["Sale"]:
+        # Sales that hold units. Sales whose item came back are only kept as history.
+        return [sale for sale in self.sales if not sale.item_returned]
+
+    @property
+    def last_sale_date(self) -> Optional[datetime_date]:
+        dates = [sale.sale_date for sale in self.kept_sales if sale.sale_date]
+        return max(dates) if dates else None
+
+    @property
+    def kept_net_proceeds(self) -> Decimal:
+        return sum((sale.net_proceeds for sale in self.kept_sales), Decimal("0.00"))
+
+    # ROI and margin over all kept sales, so several sales read as one
+    @property
+    def kept_roi(self) -> Optional[Decimal]:
+        costs = [sale.cost_basis for sale in self.kept_sales]
+        profits = [sale.profit for sale in self.kept_sales]
+        if not costs or None in costs or None in profits or sum(costs) <= 0:
+            return None
+        return round((sum(profits) / sum(costs)) * 100, 1)
+
+    @property
+    def kept_margin(self) -> Optional[Decimal]:
+        gross = sum((sale.gross_proceeds for sale in self.kept_sales), Decimal("0.00"))
+        profits = [sale.profit for sale in self.kept_sales]
+        if gross <= 0 or None in profits:
+            return None
+        return round((sum(profits) / gross) * 100, 1)
 
     @property
     def returned_sales(self) -> List["Sale"]:
@@ -203,7 +229,7 @@ class Item(db.Model):
     def days_in_inventory(self) -> Optional[int]:
         if not self.purchase or self.purchase.date is None:
             return None
-        end = (self.sale.sale_date if self.sale else None) or datetime_date.today()
+        end = self.last_sale_date or datetime_date.today()
         return (end - self.purchase.date).days
 
     @property
@@ -290,7 +316,7 @@ class Sale(db.Model):
     item_returned: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
 
     item: Mapped["Item"] = relationship("Item", back_populates="sales")
-    listing: Mapped[Optional["Listing"]] = relationship("Listing", back_populates="sale")
+    listing: Mapped[Optional["Listing"]] = relationship("Listing", back_populates="sales")
 
     @property
     def unit_sale_price(self):
@@ -362,4 +388,5 @@ class Listing(db.Model):
     )
 
     item: Mapped["Item"] = relationship("Item", back_populates="listings")
-    sale: Mapped[Optional["Sale"]] = relationship("Sale", back_populates="listing", uselist=False)
+    # A listing for several units can be linked to more than one sale
+    sales: Mapped[List["Sale"]] = relationship("Sale", back_populates="listing")

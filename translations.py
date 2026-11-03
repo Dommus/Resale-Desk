@@ -287,6 +287,7 @@ PT = {
     "Delete listing": "Eliminar anúncio",
     "No listings yet.": "Ainda não há anúncios.",
     "Sale": "Venda",
+    "Sales": "Vendas",
     "Record Sale": "Registar venda",
     "Sold via Listing": "Vendido através do anúncio",
     "Not linked to a specific listing": "Não associado a um anúncio específico",

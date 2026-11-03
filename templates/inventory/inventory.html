@@ -178,8 +178,8 @@
                     <!-- Purchase Date -->
                     <td data-label="{{ _('Purchase date') }}" data-sort-value="{{ item.purchase.date.isoformat() if item.purchase.date else '' }}">{{ item.purchase.date.strftime('%Y-%m-%d') if item.purchase.date else '-' }}</td>
                     <!-- Sold Date -->
-                    {% set sale = item.sale %}
-                    <td data-label="{{ _('Sold date') }}" data-sort-value="{{ sale.sale_date.isoformat() if sale and sale.sale_date else '' }}">{{ sale.sale_date.strftime('%Y-%m-%d') if sale and sale.sale_date else '-' }}</td>
+                    {% set sold_date = item.last_sale_date %}
+                    <td data-label="{{ _('Sold date') }}" data-sort-value="{{ sold_date.isoformat() if sold_date else '' }}">{{ sold_date.strftime('%Y-%m-%d') if sold_date else '-' }}</td>
                     <td data-label="" data-mobile="link" class="text-end table-action-cell"><a href="{{ url_for('view_item', item_id=item.id) }}" class="btn btn-sm btn-outline-primary"><span class="table-action-label">{{ _('View') }}</span><i class="bi bi-chevron-right table-action-chevron" aria-hidden="true"></i></a></td>
                 </tr>
                 {% else %}
