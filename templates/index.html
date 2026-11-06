@@ -109,7 +109,7 @@
             <small class="text-muted">{{ note }}</small>
         </div>
         <label for="{{ name }}-months" class="visually-hidden">{{ _('Months to show') }}</label>
-        <select id="{{ name }}-months" class="form-select form-select-sm chart-months" data-chart="{{ name }}">
+        <select id="{{ name }}-months" class="form-select form-select-sm chart-months w-auto flex-shrink-0 ms-3" data-chart="{{ name }}">
             {% for option in [3, 6, 12] %}
             <option value="{{ option }}" {{ 'selected' if option == chart_months[name] }}>{{ _('Last {count} months', count=option) }}</option>
             {% endfor %}
