@@ -101,36 +101,30 @@
     </div>
 </div>
 
+{% macro chart_panel(name, title, note, canvas_label) %}
 <div class="dashboard-panel mb-4">
     <div class="d-flex justify-content-between align-items-center mb-3">
         <div>
-            <h5 class="card-title mb-0">{{ _('Monthly profit') }}</h5>
-            <small class="text-muted">{{ _('Bundle sales count once the bundle has covered its cost') }}</small>
+            <h5 class="card-title mb-0">{{ title }}</h5>
+            <small class="text-muted">{{ note }}</small>
         </div>
-        <form method="get" action="{{ url_for('index') }}">
-            <label for="months" class="visually-hidden">{{ _('Months to show') }}</label>
-            <select id="months" name="months" class="form-select form-select-sm" onchange="this.form.submit()">
-                {% for option in [3, 6, 12] %}
-                <option value="{{ option }}" {{ 'selected' if option == months }}>{{ _('Last {count} months', count=option) }}</option>
-                {% endfor %}
-                <option value="0" {{ 'selected' if months == 0 }}>{{ _('All months') }}</option>
-            </select>
-        </form>
+        <label for="{{ name }}-months" class="visually-hidden">{{ _('Months to show') }}</label>
+        <select id="{{ name }}-months" class="form-select form-select-sm chart-months" data-chart="{{ name }}">
+            {% for option in [3, 6, 12] %}
+            <option value="{{ option }}" {{ 'selected' if option == chart_months[name] }}>{{ _('Last {count} months', count=option) }}</option>
+            {% endfor %}
+            <option value="0" {{ 'selected' if chart_months[name] == 0 }}>{{ _('All months') }}</option>
+        </select>
     </div>
     <div class="profit-chart-wrap">
-        <canvas id="profitChart" aria-label="{{ _('Profit per month') }}" role="img"></canvas>
+        <canvas id="{{ name }}Chart" aria-label="{{ canvas_label }}" role="img"></canvas>
     </div>
 </div>
+{% endmacro %}
 
-<div class="dashboard-panel mb-4">
-    <div class="d-flex justify-content-between align-items-center mb-3">
-        <h5 class="card-title mb-0">{{ _('Monthly net revenue') }}</h5>
-        <small class="text-muted">{{ _('Includes bundle sales') }} &middot; {{ _('All months') if months == 0 else _('Last {count} months', count=months) }}</small>
-    </div>
-    <div class="profit-chart-wrap">
-        <canvas id="revenueChart" aria-label="{{ _('Net revenue per month') }}" role="img"></canvas>
-    </div>
-</div>
+{{ chart_panel('profit', _('Monthly profit'), _('Bundle sales count once the bundle has covered its cost'), _('Profit per month')) }}
+{{ chart_panel('revenue', _('Monthly net revenue'), _('Includes bundle sales'), _('Net revenue per month')) }}
+{{ chart_panel('spend', _('Monthly spending'), _('Purchase price and shipping'), _('Money spent on purchases per month')) }}
 
 <div class="row g-4 mb-4">
     <div class="col-12">
@@ -215,93 +209,114 @@
 {% block scripts %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script>
-    const labels = {{ chart_labels|tojson }};
-    const values = {{ chart_values|tojson }};
-    const bundleValues = {{ bundle_chart_values|tojson }};
     const styles = getComputedStyle(document.documentElement);
-    const posColor = styles.getPropertyValue("--pos");
-    const posSoftColor = styles.getPropertyValue("--pos-soft");
+    const color = name => styles.getPropertyValue(name);
+    // Red only when the month made a loss (or refunds and fees outweighed its sales)
+    const signedColor = (positive, value) => value >= 0 ? color(positive) : color("--neg");
 
-    new Chart(document.getElementById("profitChart"), {
-        type: "bar",
-        data: {
-            labels: labels,
-            datasets: [{
-                label: {{ _('Single items')|tojson }},
-                data: values,
-                // Green bars for profit, red bars for loss
-                backgroundColor: values.map(v => v >= 0 ? posColor : styles.getPropertyValue("--neg")),
-                borderRadius: 2
-            }, {
-                label: {{ _('Bundle items')|tojson }},
-                data: bundleValues,
-                // Lighter shade of the same green, stacked on top
-                backgroundColor: bundleValues.map(v => v >= 0 ? posSoftColor : styles.getPropertyValue("--neg")),
-                borderRadius: 2
-            }]
-        },
-        options: {
-            maintainAspectRatio: false,
-            plugins: {
-                legend: { display: true, position: "bottom" },
-                tooltip: {
-                    callbacks: {
-                        footer: items => {{ (_('Total') ~ ': ' ~ currency_symbol)|tojson }} +
-                            (values[items[0].dataIndex] + bundleValues[items[0].dataIndex]).toFixed(2)
-                    }
-                }
+    // Single items and bundles stack in each chart, bundles in a lighter shade on top
+    function stackedChart(canvasId) {
+        return new Chart(document.getElementById(canvasId), {
+            type: "bar",
+            data: {
+                labels: [],
+                datasets: [
+                    { label: {{ _('Single items')|tojson }}, data: [], borderRadius: 2 },
+                    { label: {{ _('Bundle items')|tojson }}, data: [], borderRadius: 2 },
+                ]
             },
-            interaction: { mode: "index", intersect: false },
-            scales: {
-                x: { stacked: true },
-                y: { stacked: true, ticks: { callback: value => "{{ currency_symbol }}" + value } }
-            }
-        }
-    });
-
-    const revenueValues = {{ revenue_values|tojson }};
-    const bundleRevenueValues = {{ bundle_revenue_values|tojson }};
-    const accentColor = styles.getPropertyValue("--accent");
-    // Opaque on purpose: tooltips draw swatches on white, so a transparent
-    // colour would look different there than in the legend
-    const accentSoftColor = styles.getPropertyValue("--accent-soft");
-    const negColor = styles.getPropertyValue("--neg");
-
-    new Chart(document.getElementById("revenueChart"), {
-        type: "bar",
-        data: {
-            labels: labels,
-            datasets: [{
-                label: {{ _('Single items')|tojson }},
-                data: revenueValues,
-                // Red only when refunds and fees outweigh the month's sales
-                backgroundColor: revenueValues.map(v => v >= 0 ? accentColor : negColor),
-                borderRadius: 2
-            }, {
-                label: {{ _('Bundle items')|tojson }},
-                data: bundleRevenueValues,
-                // Lighter shade of the same colour, stacked on top
-                backgroundColor: bundleRevenueValues.map(v => v >= 0 ? accentSoftColor : negColor),
-                borderRadius: 2
-            }]
-        },
-        options: {
-            maintainAspectRatio: false,
-            plugins: {
-                legend: { display: true, position: "bottom" },
-                tooltip: {
-                    callbacks: {
-                        footer: items => {{ (_('Total') ~ ': ' ~ currency_symbol)|tojson }} +
-                            (revenueValues[items[0].dataIndex] + bundleRevenueValues[items[0].dataIndex]).toFixed(2)
+            options: {
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: true, position: "bottom" },
+                    tooltip: {
+                        callbacks: {
+                            footer: items => {{ (_('Total') ~ ': ' ~ currency_symbol)|tojson }} +
+                                items.reduce((total, item) => total + item.parsed.y, 0).toFixed(2)
+                        }
                     }
+                },
+                interaction: { mode: "index", intersect: false },
+                scales: {
+                    x: { stacked: true },
+                    y: { stacked: true, ticks: { callback: value => {{ currency_symbol|tojson }} + value } }
                 }
-            },
-            interaction: { mode: "index", intersect: false },
-            scales: {
-                x: { stacked: true },
-                y: { stacked: true, ticks: { callback: value => "{{ currency_symbol }}" + value } }
             }
+        });
+    }
+
+    // Which values each chart shows, and how its bars are coloured.
+    // The soft colours are opaque on purpose: tooltips draw swatches on white,
+    // so a transparent colour would look different there than in the legend.
+    const charts = {
+        profit: {
+            chart: stackedChart("profitChart"),
+            single: "profit", bundle: "bundle_profit",
+            singleColor: value => signedColor("--pos", value),
+            bundleColor: value => signedColor("--pos-soft", value),
+        },
+        revenue: {
+            chart: stackedChart("revenueChart"),
+            single: "revenue", bundle: "bundle_revenue",
+            singleColor: value => signedColor("--accent", value),
+            bundleColor: value => signedColor("--accent-soft", value),
+        },
+        spend: {
+            chart: stackedChart("spendChart"),
+            single: "spend", bundle: "bundle_spend",
+            singleColor: () => color("--spend"),
+            bundleColor: () => color("--spend-soft"),
+        },
+    };
+    // The spending chart's bundle bars are whole bundles, not items from them
+    charts.spend.chart.data.datasets[1].label = {{ _('Bundles')|tojson }};
+
+    function showChartData(name, data) {
+        const { chart, single, bundle, singleColor, bundleColor } = charts[name];
+        const [singleSet, bundleSet] = chart.data.datasets;
+        chart.data.labels = data.labels;
+        singleSet.data = data[single];
+        singleSet.backgroundColor = data[single].map(singleColor);
+        bundleSet.data = data[bundle];
+        bundleSet.backgroundColor = data[bundle].map(bundleColor);
+        chart.update();
+    }
+
+    const initialData = {{ chart_data|tojson }};
+    for (const name in charts) {
+        showChartData(name, initialData[name]);
+    }
+
+    // Changing a chart's months redraws just that chart, in place. Loading a
+    // new page instead would always open it at the top.
+    const latestRequest = {};
+    // Built when needed, so a change to one chart keeps the others' months
+    function addressWith(name, months) {
+        const url = new URL(window.location);
+        url.searchParams.set(name + "_months", months);
+        return url;
+    }
+    document.querySelectorAll(".chart-months").forEach(select => select.addEventListener("change", async () => {
+        const name = select.dataset.chart;
+        const months = select.value;
+        const request = latestRequest[name] = (latestRequest[name] || 0) + 1;
+        try {
+            const response = await fetch({{ url_for('dashboard_charts')|tojson }} + "?months=" + encodeURIComponent(months));
+            if (!response.ok) {
+                throw new Error(response.status);
+            }
+            const data = await response.json();
+            // A slower answer for an earlier choice must not overwrite a newer one
+            if (request !== latestRequest[name]) {
+                return;
+            }
+            showChartData(name, data);
+            // Each chart keeps its months in the address, so a reload shows the same
+            history.replaceState(null, "", addressWith(name, months));
+        } catch {
+            // Fall back to loading the page (e.g. when the session has expired)
+            window.location.assign(addressWith(name, months));
         }
-    });
+    }));
 </script>
 {% endblock %}

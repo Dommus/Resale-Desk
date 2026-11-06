@@ -16,6 +16,8 @@
     --pos: #1e6b3a;
     --pos-soft: #9abca6;
     --neg: #a8322d;
+    --spend: #6f4a94;
+    --spend-soft: #a688d4;
 
     --bs-body-font-family: "Source Sans 3", system-ui, -apple-system, "Segoe UI", sans-serif;
     --bs-font-monospace: "Source Sans 3", system-ui, sans-serif;
@@ -59,6 +61,8 @@
     --pos: #6cc28a;
     --pos-soft: #b5e0c4;
     --neg: #e8807a;
+    --spend: #a183d0;
+    --spend-soft: #6f5596;
 
     --bs-body-color: var(--ink);
     --bs-body-bg: var(--sheet);

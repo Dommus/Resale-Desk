@@ -469,6 +469,118 @@ def service_worker():
 def offline():
     return render_template('offline.html')
 
+DASHBOARD_CHARTS = ('profit', 'revenue', 'spend')
+
+
+# How many months a dashboard chart shows (0 = all), e.g. from ?spend_months=
+def chart_months(param):
+    months = request.args.get(param, 6, type=int)
+    return months if months in (0, 3, 6, 12) else 6
+
+
+# Profit, net revenue and spending per month for the dashboard charts.
+# Single items and bundles are kept apart, so the charts can stack them.
+def monthly_chart_data(sales, purchases, months):
+    # "All" spans from the month of the first sale or purchase up to the current month
+    month_count = months
+    if months == 0:
+        dates = [sale.sale_date for sale in sales if sale.sale_date]
+        dates += [purchase.date for purchase in purchases if purchase.date]
+        first = min(dates) if dates else date.today()
+        month_count = (date.today().year - first.year) * 12 + date.today().month - first.month + 1
+
+    # Build the list of month labels, oldest first, e.g. ["2026-05", "2026-06", ...]
+    year = date.today().year
+    month = date.today().month
+    chart_labels = []
+    for i in range(month_count):
+        chart_labels.insert(0, f"{year}-{month:02d}")
+        month -= 1
+        if month == 0:
+            month = 12
+            year -= 1
+
+    # Bundle sales have no profit of their own, since the cost belongs to the
+    # whole bundle. Each one only counts as profit for the part of its proceeds
+    # that comes after the bundle's revenue has covered its cost.
+    bundle_sale_profit = {}
+    bundle_sales = {}
+    for sale in sales:
+        if sale.item.is_bundle:
+            bundle_sales.setdefault(sale.item.purchase, []).append(sale)
+    for purchase, purchase_sales in bundle_sales.items():
+        cost = purchase.total_cost
+        revenue = Decimal("0.00")
+        # Undated sales still count towards the cost, after the dated ones
+        for sale in sorted(purchase_sales, key=lambda s: (s.sale_date is None, s.sale_date or date.min, s.id)):
+            before = max(revenue - cost, Decimal("0.00"))
+            revenue += sale.net_proceeds
+            bundle_sale_profit[sale.id] = max(revenue - cost, Decimal("0.00")) - before
+
+    # Add up the profit and net revenue of each sale into its month.
+    monthly_profit = {label: 0 for label in chart_labels}
+    monthly_bundle_profit = {label: 0 for label in chart_labels}
+    monthly_revenue = {label: 0 for label in chart_labels}
+    monthly_bundle_revenue = {label: 0 for label in chart_labels}
+    for sale in sales:
+        if not sale.sale_date:
+            continue
+        label = sale.sale_date.strftime("%Y-%m")
+        if label not in monthly_profit:
+            continue
+        if sale.item.is_bundle:
+            monthly_bundle_revenue[label] += float(sale.net_proceeds)
+            monthly_bundle_profit[label] += float(bundle_sale_profit[sale.id])
+        else:
+            monthly_revenue[label] += float(sale.net_proceeds)
+        if sale.profit is not None:
+            monthly_profit[label] += float(sale.profit)
+    # Profit is split the same way as revenue, so bundles stack on top
+    chart_values = [round(monthly_profit[label], 2) for label in chart_labels]
+    bundle_chart_values = [round(monthly_bundle_profit[label], 2) for label in chart_labels]
+    # Revenue is split so the chart can stack bundle sales on top of single items
+    revenue_values = [round(monthly_revenue[label], 2) for label in chart_labels]
+    bundle_revenue_values = [round(monthly_bundle_revenue[label], 2) for label in chart_labels]
+
+    # Money spent on purchases (price plus shipping) in the month they were bought
+    monthly_spend = {label: 0 for label in chart_labels}
+    monthly_bundle_spend = {label: 0 for label in chart_labels}
+    for purchase in purchases:
+        if not purchase.date:
+            continue
+        label = purchase.date.strftime("%Y-%m")
+        if label not in monthly_spend:
+            continue
+        if purchase.purchase_type == PurchaseType.BUNDLE:
+            monthly_bundle_spend[label] += float(purchase.total_cost)
+        else:
+            monthly_spend[label] += float(purchase.total_cost)
+    spend_values = [round(monthly_spend[label], 2) for label in chart_labels]
+    bundle_spend_values = [round(monthly_bundle_spend[label], 2) for label in chart_labels]
+
+    return {
+        "labels": chart_labels,
+        "profit": chart_values,
+        "bundle_profit": bundle_chart_values,
+        "revenue": revenue_values,
+        "bundle_revenue": bundle_revenue_values,
+        "spend": spend_values,
+        "bundle_spend": bundle_spend_values,
+    }
+
+
+# Chart data for the dashboard's month selectors, so a chart can change
+# without reloading the page (which would scroll back to the top)
+@app.route('/dashboard/charts')
+@login_required
+def dashboard_charts():
+    purchases = Purchase.query.filter_by(user_id=current_user.id).all()
+    sales = Sale.query.join(Item).filter(Item.user_id == current_user.id).options(
+        selectinload(Sale.item).selectinload(Item.purchase),
+    ).all()
+    return jsonify(monthly_chart_data(sales, purchases, chart_months('months')))
+
+
 @app.route('/')
 @login_required
 def index():
@@ -557,80 +669,19 @@ def index():
         if sale.sale_date and sale.sale_date >= month_ago and sale.profit is not None:
             last_month_profit += sale.profit
 
-    # Profit per month for the chart (the user picks how many months, 0 = all)
-    months = request.args.get("months", 6, type=int)
-    if months not in (0, 3, 6, 12):
-        months = 6
-
-    # "All" spans from the month of the first sale up to the current month
-    month_count = months
-    if months == 0:
-        sale_dates = [sale.sale_date for sale in sales if sale.sale_date]
-        first = min(sale_dates) if sale_dates else date.today()
-        month_count = (date.today().year - first.year) * 12 + date.today().month - first.month + 1
-
-    # Build the list of month labels, oldest first, e.g. ["2026-05", "2026-06", ...]
-    year = date.today().year
-    month = date.today().month
-    chart_labels = []
-    for i in range(month_count):
-        chart_labels.insert(0, f"{year}-{month:02d}")
-        month -= 1
-        if month == 0:
-            month = 12
-            year -= 1
-
-    # Bundle sales have no profit of their own, since the cost belongs to the
-    # whole bundle. Each one only counts as profit for the part of its proceeds
-    # that comes after the bundle's revenue has covered its cost.
-    bundle_sale_profit = {}
-    bundle_sales = {}
-    for sale in sales:
-        if sale.item.is_bundle:
-            bundle_sales.setdefault(sale.item.purchase, []).append(sale)
-    for purchase, purchase_sales in bundle_sales.items():
-        cost = purchase.total_cost
-        revenue = Decimal("0.00")
-        # Undated sales still count towards the cost, after the dated ones
-        for sale in sorted(purchase_sales, key=lambda s: (s.sale_date is None, s.sale_date or date.min, s.id)):
-            before = max(revenue - cost, Decimal("0.00"))
-            revenue += sale.net_proceeds
-            bundle_sale_profit[sale.id] = max(revenue - cost, Decimal("0.00")) - before
-
-    # Add up the profit and net revenue of each sale into its month.
-    monthly_profit = {label: 0 for label in chart_labels}
-    monthly_bundle_profit = {label: 0 for label in chart_labels}
-    monthly_revenue = {label: 0 for label in chart_labels}
-    monthly_bundle_revenue = {label: 0 for label in chart_labels}
-    for sale in sales:
-        if not sale.sale_date:
-            continue
-        label = sale.sale_date.strftime("%Y-%m")
-        if label not in monthly_profit:
-            continue
-        if sale.item.is_bundle:
-            monthly_bundle_revenue[label] += float(sale.net_proceeds)
-            monthly_bundle_profit[label] += float(bundle_sale_profit[sale.id])
-        else:
-            monthly_revenue[label] += float(sale.net_proceeds)
-        if sale.profit is not None:
-            monthly_profit[label] += float(sale.profit)
-    # Profit is split the same way as revenue, so bundles stack on top
-    chart_values = [round(monthly_profit[label], 2) for label in chart_labels]
-    bundle_chart_values = [round(monthly_bundle_profit[label], 2) for label in chart_labels]
-    # Revenue is split so the chart can stack bundle sales on top of single items
-    revenue_values = [round(monthly_revenue[label], 2) for label in chart_labels]
-    bundle_revenue_values = [round(monthly_bundle_revenue[label], 2) for label in chart_labels]
+    # Each chart has its own month selector. Charts showing the same months
+    # share one calculation.
+    chart_months_by_name = {name: chart_months(f'{name}_months') for name in DASHBOARD_CHARTS}
+    data_by_months = {
+        months: monthly_chart_data(sales, purchases, months)
+        for months in set(chart_months_by_name.values())
+    }
 
     return render_template(
         'index.html',
         last_month_profit=round(last_month_profit, 2),
-        months=months,
-        chart_labels=chart_labels,
-        chart_values=chart_values,
-        bundle_chart_values=bundle_chart_values,
-        revenue_values=revenue_values,
-        bundle_revenue_values=bundle_revenue_values,
+        chart_months=chart_months_by_name,
+        chart_data={name: data_by_months[months] for name, months in chart_months_by_name.items()},
         total_units=total_units,
         available_units=available_units,
         sold_units=sold_units,
