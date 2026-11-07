@@ -615,11 +615,7 @@ h5, .h5, .card-title { font-size: 0.95rem; }
 
 .dashboard-hero {
     padding: 1.1rem 1.25rem;
-    border-top: 3px solid var(--pos);
 }
-
-.dashboard-profit-negative { border-top-color: var(--neg); }
-.dashboard-profit-neutral { border-top-color: var(--rule-strong); }
 
 .dashboard-eyebrow,
 .dashboard-panel-heading > i {
