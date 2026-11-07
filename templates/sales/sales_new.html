@@ -3,7 +3,7 @@
 {% block content %}
 
 <h3 class="mb-1">{{ _('Record Sale') }}</h3>
-<p class="text-muted">{{ _('for') }} <strong>{{ item.name }}</strong> (<code class="inv-code">{{ item.inventory_code }}</code>) &middot; {{ _('Available:') }} {{ item.available_quantity }} {{ _('of') }} {{ item.quantity }} &middot; {{ _('Unit cost:') }} {% if item.is_bundle %}{{ _('part of bundle; shown on purchase') }}{% elif item.unit_cost is not none %}{{ currency_symbol }}{{ "%.2f"|format(item.unit_cost) }}{% else %}-{% endif %}</p>
+<p class="text-muted">{{ _('for') }} <strong>{{ item.name }}</strong> (<code class="inv-code">{{ item.inventory_code }}</code>) &middot; {{ _('Available:') }} {{ item.available_quantity }} {{ _('of') }} {{ item.quantity }} &middot; {{ _('Unit cost:') }} {% if not item.has_own_cost %}{{ _('part of bundle; shown on purchase') }}{% elif item.unit_cost is not none %}{{ currency_symbol }}{{ "%.2f"|format(item.unit_cost) }}{% else %}-{% endif %}</p>
 
 <div class="card shadow-sm">
     <div class="card-body">

@@ -344,6 +344,11 @@ def process_csv(file, user_id):
             status=item_status,
             notes=get_row_clean(row, 'Notes') or None,
         )
+        if purchase_type is PurchaseType.BUNDLE:
+            # A bundle item's unit cost, when the bundle's price was split over its items
+            unit_price = parse_csv_money(row.get('Buy price (unit)'))
+            if unit_price is not None:
+                item.assigned_price = round(unit_price * item_quantity, 2)
 
         # Record listing
         listing = None
@@ -392,6 +397,18 @@ def process_csv(file, user_id):
             db.session.add(sale)
 
         items_created += 1
+
+    # Exported unit costs are rounded to the cent, so a bundle's item prices can
+    # miss its cost by a few cents. Within a cent per unit, the last item takes
+    # the difference, so the bundle keeps its item prices.
+    for purchase in purchases_by_bundle.values():
+        prices = [item.assigned_price for item in purchase.items]
+        if not purchase.items or None in prices:
+            continue
+        difference = purchase.purchase_price - sum(prices, Decimal("0.00"))
+        units = sum(item.quantity for item in purchase.items)
+        if difference and abs(difference) <= Decimal("0.01") * units:
+            purchase.items[-1].assigned_price += difference
 
     # https://stackoverflow.com/a/56305023
     try:

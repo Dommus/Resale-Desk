@@ -107,11 +107,48 @@ class Purchase(db.Model):
         return sum((sale.net_proceeds for item in self.items for sale in item.sales), Decimal("0.00"))
     
     @property
+    def has_assigned_prices(self) -> bool:
+        # A bundle whose price has been split over its items: every item has a
+        # price, and they add up to the purchase price. Anything else (a price
+        # missing, the purchase price edited, an item added) leaves the cost
+        # with the bundle as a whole.
+        if self.purchase_type != PurchaseType.BUNDLE or not self.items:
+            return False
+        prices = [item.assigned_price for item in self.items]
+        return None not in prices and sum(prices, Decimal("0.00")) == self.purchase_price
+
+    @property
+    def assigned_total(self) -> Decimal:
+        return sum((item.assigned_price for item in self.items if item.assigned_price is not None), Decimal("0.00"))
+
+    def item_costs(self) -> dict:
+        # Each item's cost in a bundle with assigned prices: its price plus a
+        # share of the shipping, in proportion to its price (or to its units
+        # when every price is 0). The last item takes the rounding, so the
+        # costs always add up to the bundle's total cost.
+        shipping = self.shipping_cost or Decimal("0.00")
+        price_total = sum((item.assigned_price for item in self.items), Decimal("0.00"))
+        units = sum(item.quantity for item in self.items)
+        costs = {}
+        shipping_left = shipping
+        for index, item in enumerate(self.items):
+            if index == len(self.items) - 1:
+                share = shipping_left
+            elif price_total > 0:
+                share = round(shipping * item.assigned_price / price_total, 2)
+            else:
+                share = round(shipping * item.quantity / units, 2)
+            shipping_left -= share
+            costs[item] = round(item.assigned_price + share, 2)
+        return costs
+
+    @property
     def profit(self) -> Decimal:
         # A bundle has one purchase cost shared by all of its items, so its
         # profit must be calculated at purchase level rather than by adding
-        # item profits (which deliberately have no allocated cost).
-        if self.purchase_type == PurchaseType.BUNDLE:
+        # item profits (which have no cost of their own). Once its price has
+        # been split over the items, it adds up item profits like a single.
+        if self.purchase_type == PurchaseType.BUNDLE and not self.has_assigned_prices:
             return round(self.total_revenue - self.total_cost, 2)
 
         return sum(
@@ -169,6 +206,9 @@ class Item(db.Model):
         default=ItemStatus.ON_SALE,
     )
     notes: Mapped[Optional[str]] = mapped_column(String(5120))
+    # Bundles only: this line's share of the purchase price (all its units).
+    # Used once every item in the bundle has one and they add up to the price.
+    assigned_price: Mapped[Optional[Decimal]] = mapped_column(MONEY)
     created_at: Mapped[datetime] = mapped_column(server_default=func.now())
 
     owner: Mapped["User"] = relationship("User", back_populates="items")
@@ -241,6 +281,11 @@ class Item(db.Model):
         return bool(self.purchase and self.purchase.purchase_type == PurchaseType.BUNDLE)
 
     @property
+    def has_own_cost(self) -> bool:
+        # False for items of a bundle whose price hasn't been split over its items
+        return not self.is_bundle or self.purchase.has_assigned_prices
+
+    @property
     def unit_cost(self) -> Optional[Decimal]:
 
         # Cost of one unit when the purchase has an unambiguous cost.
@@ -257,9 +302,11 @@ class Item(db.Model):
         if not self.purchase or self.quantity <= 0:
             return None
         if self.is_bundle:
-            # Bundle cost belongs to the Purchase as a whole. It is not
-            # assigned to individual items.
-            return None
+            # Bundle cost belongs to the Purchase as a whole, unless its
+            # price has been split over the items
+            if not self.purchase.has_assigned_prices:
+                return None
+            return self.purchase.item_costs()[self]
         return round(self.purchase.total_cost, 2)
 
     @property
@@ -269,8 +316,8 @@ class Item(db.Model):
 
     @property
     def write_off_loss(self) -> Optional[Decimal]:
-        # Cost of the written-off units. None for bundles, whose profit
-        # already subtracts the whole purchase cost.
+        # Cost of the written-off units. None for bundle items without an
+        # assigned price, whose bundle profit already subtracts the whole cost.
         if not self.is_written_off:
             return Decimal("0.00")
         return self.cost_for_quantity(self.quantity_written_off)
@@ -279,7 +326,7 @@ class Item(db.Model):
     def realized_profit(self) -> Optional[Decimal]:
         # Profit of every sale (returned ones included) minus write-off losses.
         # None when nothing has happened yet or the cost isn't known per item.
-        if self.is_bundle or (not self.sales and not self.is_written_off):
+        if not self.has_own_cost or (not self.sales and not self.is_written_off):
             return None
         profits = [sale.profit for sale in self.sales]
         if None in profits or self.write_off_loss is None:

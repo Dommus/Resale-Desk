@@ -52,6 +52,14 @@
                     {% endfor %}
                 </select>
             </div>
+            {% if show_item_prices %}
+            {# Optional: the bundle's price split over its items #}
+            <div class="col-6 col-md-4" data-bundle-only>
+                <label class="form-label" for="{{ p }}assigned_price">{{ _('Item Price ({symbol})', symbol=currency_symbol) }}</label>
+                <input type="number" step="0.01" min="0" inputmode="decimal" class="form-control" name="{{ p }}assigned_price" id="{{ p }}assigned_price"
+                       value="{{ values.get('assigned_price', '') }}" placeholder="{{ _('Optional') }}" data-assigned-price>
+            </div>
+            {% endif %}
             <div class="col-12">
                 <label class="form-label" for="{{ p }}notes">{{ _('Notes') }}</label>
                 <input type="text" class="form-control" name="{{ p }}notes" id="{{ p }}notes"

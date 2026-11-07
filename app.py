@@ -351,6 +351,39 @@ def validate_item_cards(cards):
     return errors
 
 
+# Bundle items can each be given a share of the purchase price. A blank field
+# means no price; INVALID_PRICE marks something that isn't an amount.
+INVALID_PRICE = object()
+
+
+def parse_assigned_price(value):
+    value = (value or '').strip()
+    if not value:
+        return None
+    price = parse_decimal(value, default=None)
+    if price is None or price < 0:
+        return INVALID_PRICE
+    return round(price, 2)
+
+
+def assigned_price_errors(prices, purchase_price):
+    # Either no item has a price, or every item has one and they add up to
+    # the purchase price. Anything in between would leave part of the cost
+    # nowhere, so it isn't saved.
+    if all(price is None for price in prices):
+        return []
+    if any(price is INVALID_PRICE for price in prices):
+        return [_('Item prices must be amounts of 0 or more.')]
+    if any(price is None for price in prices):
+        return [_('Give every item a price, or leave them all empty.')]
+    assigned = sum(prices, Decimal('0.00'))
+    if assigned != purchase_price:
+        symbol, _code = currency_display()
+        return [_('The item prices add up to {assigned}, but the purchase price is {total}.',
+                  assigned=f'{symbol}{assigned:.2f}', total=f'{symbol}{purchase_price:.2f}')]
+    return []
+
+
 def save_item_cards(purchase, user_id, cards):
     # Run validate_item_cards first. Returns the number of items added.
     count = 0
@@ -367,6 +400,9 @@ def save_item_cards(purchase, user_id, cards):
             notes=fields.get('notes'),
             quantity=parse_quantity(fields.get('quantity')),
         )
+        # Checked with assigned_price_errors first; only bundles use it
+        if purchase.purchase_type == PurchaseType.BUNDLE:
+            item.assigned_price = parse_assigned_price(fields.get('assigned_price'))
         db.session.add(item)
 
         listings = {}
@@ -500,13 +536,14 @@ def monthly_chart_data(sales, purchases, months):
             month = 12
             year -= 1
 
-    # Bundle sales have no profit of their own, since the cost belongs to the
-    # whole bundle. Each one only counts as profit for the part of its proceeds
-    # that comes after the bundle's revenue has covered its cost.
+    # Sales from a bundle without item prices have no profit of their own,
+    # since the cost belongs to the whole bundle. Each one only counts as
+    # profit for the part of its proceeds that comes after the bundle's
+    # revenue has covered its cost.
     bundle_sale_profit = {}
     bundle_sales = {}
     for sale in sales:
-        if sale.item.is_bundle:
+        if not sale.item.has_own_cost:
             bundle_sales.setdefault(sale.item.purchase, []).append(sale)
     for purchase, purchase_sales in bundle_sales.items():
         cost = purchase.total_cost
@@ -530,11 +567,16 @@ def monthly_chart_data(sales, purchases, months):
             continue
         if sale.item.is_bundle:
             monthly_bundle_revenue[label] += float(sale.net_proceeds)
-            monthly_bundle_profit[label] += float(bundle_sale_profit[sale.id])
+            if sale.item.has_own_cost:
+                # The bundle's price was split over its items, so the sale has its own profit
+                if sale.profit is not None:
+                    monthly_bundle_profit[label] += float(sale.profit)
+            else:
+                monthly_bundle_profit[label] += float(bundle_sale_profit[sale.id])
         else:
             monthly_revenue[label] += float(sale.net_proceeds)
-        if sale.profit is not None:
-            monthly_profit[label] += float(sale.profit)
+            if sale.profit is not None:
+                monthly_profit[label] += float(sale.profit)
     # Profit is split the same way as revenue, so bundles stack on top
     chart_values = [round(monthly_profit[label], 2) for label in chart_labels]
     bundle_chart_values = [round(monthly_bundle_profit[label], 2) for label in chart_labels]
@@ -966,6 +1008,9 @@ def delete_item(item_id):
         # Convert purchase type to Single if needed
         if purchase.purchase_type == PurchaseType.BUNDLE and len(purchase.items) == 2:
             purchase.purchase_type = PurchaseType.SINGLE
+            # A single item's cost is the whole purchase, so a share means nothing
+            for other in purchase.items:
+                other.assigned_price = None
         db.session.delete(item)
     db.session.commit()
     flash(_("Item and its purchase deleted.") if deleting_purchase else _("Item deleted."), "success")
@@ -1050,6 +1095,10 @@ def new_purchase():
         errors = validate_item_cards(cards) if save_items else []
         if save_items and not filled_cards:
             errors.insert(0, _('Add at least one item, or save the purchase without items.'))
+        # Item prices only mean something in a bundle
+        if save_items and (purchase_type == PurchaseType.BUNDLE or len(filled_cards) > 1):
+            prices = [parse_assigned_price(card['fields'].get('assigned_price')) for card in filled_cards]
+            errors += assigned_price_errors(prices, round(parse_decimal(request.form.get('purchase_price')), 2))
 
         if not errors:
             # A single purchase holds one item, so more than one makes it a bundle
@@ -1090,6 +1139,7 @@ def new_purchase():
         purchase_type=purchase_type,
         form=request.form,
         cards=cards,
+        show_item_prices=True,
         **get_purchase_form_options(current_user.id),
     )
 
@@ -1110,6 +1160,7 @@ def view_purchase(purchase_id):
     # Convert purchase type to Single if needed
     if purchase.purchase_type == PurchaseType.BUNDLE and len(purchase.items) == 1:
         purchase.purchase_type = PurchaseType.SINGLE
+        purchase.items[0].assigned_price = None
         db.session.commit()
 
     return render_template(
@@ -1139,6 +1190,33 @@ def edit_purchase(purchase_id):
     db.session.commit()
     flash(_('Purchase updated.'), 'success')
     return redirect(url_for('view_purchase', purchase_id=purchase.id))
+
+# Split a bundle's price over its items, so each item has its own cost and profit
+@app.route('/purchases/<int:purchase_id>/prices', methods=['POST'])
+@login_required
+def assign_prices(purchase_id):
+    purchase = Purchase.query.filter_by(id=purchase_id, user_id=current_user.id).first_or_404()
+    purchase_page = url_for('view_purchase', purchase_id=purchase.id)
+    if purchase.purchase_type != PurchaseType.BUNDLE:
+        flash(_('Only a bundle can split its price over its items.'), 'warning')
+        return redirect(purchase_page)
+
+    if 'clear' in request.form:
+        prices = [None] * len(purchase.items)
+    else:
+        prices = [parse_assigned_price(request.form.get(f'price-{item.id}')) for item in purchase.items]
+        errors = assigned_price_errors(prices, purchase.purchase_price)
+        if errors:
+            for error in errors:
+                flash(error, 'danger')
+            return redirect(purchase_page)
+
+    for item, price in zip(purchase.items, prices):
+        item.assigned_price = price
+    db.session.commit()
+    flash(_('Item prices cleared.') if prices[0] is None else _('Item prices saved.'), 'success')
+    return redirect(purchase_page)
+
 
 @app.route("/purchases/<int:purchase_id>/add", methods=["GET", "POST"])
 @login_required
@@ -1698,9 +1776,8 @@ def export_csv():
         platform = (
             listing.platform if listing else None
         ) or (purchase.platform if purchase else None) or ""
-        buy_price_unit = ""
-        if purchase and purchase.purchase_type == PurchaseType.SINGLE and item.quantity:
-            buy_price_unit = csv_money(purchase.total_cost / item.quantity)
+        # Blank for bundle items without a price, whose cost is the bundle's
+        buy_price_unit = csv_money(item.unit_cost)
 
         writer.writerow([
             purchase.name if purchase and purchase.purchase_type == PurchaseType.BUNDLE else "Individual",
@@ -1770,7 +1847,7 @@ def sheet_rows(user_id):
             item.status.value,
             (listing.platform if listing else None) or purchase.platform,
             item.shelf.name if item.shelf else None,
-            money(purchase.total_cost / item.quantity) if single and item.quantity else None,
+            money(item.unit_cost),
             money(listing.listing_price if listing else None),
             money(kept_sale_price(item)),
             money(item.realized_profit),

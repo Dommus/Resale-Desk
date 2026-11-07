@@ -47,11 +47,7 @@
                     <table class="table table-sm align-middle app-fit-table purchase-items-table mb-0">
                         <thead>
                             <tr>
-                                {% if purchase.purchase_type.value == 'Single' %}
                                 <th>{{ _('ID') }}</th><th>{{ _('Code') }}</th><th>{{ _('Name') }}</th><th>{{ _('Quantity') }}</th><th>{{ _('Category') }}</th><th>{{ _('Purchase Cost') }}</th><th>{{ _('Profit') }}</th><th>{{ _('Status') }}</th><th></th>
-                                {% elif purchase.purchase_type.value == 'Bundle' %}
-                                <th>{{ _('ID') }}</th><th>{{ _('Code') }}</th><th>{{ _('Name') }}</th><th>{{ _('Quantity') }}</th><th>{{ _('Category') }}</th><th>{{ _('Profit') }}</th><th>{{ _('Status') }}</th><th></th>
-                                {% endif %}
                             </tr>
                         </thead>
                         <tbody>
@@ -62,11 +58,12 @@
                                 <td data-label="{{ _('Name') }}">{{ item.name }}</td>
                                 <td data-label="{{ _('Quantity') }}">{{ item.available_quantity }} / {{ item.quantity }}{% if item.quantity_sold %} {{ _('sold') }}{% endif %}{% if item.is_written_off %} &middot; {{ _('{count} written off', count=item.quantity_written_off) }}{% endif %}</td>
                                 <td data-label="{{ _('Category') }}">{{ item.category or "-" }}</td>
-                                {% if purchase.purchase_type.value == 'Single' %}               
-                                <td data-label="{{ _('Purchase cost') }}">{{ currency_symbol }}{{ "%.2f"|format(item.purchase_cost) }}</td>
-                                {% endif %}
+                                <td data-label="{{ _('Purchase cost') }}">
+                                    {% if item.purchase_cost is not none %}{{ currency_symbol }}{{ "%.2f"|format(item.purchase_cost) }}
+                                    {% else %}<span class="text-muted" title="{{ _('Part of the bundle cost') }}">-</span>{% endif %}
+                                </td>
                                 <td data-label="{{ _('Profit') }}">
-                                    {% if purchase.purchase_type.value == 'Bundle' %}
+                                    {% if not item.has_own_cost %}
                                     <span class="text-muted" title="{{ _('Calculated on the purchase') }}">{{ _('Bundle') }}</span>
                                     {% elif item.realized_profit is not none %}
                                     <span class="{{ 'text-success' if item.realized_profit >= 0 else 'text-danger' }}">{{ currency_symbol }}{{ "%.2f"|format(item.realized_profit) }}</span>
@@ -108,6 +105,53 @@
             </div>
         </div>
     </div>
+
+    {% if purchase.purchase_type.value == 'Bundle' and purchase.items %}
+    <div class="col-12">
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <h6 class="card-title">{{ _('Item Prices') }}</h6>
+                {% set price_text = currency_symbol ~ "%.2f"|format(purchase.purchase_price or 0) %}
+                {% if purchase.has_assigned_prices %}
+                <p class="text-muted small">{{ _("The {price} purchase price is split over the items, so each item has its own cost and profit. Shipping is shared in proportion to the prices.", price=price_text) }}</p>
+                {% elif purchase.items|selectattr('assigned_price', 'ne', none)|list %}
+                <div class="alert alert-warning small" role="alert">
+                    {{ _("The item prices add up to {assigned}, not the {price} purchase price, so profit is calculated for the bundle as a whole. Give every item a price that adds up to {price}.", assigned=currency_symbol ~ "%.2f"|format(purchase.assigned_total), price=price_text) }}
+                </div>
+                {% else %}
+                <p class="text-muted small">{{ _("Split the {price} purchase price over the items to see each item's own cost and profit. Until then, profit is calculated for the bundle as a whole.", price=price_text) }}</p>
+                {% endif %}
+                <form method="post" action="{{ url_for('assign_prices', purchase_id=purchase.id) }}" id="item-prices-form"
+                      data-purchase-price="{{ purchase.purchase_price or 0 }}">
+                    <div class="row g-2">
+                        {% for item in purchase.items %}
+                        <div class="col-md-6 col-lg-4">
+                            <label class="form-label small mb-1" for="price-{{ item.id }}">
+                                {{ item.name }}{% if item.quantity > 1 %} <span class="text-muted">({{ _('all {count} units', count=item.quantity) }})</span>{% endif %}
+                            </label>
+                            <div class="input-group input-group-sm">
+                                <span class="input-group-text">{{ currency_symbol }}</span>
+                                <input type="number" step="0.01" min="0" inputmode="decimal" class="form-control" id="price-{{ item.id }}" name="price-{{ item.id }}"
+                                       value="{{ item.assigned_price if item.assigned_price is not none else '' }}" data-item-price data-units="{{ item.quantity }}">
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    <p class="small mt-2 mb-0" aria-live="polite" data-price-total
+                       data-text="{{ _('Assigned {assigned} of {total}', assigned=currency_symbol ~ '{assigned}', total=currency_symbol ~ '{total}') }}"></p>
+                    <div class="d-flex flex-wrap gap-2 mt-2">
+                        <button type="submit" class="btn btn-primary btn-sm">{{ _('Save Prices') }}</button>
+                        <button type="button" class="btn btn-outline-secondary btn-sm" data-split-evenly>{{ _('Split evenly') }}</button>
+                        {% if purchase.items|selectattr('assigned_price', 'ne', none)|list %}
+                        <button type="submit" name="clear" value="1" class="btn btn-link btn-sm text-danger" formnovalidate
+                                onclick='return confirm({{ _("Clear the item prices? Profit goes back to being calculated for the bundle as a whole.")|tojson }});'>{{ _('Clear prices') }}</button>
+                        {% endif %}
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    {% endif %}
 
     <div class="col-lg-8">
         <div class="card shadow-sm">
@@ -191,6 +235,45 @@
                 ? {{ _('Show all {count} items', count=purchase.items|length)|tojson }}
                 : {{ _('Show fewer items')|tojson }};
         });
+    })();
+</script>
+{% endif %}
+{% if purchase.purchase_type.value == 'Bundle' and purchase.items %}
+<script>
+    // Item prices: a running total, and "Split evenly" by units
+    (() => {
+        const form = document.getElementById("item-prices-form");
+        const inputs = Array.from(form.querySelectorAll("[data-item-price]"));
+        const totalText = form.querySelector("[data-price-total]");
+        // Worked out in cents, so the total never shows rounding noise
+        const totalCents = Math.round(parseFloat(form.dataset.purchasePrice) * 100);
+        const cents = input => Math.round((parseFloat(input.value) || 0) * 100);
+
+        function showTotal() {
+            const assigned = inputs.reduce((sum, input) => sum + cents(input), 0);
+            totalText.textContent = totalText.dataset.text
+                .replace("{assigned}", (assigned / 100).toFixed(2))
+                .replace("{total}", (totalCents / 100).toFixed(2));
+            totalText.classList.toggle("text-danger", assigned !== totalCents);
+            totalText.classList.toggle("text-success", assigned === totalCents);
+        }
+
+        form.querySelector("[data-split-evenly]").addEventListener("click", () => {
+            const units = inputs.reduce((sum, input) => sum + Number(input.dataset.units), 0);
+            let left = totalCents;
+            inputs.forEach((input, index) => {
+                // The last item takes the rounding, so the prices add up exactly
+                const share = index === inputs.length - 1
+                    ? left
+                    : Math.floor(totalCents * Number(input.dataset.units) / units);
+                left -= share;
+                input.value = (share / 100).toFixed(2);
+            });
+            showTotal();
+        });
+
+        form.addEventListener("input", showTotal);
+        showTotal();
     })();
 </script>
 {% endif %}

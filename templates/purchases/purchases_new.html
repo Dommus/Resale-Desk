@@ -77,7 +77,8 @@
     <div class="purchase-form-bar">
         <div class="purchase-form-summary" aria-live="polite"
              data-summary data-currency="{{ currency_symbol }}"
-             data-one-item="{{ _('1 item') }}" data-many-items="{{ _('{count} items', count='{count}') }}">
+             data-one-item="{{ _('1 item') }}" data-many-items="{{ _('{count} items', count='{count}') }}"
+             data-assigned="{{ _('item prices {assigned} of {total}', assigned=currency_symbol ~ '{assigned}', total=currency_symbol ~ '{total}') }}">
         </div>
         <button type="submit" class="btn btn-primary">{{ _('Save Purchase') }}</button>
     </div>

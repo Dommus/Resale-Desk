@@ -155,8 +155,8 @@
                     <!-- Status -->
                     <td data-label="{{ _('Status') }}" data-mobile="badge" data-sort-value="{{ _(item.status.value) }}"><span class="badge status-badge-{{ item.status.value|replace(' ', '-') }}">{{ _(item.status.value) }}</span></td>
                     <!-- Cost -->
-                    <td data-label="{{ _('Purchase cost') }}" data-mobile="meta" data-mobile-label="{{ _('Cost') }}" data-sort-value="{{ item.purchase_cost if not item.is_bundle and item.purchase_cost is not none else '' }}">
-                        {% if item.is_bundle %}
+                    <td data-label="{{ _('Purchase cost') }}" data-mobile="meta" data-mobile-label="{{ _('Cost') }}" data-sort-value="{{ item.purchase_cost if item.purchase_cost is not none else '' }}">
+                        {% if not item.has_own_cost %}
                         <span class="text-muted" title="{{ item.purchase.display_name }}">{{ _('Bundle: {name}', name=item.purchase.display_name) }}</span>
                         {% elif item.unit_cost is not none %}
                         {{ currency_symbol }}{{ "%.2f"|format(item.unit_cost) }}
@@ -167,7 +167,7 @@
                     <!-- Profit -->
                     {% set profit = item.realized_profit %}
                     <td data-label="{{ _('Profit') }}" data-mobile="amount" data-sort-value="{{ profit if profit is not none else '' }}">
-                        {% if item.is_bundle %}
+                        {% if not item.has_own_cost %}
                             <span class="text-muted" title="{{ _('Calculated on the purchase') }}">{{ _('Bundle') }}</span>
                         {% elif profit is not none %}
                             <span class="{{ 'text-success' if profit >= 0 else 'text-danger' }}">{{ currency_symbol }}{{ "%.2f"|format(profit) }}</span>

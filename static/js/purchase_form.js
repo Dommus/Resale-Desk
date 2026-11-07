@@ -56,6 +56,16 @@
             const total = Array.from(costs).reduce((sum, input) => sum + (parseFloat(input.value) || 0), 0);
             parts.push(summary.dataset.currency + total.toFixed(2));
         }
+        // A bundle's item prices must add up to its purchase price (worked out in cents)
+        const prices = activeCards().map(card => card.querySelector('[data-assigned-price]')).filter(input => input?.value.trim());
+        if (summary.dataset.assigned && form.dataset.type === 'bundle' && prices.length) {
+            const cents = value => Math.round((parseFloat(value) || 0) * 100);
+            const assigned = prices.reduce((sum, input) => sum + cents(input.value), 0);
+            const price = cents(form.querySelector('[name="purchase_price"]').value);
+            parts.push(summary.dataset.assigned
+                .replace('{assigned}', (assigned / 100).toFixed(2))
+                .replace('{total}', (price / 100).toFixed(2)));
+        }
         summary.textContent = parts.join(' · ');
     }
 

@@ -57,12 +57,12 @@
 <div class="row g-3 mb-4">
     <div class="col-md-3">
         <div class="card card-kpi"><div class="card-body">
-            <div class="kpi-label">{% if item.is_bundle %}{{ _('Bundle Purchase Cost') }}{% else %}{{ _('Purchase Cost') }}{% endif %}</div>
-            <div class="kpi-value">{% if item.is_bundle %}{{ currency_symbol }}{{ "%.2f"|format(item.purchase.total_cost) }}{% elif item.total_cost_basis is not none %}{{ currency_symbol }}{{ "%.2f"|format(item.total_cost_basis) }}{% else %}-{% endif %}</div>
-            <div class="text-muted small">{% if item.is_bundle %}{{ _('From bundle: {name}', name=item.purchase.display_name) }}{% else %}{{ _('{available} available of {total}', available=item.available_quantity, total=item.quantity) }}{% if item.unit_cost is not none %} · {{ _('{price} per unit', price=currency_symbol ~ "%.2f"|format(item.unit_cost)) }}{% endif %}{% endif %}</div>
+            <div class="kpi-label">{% if not item.has_own_cost %}{{ _('Bundle Purchase Cost') }}{% else %}{{ _('Purchase Cost') }}{% endif %}</div>
+            <div class="kpi-value">{% if not item.has_own_cost %}{{ currency_symbol }}{{ "%.2f"|format(item.purchase.total_cost) }}{% elif item.total_cost_basis is not none %}{{ currency_symbol }}{{ "%.2f"|format(item.total_cost_basis) }}{% else %}-{% endif %}</div>
+            <div class="text-muted small">{% if item.is_bundle %}{{ _('From bundle: {name}', name=item.purchase.display_name) }}{% else %}{{ _('{available} available of {total}', available=item.available_quantity, total=item.quantity) }}{% endif %}{% if item.unit_cost is not none %} · {{ _('{price} per unit', price=currency_symbol ~ "%.2f"|format(item.unit_cost)) }}{% endif %}</div>
         </div></div>
     </div>
-    {% if item.is_bundle %}
+    {% if not item.has_own_cost %}
     <div class="col-md-3">
         <div class="card card-kpi"><div class="card-body">
             <div class="kpi-label">{{ _('Bundle Net Proceeds') }}</div>
@@ -295,7 +295,7 @@
                 {% if item.is_written_off %}
                 <p class="mb-1">
                     {{ _('{count} {units} written off.', count=item.quantity_written_off, units=_('unit') if item.quantity_written_off == 1 else _('units')) }}
-                    {% if item.is_bundle %}
+                    {% if not item.has_own_cost %}
                     <span class="text-muted">{{ _('The cost is part of the bundle profit.') }}</span>
                     {% elif item.write_off_loss is not none %}
                     {{ _('Loss:') }} <span class="text-danger">{{ currency_symbol }}{{ "%.2f"|format(item.write_off_loss) }}</span>
@@ -307,7 +307,7 @@
                 {% elif item.available_quantity > 0 %}
                 {% set loss = item.cost_for_quantity(item.available_quantity) %}
                 <p class="text-muted small">{{ _("For items that won't be sold: lost, damaged, unsellable, donated or kept. All {count} remaining {units} leave inventory, and their cost counts as a loss.", count=item.available_quantity, units=_('unit') if item.available_quantity == 1 else _('units')) }}</p>
-                {% if item.is_bundle %}
+                {% if not item.has_own_cost %}
                 {% set write_off_message = _('Write off this item? Its cost is part of the bundle profit.') %}
                 {% elif loss is not none %}
                 {% set write_off_message = _('Write off this item? {amount} will be recorded as a loss.', amount=currency_symbol ~ '%.2f'|format(loss)) %}
