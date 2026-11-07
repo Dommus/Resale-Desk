@@ -38,9 +38,9 @@
 </form>
 
 {{ item_templates(shelves) }}
-{{ suggestion_datalist('category-options', used_categories) }}
-{{ suggestion_datalist('brand-options', used_brands) }}
-{{ suggestion_datalist('listing-platform-options', used_listing_platforms) }}
+{{ suggestion_datalist('category-options', used_categories, 'category') }}
+{{ suggestion_datalist('brand-options', used_brands, 'brand') }}
+{{ suggestion_datalist('listing-platform-options', used_listing_platforms, 'listing_platform') }}
 
 {% endblock %}
 

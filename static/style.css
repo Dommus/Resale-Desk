@@ -2109,3 +2109,40 @@ code.inv-code {
 .dashboard-panel select[name="months"] {
     width: auto;
 }
+
+/* ---------- Previous-value dropdowns: each value with an [X] to remove it ---------- */
+.suggestion-menu {
+    max-height: 16rem;
+    overflow-y: auto;
+}
+
+.suggestion-row {
+    display: flex;
+    align-items: stretch;
+}
+
+.suggestion-row .suggestion-option {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.suggestion-remove {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+    min-width: 36px;
+    min-height: 36px;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: var(--bs-secondary-color);
+}
+
+.suggestion-remove:hover,
+.suggestion-remove:focus-visible {
+    background: var(--bs-danger-bg-subtle);
+    color: var(--bs-danger);
+}

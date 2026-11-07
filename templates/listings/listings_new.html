@@ -1,4 +1,5 @@
 {% extends "layout.html" %}
+{% from "helpers/form_macros.html" import suggestion_input, suggestion_datalist %}
 {% block title %}{{ _('New Listing') }}{% endblock %}
 {% block content %}
 
@@ -11,10 +12,8 @@
             <div class="row g-3">
                 <div class="col-md-6">
                     <label class="form-label">{{ _('Platform') }}</label>
-                    <input type="text" class="form-control" name="platform" list="platformOptions" placeholder="{{ _('e.g. Vinted, eBay, OLX') }}" required>
-                    <datalist id="platformOptions">
-                        <option value="Vinted"><option value="eBay"><option value="OLX"><option value="Facebook Marketplace">
-                    </datalist>
+                    {{ suggestion_input('platform', '', option_id='listing-platform-options', placeholder=_('e.g. Vinted, eBay, OLX'),
+                                        attrs={'maxlength': '80', 'required': 'required'}) }}
                 </div>
                 <div class="col-md-6">
                     <label class="form-label">{{ _('Listing ID (from the platform)') }} <span class="text-muted">{{ _('(optional)') }}</span></label>
@@ -39,4 +38,10 @@
     </div>
 </div>
 
+{{ suggestion_datalist('listing-platform-options', used_listing_platforms, 'listing_platform') }}
+
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/suggestions.js') }}"></script>
 {% endblock %}

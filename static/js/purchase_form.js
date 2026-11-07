@@ -16,10 +16,12 @@
     let nextListing = highestIndex('[data-listing-row]') + 1;
 
     const cards = () => Array.from(itemList.querySelectorAll('[data-item-card]'));
-    // A Single purchase hides the extra cards but keeps what's in them, in case of a switch back
-    const activeCards = () => cards().filter(card => !card.hidden);
-    const filledCards = () => activeCards().filter(card => card.querySelector('[data-item-name]').value.trim());
+    // In a Single purchase each card is a purchase of its own
+    const isBundle = () => form.dataset.type === 'bundle';
+    const filledCards = () => cards().filter(card => card.querySelector('[data-item-name]').value.trim());
     const field = (card, name) => card.querySelector(`[name="items-${card.dataset.index}-${name}"]`);
+    const cents = value => Math.round((parseFloat(value) || 0) * 100);
+    const money = amount => (amount / 100).toFixed(2);
 
     function fromTemplate(template, replacements) {
         let html = template.innerHTML;
@@ -32,50 +34,88 @@
     }
 
     function refresh() {
-        const bundle = form.dataset.type === 'bundle';
+        const bundle = isBundle();
         form.querySelectorAll('[data-bundle-only]').forEach(el => { el.hidden = !bundle; });
         form.querySelectorAll('[data-single-only]').forEach(el => { el.hidden = bundle; });
         const all = cards();
+        // "Item 2" in a bundle, "Purchase 2" when there are several singles, just "Item" for one single
+        const label = bundle || all.length === 1 ? form.dataset.labelItem : form.dataset.labelPurchase;
         all.forEach((card, position) => {
-            const hide = !bundle && position > 0;
-            card.hidden = hide;
-            // Disabled fields aren't sent, so a hidden card is never saved
-            card.querySelector('[data-card-fields]').disabled = hide;
+            if (label) card.querySelector('[data-item-label]').textContent = label;
+            card.querySelector('[data-item-number-wrap]').hidden = !bundle && all.length === 1;
             card.querySelector('[data-item-number]').textContent = position + 1;
             card.querySelector('[data-action="remove-item"]').disabled = all.length === 1;
         });
         updateSummary();
     }
 
+    const sumCents = inputs => inputs.reduce((sum, input) => sum + cents(input.value), 0);
+
     function updateSummary() {
-        if (!summary) return;
         const count = filledCards().length;
-        const parts = [count === 1 ? summary.dataset.oneItem : summary.dataset.manyItems.replace('{count}', count)];
-        const costs = form.querySelectorAll('[data-cost]');
-        if (costs.length) {
-            const total = Array.from(costs).reduce((sum, input) => sum + (parseFloat(input.value) || 0), 0);
-            parts.push(summary.dataset.currency + total.toFixed(2));
+        // Several singles are saved as that many purchases
+        const singles = !isBundle() && count > 1 && summary?.dataset.manyPurchases;
+        const submit = form.querySelector('[data-submit]');
+        if (submit) {
+            submit.textContent = singles ? submit.dataset.saveMany.replace('{count}', count) : submit.dataset.saveOne;
         }
+        if (!summary) return;
+        const parts = [singles ? summary.dataset.manyPurchases.replace('{count}', count)
+            : count === 1 ? summary.dataset.oneItem : summary.dataset.manyItems.replace('{count}', count)];
+        // A bundle's cost is at the top of the form, a single's in its card
+        const costs = isBundle()
+            ? Array.from(form.querySelectorAll('[data-cost]'))
+            : cards().flatMap(card => Array.from(card.querySelectorAll('[data-card-cost]')));
+        if (costs.length) parts.push(summary.dataset.currency + money(sumCents(costs)));
         // A bundle's item prices must add up to its purchase price (worked out in cents)
-        const prices = activeCards().map(card => card.querySelector('[data-assigned-price]')).filter(input => input?.value.trim());
-        if (summary.dataset.assigned && form.dataset.type === 'bundle' && prices.length) {
-            const cents = value => Math.round((parseFloat(value) || 0) * 100);
-            const assigned = prices.reduce((sum, input) => sum + cents(input.value), 0);
+        const prices = cards().map(card => card.querySelector('[data-assigned-price]')).filter(input => input?.value.trim());
+        if (summary.dataset.assigned && isBundle() && prices.length) {
             const price = cents(form.querySelector('[name="purchase_price"]').value);
             parts.push(summary.dataset.assigned
-                .replace('{assigned}', (assigned / 100).toFixed(2))
-                .replace('{total}', (price / 100).toFixed(2)));
+                .replace('{assigned}', money(sumCents(prices)))
+                .replace('{total}', money(price)));
         }
         summary.textContent = parts.join(' · ');
+    }
+
+    // Switching type keeps the prices typed so far: the singles' prices become
+    // the bundle's item prices and add up to its price, and back again
+    function carryPrices(toBundle) {
+        const all = cards();
+        const top = name => form.querySelector(`[name="${name}"]`);
+        const pairs = all.map(card => [card.querySelector('[data-card-price]'), card.querySelector('[data-assigned-price]')]);
+        if (!top('purchase_price') || pairs.some(([single, item]) => !single || !item)) return;
+        const fillEmpty = (input, value) => { if (!input.value.trim() && value) input.value = value; };
+        if (toBundle) {
+            pairs.forEach(([single, item]) => fillEmpty(item, single.value));
+            const shipping = all.map(card => card.querySelector('[data-card-shipping]'));
+            if (pairs.some(([single]) => single.value.trim())) fillEmpty(top('purchase_price'), money(sumCents(pairs.map(([single]) => single))));
+            if (shipping.some(input => input.value.trim())) fillEmpty(top('shipping_cost'), money(sumCents(shipping)));
+        } else if (all.length === 1) {
+            fillEmpty(pairs[0][0], top('purchase_price').value);
+            fillEmpty(all[0].querySelector('[data-card-shipping]'), top('shipping_cost').value);
+        } else {
+            pairs.forEach(([single, item]) => fillEmpty(single, item.value));
+        }
+    }
+
+    // A single's purchase name follows its item name until it's changed
+    function syncPurchaseName(card) {
+        const input = card.querySelector('[data-purchase-name]');
+        if (input && !input.hasAttribute('data-touched')) input.value = card.querySelector('[data-item-name]').value;
     }
 
     function addCard(copyFrom) {
         const card = fromTemplate(cardTemplate, { __I__: nextItem++ });
         if (copyFrom) {
-            // Duplicate: same kind of item, so keep everything but the name and notes
-            for (const name of ['quantity', 'category', 'brand', 'condition', 'shelf_id']) {
-                field(card, name).value = field(copyFrom, name).value;
+            // Duplicate: same kind of item, so keep everything but the name, notes and price
+            for (const name of ['quantity', 'category', 'brand', 'condition', 'shelf_id', 'shipping_cost']) {
+                if (field(card, name)) field(card, name).value = field(copyFrom, name).value;
             }
+        } else if (!isBundle()) {
+            // Singles bought together usually have the same shipping
+            const last = cards().at(-1);
+            if (last && field(card, 'shipping_cost')) field(card, 'shipping_cost').value = field(last, 'shipping_cost').value;
         }
         // Keep a long bundle short: fold the cards that already have a name
         cards().forEach(other => {
@@ -161,7 +201,12 @@
     form.addEventListener('input', event => {
         const target = event.target;
         const card = target.closest('[data-item-card]');
-        if (target.matches('[data-item-name]')) card.querySelector('[data-item-title]').textContent = target.value;
+        if (target.matches('[data-item-name]')) {
+            card.querySelector('[data-item-title]').textContent = target.value;
+            syncPurchaseName(card);
+        }
+        // An emptied purchase name follows the item name again
+        if (target.matches('[data-purchase-name]')) target.toggleAttribute('data-touched', target.value.trim() !== '');
         if (target.matches('[data-item-quantity]')) syncSaleQuantity(card);
         if (target.matches('[data-listing-platform]')) syncSaleListings(card);
         updateSummary();
@@ -170,8 +215,11 @@
     form.addEventListener('change', event => {
         const target = event.target;
         if (target.matches('[data-sale-listing]')) target.setAttribute('data-touched', '');
+        // A platform picked from the dropdown (static/js/suggestions.js)
+        if (target.matches('[data-listing-platform]')) syncSaleListings(target.closest('[data-item-card]'));
         if (target.matches('[data-type-toggle]')) {
             form.dataset.type = target.value;
+            carryPrices(target.value === 'bundle');
             refresh();
             // A reload keeps the chosen type
             const url = new URL(location.href);
@@ -207,6 +255,11 @@
     // The browser may restore a different type than the server rendered
     const checkedType = form.querySelector('[data-type-toggle]:checked');
     if (checkedType) form.dataset.type = checkedType.value;
-    cards().forEach(syncSaleQuantity);
+    cards().forEach(card => {
+        syncSaleQuantity(card);
+        // A name sent back after a mistake that differs from the item's was typed in
+        const name = card.querySelector('[data-purchase-name]');
+        if (name?.value.trim() && name.value !== card.querySelector('[data-item-name]').value) name.setAttribute('data-touched', '');
+    });
     refresh();
 })();

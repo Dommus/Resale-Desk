@@ -61,6 +61,19 @@ class User(UserMixin, db.Model):
     purchases: Mapped[List["Purchase"]] = relationship("Purchase", back_populates="owner", cascade="all, delete-orphan", lazy=True)
     items: Mapped[List["Item"]] = relationship("Item", back_populates="owner", cascade="all, delete-orphan", lazy=True)
 
+class HiddenSuggestion(db.Model):
+    # A previously used value the user removed from a field's dropdown
+    # (e.g. a misspelt brand). The records that use it keep it; it's only
+    # left out of the suggestions until it's saved again.
+    __tablename__ = 'hidden_suggestions'
+    __table_args__ = (db.UniqueConstraint('user_id', 'field', 'value', name='uq_hidden_suggestion'),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey('users.id', ondelete='CASCADE'), nullable=False)
+    field: Mapped[str] = mapped_column(String(32), nullable=False)
+    value: Mapped[str] = mapped_column(String(128), nullable=False)
+
+
 class Shelf(db.Model):
     __tablename__ = 'shelves'
 

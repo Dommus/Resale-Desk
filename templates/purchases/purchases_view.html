@@ -211,8 +211,8 @@
     </div>
 </div>
 
-{{ suggestion_datalist('seller-options', used_sellers) }}
-{{ suggestion_datalist('platform-options', used_platforms) }}
+{{ suggestion_datalist('seller-options', used_sellers, 'seller') }}
+{{ suggestion_datalist('platform-options', used_platforms, 'platform') }}
 
 <div class="mt-4">
     <a href="{{ url_for('purchases') }}" class="btn btn-link px-0">&larr; {{ _('Back to Purchases') }}</a>

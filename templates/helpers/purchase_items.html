@@ -10,7 +10,8 @@
 {% set p = 'items-%s-'|format(i) %}
 <details class="card item-card mb-3" data-item-card data-index="{{ i }}" open>
     <summary class="item-card-header">
-        <span class="item-card-number">{{ _('Item') }}<span data-bundle-only> <span data-item-number>1</span></span></span>
+        {# purchase_form.js picks the label: "Item 2" in a bundle, "Purchase 2" when several singles #}
+        <span class="item-card-number"><span data-item-label>{{ _('Item') }}</span><span data-item-number-wrap hidden> <span data-item-number>1</span></span></span>
         <span class="item-card-title text-truncate" data-item-title>{{ values.get('name', '') }}</span>
         <i class="bi bi-chevron-down item-card-chevron" aria-hidden="true"></i>
     </summary>
@@ -26,6 +27,24 @@
                 <input type="number" min="1" step="1" inputmode="numeric" class="form-control" name="{{ p }}quantity" id="{{ p }}quantity"
                        value="{{ values.get('quantity', '1') }}" data-item-quantity required>
             </div>
+            {% if show_purchase_fields %}
+            {# Single purchases: each card is a purchase of its own #}
+            <div class="col-6 col-md-2" data-single-only>
+                <label class="form-label" for="{{ p }}purchase_price">{{ _('Purchase Price ({symbol})', symbol=currency_symbol) }}</label>
+                <input type="number" step="0.01" min="0" inputmode="decimal" class="form-control" name="{{ p }}purchase_price" id="{{ p }}purchase_price"
+                       value="{{ values.get('purchase_price', '') }}" placeholder="0.00" data-card-cost data-card-price>
+            </div>
+            <div class="col-6 col-md-2" data-single-only>
+                <label class="form-label" for="{{ p }}shipping_cost">{{ _('Shipping Cost ({symbol})', symbol=currency_symbol) }}</label>
+                <input type="number" step="0.01" min="0" inputmode="decimal" class="form-control" name="{{ p }}shipping_cost" id="{{ p }}shipping_cost"
+                       value="{{ values.get('shipping_cost', '') }}" placeholder="0.00" data-card-cost data-card-shipping>
+            </div>
+            <div class="col-12 col-md-4" data-single-only>
+                <label class="form-label" for="{{ p }}purchase_name">{{ _('Purchase Name') }}</label>
+                <input type="text" class="form-control" name="{{ p }}purchase_name" id="{{ p }}purchase_name" maxlength="128"
+                       value="{{ values.get('purchase_name', '') }}" placeholder="{{ _('Same as the item name') }}" data-purchase-name>
+            </div>
+            {% endif %}
             <div class="col-6 col-md-4">
                 <label class="form-label" for="{{ p }}category">{{ _('Category') }}</label>
                 {{ suggestion_input(p ~ 'category', values.get('category'), option_id='category-options', placeholder=_('e.g. Video Game'), id=p ~ 'category') }}
@@ -86,7 +105,7 @@
             </fieldset>
         </div>
 
-        <div class="item-card-actions" data-bundle-only>
+        <div class="item-card-actions">
             <button type="button" class="btn btn-outline-secondary btn-sm item-card-button" data-action="duplicate-item">
                 <i class="bi bi-copy" aria-hidden="true"></i> {{ _('Duplicate') }}
             </button>
@@ -113,9 +132,9 @@
     <div class="row g-2">
         <div class="col-7 col-md-4">
             <label class="form-label" for="{{ p }}platform">{{ _('Platform') }} <span class="required-symbol">*</span></label>
-            <input type="text" class="form-control" name="{{ p }}platform" id="{{ p }}platform" maxlength="80"
-                   list="listing-platform-options" value="{{ values.get('platform', '') }}"
-                   placeholder="{{ _('e.g. Vinted, eBay, OLX') }}" data-listing-platform required>
+            {{ suggestion_input(p ~ 'platform', values.get('platform'), option_id='listing-platform-options',
+                                placeholder=_('e.g. Vinted, eBay, OLX'), id=p ~ 'platform',
+                                attrs={'maxlength': '80', 'data-listing-platform': '', 'required': 'required'}) }}
         </div>
         <div class="col-5 col-md-2">
             <label class="form-label" for="{{ p }}listing_price">{{ _('Price ({symbol})', symbol=currency_symbol) }}</label>

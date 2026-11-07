@@ -37,7 +37,7 @@ def _(text, **values):
     return text.format(**values) if values else text
 
 
-# Strings used by static/js/table_controls.js and static/js/search_preview.js
+# Strings used by static/js/table_controls.js, search_preview.js and suggestions.js
 JS_STRINGS = [
     "Actions",
     "Columns",
@@ -48,6 +48,11 @@ JS_STRINGS = [
     "Recent searches",
     "Clear",
     "Clear recent searches",
+    # static/js/suggestions.js
+    'Remove "{value}" from the list',
+    "Remove from the list",
+    'Remove "{value}" from the list? Records that use it keep it.',
+    "The value could not be removed. Try again.",
 ]
 
 
@@ -386,6 +391,17 @@ PT = {
     "Add Items to Purchase #{id}": "Adicionar artigos à compra n.º {id}",
     "Save Items": "Guardar artigos",
     "This purchase will be converted to a Bundle.": "Esta compra será convertida num Lote.",
+    "Each item is a purchase of its own, with its own cost. Add more to save several at once; date, platform and seller apply to all of them.":
+        "Cada artigo é uma compra própria, com o seu próprio custo. Adicione mais para guardar várias de uma vez; a data, a plataforma e o vendedor aplicam-se a todas.",
+    "Same as the item name": "Igual ao nome do artigo",
+    "Add another purchase": "Adicionar outra compra",
+    "{count} purchases": "{count} compras",
+    "Save {count} Purchases": "Guardar {count} compras",
+    "{count} purchases saved.": "{count} compras guardadas.",
+    'Remove "{value}" from the list': 'Remover "{value}" da lista',
+    "Remove from the list": "Remover da lista",
+    'Remove "{value}" from the list? Records that use it keep it.': 'Remover "{value}" da lista? Os registos que o usam mantêm-no.',
+    "The value could not be removed. Try again.": "Não foi possível remover o valor. Tente novamente.",
 
     # Purchase page
     "Purchase #{id}": "Compra n.º {id}",

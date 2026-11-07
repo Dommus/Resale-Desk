@@ -145,7 +145,8 @@
                         <div class="row g-2">
                             <div class="col-12 col-sm-6 col-xl-4">
                                 <label class="form-label small mb-1">{{ _('Platform') }}</label>
-                                <input form="edit-listing-{{ l.id }}" type="text" class="form-control form-control-sm" name="platform" value="{{ l.platform }}" required>
+                                {{ suggestion_input('platform', l.platform, 'listing-platform-options', small=true,
+                                                    attrs={'form': 'edit-listing-%s'|format(l.id), 'maxlength': '80', 'required': 'required'}) }}
                             </div>
                             <div class="col-12 col-sm-6 col-xl-4">
                                 <label class="form-label small mb-1">{{ _('Listing ID') }}</label>
@@ -392,8 +393,9 @@
                     </div>
                     <button type="submit" class="btn btn-primary">{{ _('Save Changes') }}</button>
                 </form>
-                {{ suggestion_datalist('category-options', used_categories) }}
-                {{ suggestion_datalist('brand-options', used_brands) }}
+                {{ suggestion_datalist('category-options', used_categories, 'category') }}
+                {{ suggestion_datalist('brand-options', used_brands, 'brand') }}
+                {{ suggestion_datalist('listing-platform-options', used_listing_platforms, 'listing_platform') }}
             </div>
         </div>
 

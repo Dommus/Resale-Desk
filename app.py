@@ -3,7 +3,7 @@ from datetime import datetime, date, timedelta
 from urllib.parse import urlparse
 
 # Imports from local python files
-from models import db, User, Shelf, Item, Purchase, ItemStatus, PurchaseType, Listing, ListingStatus, Sale
+from models import db, User, Shelf, Item, Purchase, ItemStatus, PurchaseType, Listing, ListingStatus, Sale, HiddenSuggestion
 from utilities import login_manager, parse_date, parse_decimal, parse_quantity, process_csv, currency_display, CURRENCY_SYMBOLS
 from translations import _, get_language, js_translations, LANGUAGES, LANGUAGE_COOKIE, HTML_LANG
 
@@ -11,8 +11,8 @@ from flask import Flask, Response, abort, jsonify, render_template, request, red
 from flask_login import login_user, logout_user, login_required, current_user
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
-from sqlalchemy import or_, and_, case, cast, func, select, String
-from sqlalchemy.orm import joinedload, selectinload
+from sqlalchemy import or_, and_, case, cast, event, func, inspect, select, String
+from sqlalchemy.orm import Session, joinedload, selectinload
 from markupsafe import Markup, escape
 from werkzeug.security import generate_password_hash, check_password_hash
 
@@ -124,6 +124,7 @@ def reset_user_data(user):
     db.session.flush()
     for record in Item.query.filter_by(user_id=user.id).all() + user.shelves:
         db.session.delete(record)
+    HiddenSuggestion.query.filter_by(user_id=user.id).delete()
     db.session.commit()
 
 
@@ -138,11 +139,28 @@ def owned_shelf_id(shelf_id, user_id):
 # Helper functions
 ##########################
 
-def get_used_values(model, column_name, user_id):
+# The fields whose dropdowns suggest previously used values, by the name the
+# page sends when one is removed: (model, column)
+SUGGESTION_FIELDS = {
+    'seller': (Purchase, 'seller'),
+    'platform': (Purchase, 'platform'),
+    'category': (Item, 'category'),
+    'brand': (Item, 'brand'),
+    'listing_platform': (Listing, 'platform'),
+}
+
+
+def hidden_suggestions(field, user_id):
+    rows = db.session.query(HiddenSuggestion.value).filter_by(user_id=user_id, field=field)
+    return {value for (value,) in rows}
+
+
+def get_used_values(model, column_name, user_id, field=None):
     # Let the database return the distinct values instead of loading every row
     column = getattr(model, column_name)
     rows = db.session.query(column).filter(model.user_id == user_id).distinct()
-    return sorted(value for (value,) in rows if value)
+    hidden = hidden_suggestions(field or column_name, user_id)
+    return sorted(value for (value,) in rows if value and value not in hidden)
 
 
 COMMON_LISTING_PLATFORMS = ['Vinted', 'eBay', 'OLX', 'Facebook Marketplace']
@@ -151,10 +169,11 @@ COMMON_LISTING_PLATFORMS = ['Vinted', 'eBay', 'OLX', 'Facebook Marketplace']
 def get_item_form_options(user_id):
     # Listings have no user_id, so their platforms are found through the items
     listing_platforms = db.session.query(Listing.platform).join(Item).filter(Item.user_id == user_id).distinct()
+    used = set(COMMON_LISTING_PLATFORMS) | {value for (value,) in listing_platforms if value}
     return {
         'used_categories': get_used_values(Item, 'category', user_id),
         'used_brands': get_used_values(Item, 'brand', user_id),
-        'used_listing_platforms': sorted(set(COMMON_LISTING_PLATFORMS) | {value for (value,) in listing_platforms if value}),
+        'used_listing_platforms': sorted(used - hidden_suggestions('listing_platform', user_id)),
     }
 
 
@@ -167,6 +186,32 @@ def get_purchase_form_options(user_id):
     })
     
     return options
+
+
+# A removed suggestion comes back once a record is saved with that value again,
+# whichever page saved it
+@event.listens_for(Session, 'before_flush')
+def restore_hidden_suggestions(session, flush_context, instances):
+    used = set()
+    for record in list(session.new) + list(session.dirty):
+        if isinstance(record, Listing):
+            user_id = record.item.user_id if record.item else None
+        else:
+            user_id = getattr(record, 'user_id', None)
+        for field, (model, column) in SUGGESTION_FIELDS.items():
+            if not isinstance(record, model):
+                continue
+            # Only a value that was just typed in, not one an edit left as it was
+            value = getattr(record, column)
+            if user_id and value and inspect(record).attrs[column].history.has_changes():
+                used.add((user_id, field, value))
+    if not used:
+        return
+    with session.no_autoflush:
+        for user_id, field, value in used:
+            hidden = session.query(HiddenSuggestion).filter_by(user_id=user_id, field=field, value=value).first()
+            if hidden:
+                session.delete(hidden)
 
 
 def parse_item_code(q):
@@ -1096,37 +1141,67 @@ def new_purchase():
         if save_items and not filled_cards:
             errors.insert(0, _('Add at least one item, or save the purchase without items.'))
         # Item prices only mean something in a bundle
-        if save_items and (purchase_type == PurchaseType.BUNDLE or len(filled_cards) > 1):
+        if save_items and purchase_type == PurchaseType.BUNDLE:
             prices = [parse_assigned_price(card['fields'].get('assigned_price')) for card in filled_cards]
             errors += assigned_price_errors(prices, round(parse_decimal(request.form.get('purchase_price')), 2))
 
         if not errors:
-            # A single purchase holds one item, so more than one makes it a bundle
-            if save_items and len(filled_cards) > 1:
-                purchase_type = PurchaseType.BUNDLE
-
+            # Shared by every purchase saved from the form
             raw_purchase_date = request.form.get('date')
-            purchase = Purchase(
+            shared = dict(
                 user_id=current_user.id,
                 date=parse_date(raw_purchase_date) if raw_purchase_date else None,
-                name=request.form.get('name', '').strip() or None,
                 seller=request.form.get('seller', '').strip() or None,
                 platform=request.form.get('platform', '').strip() or None,
-                purchase_type=purchase_type,
-                purchase_price=parse_decimal(request.form.get('purchase_price')),
-                shipping_cost=parse_decimal(request.form.get('shipping_cost')),
                 notes=request.form.get('purchaseNotes', '').strip() or None,
             )
-            db.session.add(purchase)
-            db.session.flush()
 
-            count = save_item_cards(purchase, current_user.id, cards) if save_items else 0
+            if purchase_type == PurchaseType.BUNDLE:
+                purchase = Purchase(
+                    **shared,
+                    name=request.form.get('name', '').strip() or None,
+                    purchase_type=purchase_type,
+                    purchase_price=parse_decimal(request.form.get('purchase_price')),
+                    shipping_cost=parse_decimal(request.form.get('shipping_cost')),
+                )
+                db.session.add(purchase)
+                db.session.flush()
+                count = save_item_cards(purchase, current_user.id, cards) if save_items else 0
+                db.session.commit()
+                if count:
+                    flash(_('{count} item(s) added to the purchase.', count=count), 'success')
+                else:
+                    flash(_('Purchase saved.'), 'success')
+                return redirect(url_for('view_purchase', purchase_id=purchase.id))
+
+            # Single: each card is a purchase of its own, with its own price,
+            # shipping and name. Without items, the first card's are used.
+            purchases = []
+            for card in (filled_cards if save_items else cards[:1]):
+                fields = card['fields']
+                purchase = Purchase(
+                    **shared,
+                    # Named after its item unless given a name
+                    name=(fields.get('purchase_name', '').strip() or fields.get('name', '').strip())[:128] or None,
+                    purchase_type=PurchaseType.SINGLE,
+                    purchase_price=parse_decimal(fields.get('purchase_price')),
+                    shipping_cost=parse_decimal(fields.get('shipping_cost')),
+                )
+                db.session.add(purchase)
+                db.session.flush()
+                if save_items:
+                    save_item_cards(purchase, current_user.id, [card])
+                purchases.append(purchase)
+            if not purchases:
+                purchase = Purchase(**shared, purchase_type=PurchaseType.SINGLE)
+                db.session.add(purchase)
+                purchases.append(purchase)
             db.session.commit()
-            if count:
-                flash(_('{count} item(s) added to the purchase.', count=count), 'success')
-            else:
+            if len(purchases) == 1:
                 flash(_('Purchase saved.'), 'success')
-            return redirect(url_for('view_purchase', purchase_id=purchase.id))
+                return redirect(url_for('view_purchase', purchase_id=purchases[0].id))
+            flash(_('{count} purchases saved.', count=len(purchases)), 'success')
+            return redirect(url_for('purchases'))
 
         # Show the form again with everything that was typed
         for error in errors:
@@ -1140,6 +1215,7 @@ def new_purchase():
         form=request.form,
         cards=cards,
         show_item_prices=True,
+        show_purchase_fields=True,
         **get_purchase_form_options(current_user.id),
     )
 
@@ -1260,6 +1336,24 @@ def add_items(purchase_id):
     )
 
 #########################
+#     Suggestions
+
+# The [X] on a dropdown option: stop suggesting a previously used value.
+# Records that use it keep it. Called by static/js/suggestions.js.
+@app.route('/suggestions/hide', methods=['POST'])
+@login_required
+def hide_suggestion():
+    field = request.form.get('field', '')
+    value = request.form.get('value', '').strip()
+    if field not in SUGGESTION_FIELDS or not value or len(value) > 128:
+        return jsonify(ok=False), 400
+    if not HiddenSuggestion.query.filter_by(user_id=current_user.id, field=field, value=value).first():
+        db.session.add(HiddenSuggestion(user_id=current_user.id, field=field, value=value))
+        db.session.commit()
+    return jsonify(ok=True)
+
+
+#########################
 #        Shelves
 
 @app.route('/shelves', methods=['GET', 'POST'])
@@ -1314,14 +1408,14 @@ def new_listing(item_id):
     if request.method == "POST":
         if not request.form.get("platform", "").strip():
             flash(_("Platform is required."), "danger")
-            return render_template("listings/listings_new.html", item=item)
+            return render_template("listings/listings_new.html", item=item, **get_item_form_options(current_user.id))
 
         add_listing(item, request.form)
         db.session.commit()
         flash(_("Listing added."), "success")
         return redirect(url_for("view_item", item_id=item.id))
 
-    return render_template("listings/listings_new.html", item=item)
+    return render_template("listings/listings_new.html", item=item, **get_item_form_options(current_user.id))
 
 
 @app.route('/listings/<int:listing_id>/edit', methods=["POST"])
