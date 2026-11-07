@@ -4,7 +4,7 @@ from decimal import Decimal, InvalidOperation
 from flask_login import LoginManager, current_user
 from io import StringIO
 
-from models import db, Purchase, Item, Sale, Shelf, Listing, PurchaseType, ItemStatus, ListingStatus
+from models import db, Purchase, Item, Sale, Shelf, Listing, Expense, PurchaseType, ItemStatus, ListingStatus
 from translations import _
 
 # Login Manager
@@ -423,3 +423,70 @@ def process_csv(file, user_id):
         "shelves_created": shelves_created,
         "errors": errors,
     }
+
+
+##############################################################################
+# Expenses CSV: the same columns as the expenses export, one row per expense
+##############################################################################
+EXPENSE_CSV_HEADERS = ["Date", "Description", "Category", "Amount", "Notes"]
+# Keep in sync with the Expense columns in models.py
+EXPENSE_DESCRIPTION_LENGTH = 128
+EXPENSE_CATEGORY_LENGTH = 64
+
+def process_expense_csv(file, user_id):
+    stream = StringIO(file.read().decode('utf-8-sig'))
+    reader = csv.DictReader(stream)
+    missing = [name for name in ("Date", "Description", "Amount") if name not in (reader.fieldnames or [])]
+    if missing:
+        return {
+            "expenses_created": 0,
+            "errors": [_("The CSV is missing the column(s): {columns}.", columns=", ".join(missing))],
+        }
+
+    errors = []
+    expenses_created = 0
+    # Bad rows are skipped and reported, like in process_csv
+    for row_number, row in enumerate(reader, start=2):
+        # Rows left blank (e.g. at the end of a spreadsheet export)
+        if not any(str(value or '').strip() for key, value in row.items() if key is not None):
+            continue
+        if row.get(None):
+            errors.append(_("Row {row}: extra values found after the CSV headers.", row=row_number))
+            continue
+
+        expense_date = parse_csv_date(row.get("Date"))
+        if expense_date is None:
+            errors.append(_("Row {row}: invalid or missing Date.", row=row_number))
+            continue
+        description = get_row_clean(row, "Description")
+        if not description or len(description) > EXPENSE_DESCRIPTION_LENGTH:
+            errors.append(_("Row {row}: Description is missing or longer than {length} characters.",
+                            row=row_number, length=EXPENSE_DESCRIPTION_LENGTH))
+            continue
+        category = get_row_clean(row, "Category")
+        if len(category) > EXPENSE_CATEGORY_LENGTH:
+            errors.append(_("Row {row}: Category is longer than {length} characters.",
+                            row=row_number, length=EXPENSE_CATEGORY_LENGTH))
+            continue
+        amount = parse_csv_money(row.get("Amount"))
+        if amount is None or not 0 < amount < 10**10:
+            errors.append(_("Row {row}: Amount must be a number above 0.", row=row_number))
+            continue
+
+        db.session.add(Expense(
+            user_id=user_id,
+            date=expense_date,
+            description=description,
+            category=category or None,
+            amount=amount,
+            notes=get_row_clean(row, "Notes") or None,
+        ))
+        expenses_created += 1
+
+    try:
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+        raise
+
+    return {"expenses_created": expenses_created, "errors": errors}

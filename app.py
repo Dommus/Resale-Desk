@@ -3,8 +3,9 @@ from datetime import datetime, date, timedelta
 from urllib.parse import urlparse
 
 # Imports from local python files
-from models import db, User, Shelf, Item, Purchase, ItemStatus, PurchaseType, Listing, ListingStatus, Sale, HiddenSuggestion
-from utilities import login_manager, parse_date, parse_decimal, parse_quantity, process_csv, currency_display, CURRENCY_SYMBOLS
+from models import db, User, Shelf, Item, Purchase, ItemStatus, PurchaseType, Listing, ListingStatus, Sale, Expense, HiddenSuggestion
+from utilities import (login_manager, parse_date, parse_decimal, parse_quantity, process_csv, process_expense_csv,
+                       currency_display, CURRENCY_SYMBOLS, EXPENSE_CSV_HEADERS, EXPENSE_DESCRIPTION_LENGTH, EXPENSE_CATEGORY_LENGTH)
 from translations import _, get_language, js_translations, LANGUAGES, LANGUAGE_COOKIE, HTML_LANG
 
 from flask import Flask, Response, abort, jsonify, render_template, request, redirect, url_for, flash, g, send_from_directory
@@ -122,7 +123,7 @@ def reset_user_data(user):
     for purchase in user.purchases:
         db.session.delete(purchase)
     db.session.flush()
-    for record in Item.query.filter_by(user_id=user.id).all() + user.shelves:
+    for record in Item.query.filter_by(user_id=user.id).all() + user.shelves + user.expenses:
         db.session.delete(record)
     HiddenSuggestion.query.filter_by(user_id=user.id).delete()
     db.session.commit()
@@ -147,6 +148,7 @@ SUGGESTION_FIELDS = {
     'category': (Item, 'category'),
     'brand': (Item, 'brand'),
     'listing_platform': (Listing, 'platform'),
+    'expense_category': (Expense, 'category'),
 }
 
 
@@ -156,10 +158,12 @@ def hidden_suggestions(field, user_id):
 
 
 def get_used_values(model, column_name, user_id, field=None):
-    # Let the database return the distinct values instead of loading every row
+    # Let the database return the distinct values instead of loading every row.
+    # field: for a dropdown, leave out the values removed from it (SUGGESTION_FIELDS).
+    # Filters leave it out, so they still offer every value in use.
     column = getattr(model, column_name)
     rows = db.session.query(column).filter(model.user_id == user_id).distinct()
-    hidden = hidden_suggestions(field or column_name, user_id)
+    hidden = hidden_suggestions(field, user_id) if field else set()
     return sorted(value for (value,) in rows if value and value not in hidden)
 
 
@@ -171,8 +175,8 @@ def get_item_form_options(user_id):
     listing_platforms = db.session.query(Listing.platform).join(Item).filter(Item.user_id == user_id).distinct()
     used = set(COMMON_LISTING_PLATFORMS) | {value for (value,) in listing_platforms if value}
     return {
-        'used_categories': get_used_values(Item, 'category', user_id),
-        'used_brands': get_used_values(Item, 'brand', user_id),
+        'used_categories': get_used_values(Item, 'category', user_id, field='category'),
+        'used_brands': get_used_values(Item, 'brand', user_id, field='brand'),
         'used_listing_platforms': sorted(used - hidden_suggestions('listing_platform', user_id)),
     }
 
@@ -181,8 +185,8 @@ def get_purchase_form_options(user_id):
     options = get_item_form_options(user_id)
 
     options.update({
-        'used_sellers': get_used_values(Purchase, 'seller', user_id),
-        'used_platforms': get_used_values(Purchase, 'platform', user_id),
+        'used_sellers': get_used_values(Purchase, 'seller', user_id, field='seller'),
+        'used_platforms': get_used_values(Purchase, 'platform', user_id, field='platform'),
     })
     
     return options
@@ -560,13 +564,15 @@ def chart_months(param):
 
 
 # Profit, net revenue and spending per month for the dashboard charts.
-# Single items and bundles are kept apart, so the charts can stack them.
-def monthly_chart_data(sales, purchases, months):
-    # "All" spans from the month of the first sale or purchase up to the current month
+# Single items and bundles are kept apart, so the charts can stack them,
+# and general expenses are a series of their own.
+def monthly_chart_data(sales, purchases, expenses, months):
+    # "All" spans from the month of the first sale, purchase or expense up to the current month
     month_count = months
     if months == 0:
         dates = [sale.sale_date for sale in sales if sale.sale_date]
         dates += [purchase.date for purchase in purchases if purchase.date]
+        dates += [expense.date for expense in expenses]
         first = min(dates) if dates else date.today()
         month_count = (date.today().year - first.year) * 12 + date.today().month - first.month + 1
 
@@ -645,6 +651,15 @@ def monthly_chart_data(sales, purchases, months):
     spend_values = [round(monthly_spend[label], 2) for label in chart_labels]
     bundle_spend_values = [round(monthly_bundle_spend[label], 2) for label in chart_labels]
 
+    # General expenses in the month they were paid. The profit chart shows
+    # them below zero, the spending chart next to the purchases.
+    monthly_expenses = {label: 0 for label in chart_labels}
+    for expense in expenses:
+        label = expense.date.strftime("%Y-%m")
+        if label in monthly_expenses:
+            monthly_expenses[label] += float(expense.amount)
+    expense_values = [round(monthly_expenses[label], 2) for label in chart_labels]
+
     return {
         "labels": chart_labels,
         "profit": chart_values,
@@ -653,6 +668,7 @@ def monthly_chart_data(sales, purchases, months):
         "bundle_revenue": bundle_revenue_values,
         "spend": spend_values,
         "bundle_spend": bundle_spend_values,
+        "expenses": expense_values,
     }
 
 
@@ -665,7 +681,8 @@ def dashboard_charts():
     sales = Sale.query.join(Item).filter(Item.user_id == current_user.id).options(
         selectinload(Sale.item).selectinload(Item.purchase),
     ).all()
-    return jsonify(monthly_chart_data(sales, purchases, chart_months('months')))
+    expenses = Expense.query.filter_by(user_id=current_user.id).all()
+    return jsonify(monthly_chart_data(sales, purchases, expenses, chart_months('months')))
 
 
 @app.route('/')
@@ -689,13 +706,18 @@ def index():
         .filter(Item.user_id == current_user.id)
         .all()
     )
+    expenses = Expense.query.filter_by(user_id=current_user.id).all()
 
     total_units = sum(item.quantity for item in items)
     available_units = sum(item.available_quantity for item in items)
     sold_units = sum(item.quantity_sold for item in items)
     total_spend = sum((purchase.total_cost for purchase in purchases), Decimal("0.00"))
     total_revenue = sum((purchase.total_revenue for purchase in purchases), Decimal("0.00"))
-    total_profit = sum((purchase.profit for purchase in purchases), Decimal("0.00"))
+    # Profit on items and purchases, then the total after general expenses,
+    # which belong to no item and so only come off here
+    item_profit = sum((purchase.profit for purchase in purchases), Decimal("0.00"))
+    total_expenses = sum((expense.amount for expense in expenses), Decimal("0.00"))
+    total_profit = item_profit - total_expenses
     written_off_items = [item for item in items if item.is_written_off]
     write_off_units = sum(item.quantity_written_off for item in written_off_items)
     # Bundle items have no item cost; their loss is already in the bundle profit
@@ -749,18 +771,21 @@ def index():
         reverse=True,
     )[:5]
 
-    # Profit from sales in the last 30 days
+    # Profit from sales in the last 30 days, less the expenses paid in them
     month_ago = date.today() - timedelta(days=30)
     last_month_profit = Decimal("0.00")
     for sale in sales:
         if sale.sale_date and sale.sale_date >= month_ago and sale.profit is not None:
             last_month_profit += sale.profit
+    for expense in expenses:
+        if expense.date >= month_ago:
+            last_month_profit -= expense.amount
 
     # Each chart has its own month selector. Charts showing the same months
     # share one calculation.
     chart_months_by_name = {name: chart_months(f'{name}_months') for name in DASHBOARD_CHARTS}
     data_by_months = {
-        months: monthly_chart_data(sales, purchases, months)
+        months: monthly_chart_data(sales, purchases, expenses, months)
         for months in set(chart_months_by_name.values())
     }
 
@@ -780,6 +805,8 @@ def index():
         total_spend=round(total_spend, 2),
         total_revenue=round(total_revenue, 2),
         total_profit=round(total_profit, 2),
+        item_profit=round(item_profit, 2),
+        total_expenses=round(total_expenses, 2),
         active_listing_count=sum(
             listing.status == ListingStatus.ACTIVE for listing in listings
         ),
@@ -1395,6 +1422,235 @@ def delete_shelf(shelf_id):
         db.session.commit()
         flash(_("Shelf deleted."), "success")
     return redirect(url_for("shelves"))
+
+
+#########################
+#        Expenses
+
+# Suggested on the expense form, before the categories the user has typed
+DEFAULT_EXPENSE_CATEGORIES = ['Packaging', 'Shipping', 'Fees & subscriptions', 'Storage', 'Travel', 'Cleaning & repairs', 'Other']
+
+
+def get_expense_categories(user_id):
+    hidden = hidden_suggestions('expense_category', user_id)
+    defaults = [_(category) for category in DEFAULT_EXPENSE_CATEGORIES if _(category) not in hidden]
+    used = get_used_values(Expense, 'category', user_id, field='expense_category')
+    return defaults + [category for category in used if category not in defaults]
+
+
+# The list's filters, kept when adding, editing or deleting an expense
+def expense_filters():
+    return {key: request.args[key] for key in ('period', 'category') if request.args.get(key)}
+
+
+# The expense form's values, or the errors that stop it from being saved
+def parse_expense_form(form):
+    errors = []
+    description = form.get('description', '').strip()
+    if not description:
+        errors.append(_('Please describe the expense.'))
+    elif len(description) > EXPENSE_DESCRIPTION_LENGTH:
+        errors.append(_('The description can be at most {length} characters.', length=EXPENSE_DESCRIPTION_LENGTH))
+
+    category = form.get('category', '').strip()
+    if len(category) > EXPENSE_CATEGORY_LENGTH:
+        errors.append(_('The category can be at most {length} characters.', length=EXPENSE_CATEGORY_LENGTH))
+
+    amount = parse_decimal(form.get('amount', '').strip(), default=None)
+    # Money columns hold up to 10 digits before the decimal point
+    if amount is not None and abs(amount) < 10**10:
+        amount = round(amount, 2)
+    if amount is None or not 0 < amount < 10**10:
+        errors.append(_('The amount must be a number above 0.'))
+
+    fields = {
+        'date': parse_date(form.get('date')),
+        'description': description,
+        'category': category or None,
+        'amount': amount,
+        'notes': form.get('notes', '').strip() or None,
+    }
+    return fields, errors
+
+
+# The first day of a period ("2026" or "2026-10") and the first day after it.
+# Anything else means all time.
+def expense_period_range(period):
+    match = re.fullmatch(r'(\d{4})(?:-(\d{2}))?', period or '')
+    if not match:
+        return None
+    year = int(match.group(1))
+    # The period ends on the first day after it, which must still be a valid date
+    if not 1 <= year < 9999:
+        return None
+    if match.group(2) is None:
+        return date(year, 1, 1), date(year + 1, 1, 1)
+    month = int(match.group(2))
+    if not 1 <= month <= 12:
+        return None
+    end = date(year + 1, 1, 1) if month == 12 else date(year, month + 1, 1)
+    return date(year, month, 1), end
+
+
+def render_expenses_page(form=None, import_result=None):
+    period = request.args.get('period', str(date.today().year))
+    period_range = expense_period_range(period)
+    if period_range is None:
+        period = 'all'
+    category = request.args.get('category', '')
+
+    query = Expense.query.filter_by(user_id=current_user.id)
+    if period_range:
+        query = query.filter(Expense.date >= period_range[0], Expense.date < period_range[1])
+    if category:
+        query = query.filter(Expense.category == category)
+    expense_list = query.order_by(Expense.date.desc(), Expense.id.desc()).all()
+
+    total = sum((expense.amount for expense in expense_list), Decimal("0.00"))
+    totals_by_category = {}
+    for expense in expense_list:
+        totals_by_category[expense.category] = totals_by_category.get(expense.category, Decimal("0.00")) + expense.amount
+    category_totals = sorted(totals_by_category.items(), key=lambda pair: pair[1], reverse=True)
+
+    # The years and months that have expenses, newest first, for the period filter
+    dates = {expense_date for (expense_date,) in
+             db.session.query(Expense.date).filter(Expense.user_id == current_user.id).distinct()}
+    periods = {}
+    for year in sorted({d.year for d in dates} | {date.today().year}, reverse=True):
+        periods[str(year)] = sorted({d.strftime('%Y-%m') for d in dates if d.year == year}, reverse=True)
+
+    return render_template(
+        'expenses/expenses.html',
+        expenses=expense_list,
+        total=total,
+        category_totals=category_totals,
+        period=period,
+        periods=periods,
+        category=category,
+        used_expense_categories=get_used_values(Expense, 'category', current_user.id),
+        expense_categories=get_expense_categories(current_user.id),
+        filters=expense_filters(),
+        form=form or {},
+        import_result=import_result,
+    )
+
+
+@app.route('/expenses', methods=['GET', 'POST'])
+@login_required
+def expenses():
+    form = None
+    if request.method == 'POST':
+        fields, errors = parse_expense_form(request.form)
+        if not errors:
+            db.session.add(Expense(user_id=current_user.id, **fields))
+            db.session.commit()
+            flash(_('Expense added.'), 'success')
+            return redirect(url_for('expenses', **expense_filters()))
+        # Show the form again with everything that was typed
+        for error in errors:
+            flash(error, 'danger')
+        form = request.form
+
+    # "Copy" fills the form from an earlier expense, dated today
+    copy_id = request.args.get('copy', type=int)
+    if form is None and copy_id is not None:
+        source = Expense.query.filter_by(id=copy_id, user_id=current_user.id).first()
+        if source:
+            form = {
+                'description': source.description,
+                'category': source.category,
+                'amount': f'{source.amount:.2f}',
+                'notes': source.notes,
+            }
+    return render_expenses_page(form=form)
+
+
+@app.route('/expenses/<int:expense_id>/edit', methods=['GET', 'POST'])
+@login_required
+def edit_expense(expense_id):
+    expense = Expense.query.filter_by(id=expense_id, user_id=current_user.id).first_or_404()
+    form = {
+        'date': expense.date.isoformat(),
+        'description': expense.description,
+        'category': expense.category,
+        'amount': f'{expense.amount:.2f}',
+        'notes': expense.notes,
+    }
+    if request.method == 'POST':
+        fields, errors = parse_expense_form(request.form)
+        if not errors:
+            for name, value in fields.items():
+                setattr(expense, name, value)
+            db.session.commit()
+            flash(_('Expense updated.'), 'success')
+            return redirect(url_for('expenses', **expense_filters()))
+        for error in errors:
+            flash(error, 'danger')
+        form = request.form
+
+    return render_template(
+        'expenses/expense_edit.html',
+        expense=expense,
+        form=form,
+        expense_categories=get_expense_categories(current_user.id),
+        filters=expense_filters(),
+    )
+
+
+@app.route('/expenses/<int:expense_id>/delete', methods=['POST'])
+@login_required
+def delete_expense(expense_id):
+    expense = Expense.query.filter_by(id=expense_id, user_id=current_user.id).first_or_404()
+    db.session.delete(expense)
+    db.session.commit()
+    flash(_('Expense deleted.'), 'success')
+    return redirect(url_for('expenses', **expense_filters()))
+
+
+@app.route('/expenses/export-csv')
+@login_required
+def export_expenses_csv():
+    expense_list = Expense.query.filter_by(user_id=current_user.id).order_by(Expense.date, Expense.id).all()
+    output = StringIO(newline="")
+    writer = csv.writer(output, lineterminator="\n")
+    writer.writerow(EXPENSE_CSV_HEADERS)
+    for expense in expense_list:
+        writer.writerow([
+            expense.date.isoformat(),
+            expense.description,
+            expense.category or "",
+            f"{expense.amount:.2f}",
+            expense.notes or "",
+        ])
+
+    response = Response("﻿" + output.getvalue(), mimetype="text/csv")
+    response.headers["Content-Disposition"] = (
+        f"attachment; filename=resale-desk-expenses-{date.today().isoformat()}.csv"
+    )
+    return response
+
+
+@app.route('/expenses/import-csv', methods=['POST'])
+@login_required
+@limiter.limit("10 per hour", key_func=lambda: str(current_user.id))
+def import_expenses_csv():
+    csv_file = request.files.get('csv_file')
+    if csv_file is None or not csv_file.filename:
+        flash(_('Choose a CSV file to import.'), 'danger')
+        return redirect(url_for('expenses'))
+
+    try:
+        result = process_expense_csv(csv_file, current_user.id)
+    except Exception:
+        db.session.rollback()
+        app.logger.exception('Expenses CSV import failed')
+        flash(_('The CSV could not be imported.'), 'danger')
+        return redirect(url_for('expenses'))
+
+    if result['errors']:
+        return render_expenses_page(import_result=result)
+    flash(_('Imported {count} expense(s).', count=result['expenses_created']), 'success')
+    return redirect(url_for('expenses', period='all'))
 
 
 #########################

@@ -11,7 +11,8 @@ It started as my CS50 final project ([video demo](https://www.youtube.com/watch?
 - **Listings:** note where an item is for sale, at what price, with a link to the ad.
 - **Sales:** record the sale price, shipping and fees. The app works out the profit for you.
 - **Refunds and write-offs:** if a buyer gets a refund, or an item gets lost, broken or kept, record it so your profit stays honest.
-- **Dashboard:** your profit, a monthly chart, recent sales, best purchases, and items that still need listing.
+- **General expenses:** packaging, tape, subscriptions and other running costs that belong to no single item. They come off your total profit, and have their own CSV export and import.
+- **Dashboard:** your profit after expenses, monthly charts, recent sales, best purchases, and items that still need listing.
 - **Your data, your way:**
   - import from and export to CSV
   - optionally copy everything into a Google Sheet
@@ -100,6 +101,7 @@ Every night, a full copy of the database (all accounts) is saved to a Google Dri
 
 A few choices worth knowing:
 - **A bundle's cost isn't split between its items.** If ten things cost €50 together, any split per item would be made up. So profit for a bundle is counted on the whole bundle.
+- **General expenses aren't split between items either.** A roll of tape serves many sales, so they only come off the total profit, not off any item's or purchase's profit.
 - **Money is stored exactly** (as decimals, not floating point), so cents never go missing.
 - **"Sold" and "Written off" are set automatically** when you record a sale or a write-off, so the numbers always match.
 

@@ -52,6 +52,7 @@
                     ('index', 'Dashboard', ['index']),
                     ('inventory', 'Inventory', ['inventory', 'view_item', 'new_listing', 'new_sale']),
                     ('purchases', 'Purchases', ['purchases', 'new_purchase', 'view_purchase', 'add_items']),
+                    ('expenses', 'Expenses', ['expenses', 'edit_expense']),
                     ('shelves', 'Shelves', ['shelves'])
                 ] %}
                 <ul class="navbar-nav me-auto">
@@ -67,7 +68,7 @@
                 </form>
                 <div class="dropdown header-new-purchase">
                     <button class="btn btn-primary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
-                        <i class="bi bi-plus-lg" aria-hidden="true"></i> {{ _('New purchase') }}
+                        <i class="bi bi-plus-lg" aria-hidden="true"></i> {{ _('New') }}
                     </button>
                     <ul class="dropdown-menu dropdown-menu-end">
                         <li>
@@ -80,6 +81,13 @@
                             <a class="dropdown-item" href="{{ url_for('new_purchase', purchase_type='bundle') }}">
                                 <i class="bi bi-boxes" aria-hidden="true"></i> {{ _('Bundle') }}
                                 <small>{{ _('Several items, one price') }}</small>
+                            </a>
+                        </li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li>
+                            <a class="dropdown-item" href="{{ url_for('expenses', _anchor='add') }}">
+                                <i class="bi bi-receipt" aria-hidden="true"></i> {{ _('Expense') }}
+                                <small>{{ _('Packaging, tape, fees') }}</small>
                             </a>
                         </li>
                     </ul>

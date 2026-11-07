@@ -18,6 +18,8 @@
     --neg: #a8322d;
     --spend: #6f4a94;
     --spend-soft: #a688d4;
+    /* General expenses on the charts: amber, so they don't read as a losing month */
+    --expense: #a86a12;
 
     --bs-body-font-family: "Source Sans 3", system-ui, -apple-system, "Segoe UI", sans-serif;
     --bs-font-monospace: "Source Sans 3", system-ui, sans-serif;
@@ -63,6 +65,7 @@
     --neg: #e8807a;
     --spend: #a183d0;
     --spend-soft: #6f5596;
+    --expense: #dba14a;
 
     --bs-body-color: var(--ink);
     --bs-body-bg: var(--sheet);
