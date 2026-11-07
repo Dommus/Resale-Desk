@@ -1,0 +1,151 @@
+{% extends "layout.html" %}
+{% from "helpers/form_macros.html" import expense_fields, suggestion_datalist with context %}
+{% block title %}{{ _('Expenses') }}{% endblock %}
+{% block content %}
+
+<div class="mb-3">
+    <h3 class="mb-1">{{ _('Expenses') }}</h3>
+    <p class="text-muted mb-0">{{ _('Running costs that belong to no single item, like packaging, tape or subscriptions. They come off your total profit on the dashboard.') }}</p>
+</div>
+
+<div class="row g-4">
+    <div class="col-lg-5">
+        <div class="card shadow-sm" id="add">
+            <div class="card-body">
+                <h6 class="card-title">{{ _('Copy of an earlier expense') if request.args.get('copy') and form else _('Add an expense') }}</h6>
+                <form method="post" action="{{ url_for('expenses', **filters) }}">
+                    {{ expense_fields(form) }}
+                    <button type="submit" class="btn btn-primary mt-3">{{ _('Add expense') }}</button>
+                    {% if request.args.get('copy') %}
+                    <a href="{{ url_for('expenses', **filters) }}" class="btn btn-link mt-3">{{ _('Cancel') }}</a>
+                    {% endif %}
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-7">
+        <div class="card shadow-sm mb-3">
+            <div class="card-body">
+                <form method="get" class="row g-2 align-items-end" id="expense-filters">
+                    <div class="col-6">
+                        <label class="form-label small mb-1" for="expense-period">{{ _('Period') }}</label>
+                        <select class="form-select form-select-sm" name="period" id="expense-period" onchange="this.form.submit()">
+                            <option value="all" {{ 'selected' if period == 'all' }}>{{ _('All time') }}</option>
+                            {% for year, months in periods.items() %}
+                            <optgroup label="{{ year }}">
+                                <option value="{{ year }}" {{ 'selected' if period == year }}>{{ _('{year} (whole year)', year=year) }}</option>
+                                {% for month in months %}
+                                <option value="{{ month }}" {{ 'selected' if period == month }}>{{ month }}</option>
+                                {% endfor %}
+                            </optgroup>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label small mb-1" for="expense-category">{{ _('Category') }}</label>
+                        <select class="form-select form-select-sm" name="category" id="expense-category" onchange="this.form.submit()">
+                            <option value="">{{ _('All') }}</option>
+                            {% for value in used_expense_categories %}
+                            <option value="{{ value }}" {{ 'selected' if category == value }}>{{ value }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <noscript><div class="col-12"><button class="btn btn-secondary btn-sm" type="submit">{{ _('Show results') }}</button></div></noscript>
+                </form>
+
+                <div class="d-flex justify-content-between align-items-baseline mt-3 pt-3 border-top">
+                    <span class="text-muted">{{ _('Total') }}</span>
+                    <strong class="fs-5">{{ currency_symbol }}{{ "%.2f"|format(total) }}</strong>
+                </div>
+                {% if category_totals|length > 1 %}
+                <ul class="list-unstyled small mb-0 mt-2">
+                    {% for name, amount in category_totals %}
+                    <li class="d-flex justify-content-between">
+                        <span class="{{ 'text-muted fst-italic' if not name }}">{{ name or _('No category') }}</span>
+                        <span>{{ currency_symbol }}{{ "%.2f"|format(amount) }}</span>
+                    </li>
+                    {% endfor %}
+                </ul>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="card shadow-sm table-card">
+            <div class="card-body">
+                <div class="app-fit-table-wrap">
+                <table class="table table-sm align-middle app-fit-table app-list-table mb-0">
+                    <thead>
+                        <tr><th>{{ _('Date') }}</th><th>{{ _('Description') }}</th><th>{{ _('Category') }}</th><th class="text-end">{{ _('Amount') }}</th><th></th></tr>
+                    </thead>
+                    <tbody>
+                        {% for expense in expenses %}
+                        <tr>
+                            <td data-label="{{ _('Date') }}" data-mobile="badge" class="text-nowrap">{{ expense.date }}</td>
+                            <td data-label="{{ _('Description') }}" data-mobile="title">
+                                <a href="{{ url_for('edit_expense', expense_id=expense.id, **filters) }}" data-row-link>{{ expense.description }}</a>
+                                {% if expense.notes %}<small class="d-block text-muted text-truncate">{{ expense.notes }}</small>{% endif %}
+                            </td>
+                            <td data-label="{{ _('Category') }}"{% if expense.category %} data-mobile="meta"{% endif %}>{{ expense.category or '' }}</td>
+                            <td data-label="{{ _('Amount') }}" data-mobile="amount" class="text-end text-nowrap">{{ currency_symbol }}{{ "%.2f"|format(expense.amount) }}</td>
+                            <td data-label="" class="text-end table-action-cell text-nowrap">
+                                <a href="{{ url_for('expenses', copy=expense.id, **filters) }}#add" class="btn btn-sm btn-outline-secondary" title="{{ _('Copy') }}" aria-label="{{ _('Copy') }}"><i class="bi bi-copy" aria-hidden="true"></i></a>
+                                <a href="{{ url_for('edit_expense', expense_id=expense.id, **filters) }}" class="btn btn-sm btn-outline-secondary" title="{{ _('Edit') }}" aria-label="{{ _('Edit') }}"><i class="bi bi-pencil" aria-hidden="true"></i></a>
+                                <form method="post" action="{{ url_for('delete_expense', expense_id=expense.id, **filters) }}" class="d-inline"
+                                      onsubmit='return confirm({{ _("Delete this expense?")|tojson }});'>
+                                    <button class="btn btn-sm btn-outline-danger" title="{{ _('Delete') }}" aria-label="{{ _('Delete') }}"><i class="bi bi-trash" aria-hidden="true"></i></button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr><td colspan="5" class="text-muted text-center py-3">{{ _('No expenses in this period.') }}</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {% if import_result %}
+    <div class="col-12">
+        <div class="card shadow-sm border-warning">
+            <div class="card-body">
+                <h6 class="card-title">{{ _('CSV import results') }}</h6>
+                <p class="mb-2">{{ _('Imported {count} expense(s).', count=import_result.expenses_created) }}</p>
+                <p class="text-warning mb-2">{{ _('{count} row(s) were skipped:', count=import_result.errors|length) }}</p>
+                <ul class="mb-0">
+                    {% for error in import_result.errors %}
+                    <li>{{ error }}</li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="col-12">
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <h6 class="card-title">{{ _('Expenses CSV') }}</h6>
+                <p class="text-muted small">{{ _('A separate file from the inventory CSV, with the columns Date, Description, Category, Amount and Notes. Importing adds every row, so importing the same file twice adds the expenses twice.') }}</p>
+                <div class="d-flex flex-wrap gap-2 align-items-center">
+                    <a href="{{ url_for('export_expenses_csv') }}" class="btn btn-outline-secondary btn-sm"><i class="bi bi-download" aria-hidden="true"></i> {{ _('Export expenses') }}</a>
+                    <form method="post" action="{{ url_for('import_expenses_csv') }}" enctype="multipart/form-data" class="d-flex flex-wrap gap-2 align-items-center">
+                        <label class="visually-hidden" for="expense-csv-file">{{ _('Expenses CSV file') }}</label>
+                        <input type="file" class="form-control form-control-sm w-auto" name="csv_file" id="expense-csv-file" accept=".csv,text/csv" required>
+                        <button type="submit" class="btn btn-outline-secondary btn-sm"><i class="bi bi-upload" aria-hidden="true"></i> {{ _('Import expenses') }}</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{{ suggestion_datalist('expense-category-options', expense_categories) }}
+
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/suggestions.js') }}"></script>
+{% endblock %}

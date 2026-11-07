@@ -60,6 +60,7 @@ class User(UserMixin, db.Model):
     shelves: Mapped[List["Shelf"]] = relationship("Shelf", back_populates="owner", cascade="all, delete-orphan", lazy=True)
     purchases: Mapped[List["Purchase"]] = relationship("Purchase", back_populates="owner", cascade="all, delete-orphan", lazy=True)
     items: Mapped[List["Item"]] = relationship("Item", back_populates="owner", cascade="all, delete-orphan", lazy=True)
+    expenses: Mapped[List["Expense"]] = relationship("Expense", back_populates="owner", cascade="all, delete-orphan", lazy=True)
 
 class Shelf(db.Model):
     __tablename__ = 'shelves'
@@ -437,3 +438,27 @@ class Listing(db.Model):
     item: Mapped["Item"] = relationship("Item", back_populates="listings")
     # A listing for several units can be linked to more than one sale
     sales: Mapped[List["Sale"]] = relationship("Sale", back_populates="listing")
+
+
+# Running costs that belong to no single item: packaging, tape, subscriptions,
+# storage... Like a bundle's price, they aren't split over items (any split
+# would be made up), so they only come off the total profit.
+class Expense(db.Model):
+    __tablename__ = "expenses"
+
+    __table_args__ = (
+        CheckConstraint("amount > 0", name="ck_expenses_amount_positive"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
+
+    # Always dated, so every expense falls in a month on the dashboard charts
+    date: Mapped[datetime_date] = mapped_column(nullable=False, default=datetime_date.today)
+    description: Mapped[str] = mapped_column(String(128), nullable=False)
+    category: Mapped[Optional[str]] = mapped_column(String(64))
+    amount: Mapped[Decimal] = mapped_column(MONEY, nullable=False)
+    notes: Mapped[Optional[str]] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(server_default=func.now())
+
+    owner: Mapped["User"] = relationship("User", back_populates="expenses")

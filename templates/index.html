@@ -16,15 +16,15 @@
                 <div>
                     <div class="dashboard-hero-label">{{ _('Realized profit') }}</div>
                     <div class="dashboard-hero-value {{ 'text-success' if total_profit >= 0 else 'text-danger' }}">{{ currency_symbol }}{{ "%.2f"|format(total_profit) }}</div>
-                    <p class="dashboard-hero-note mb-0">{{ _('Net result after purchase costs, sale fees, refunds and write-offs.') }}</p>
+                    <p class="dashboard-hero-note mb-0">{{ _('Net result after purchase costs, sale fees, refunds, write-offs and general expenses.') }}</p>
                 </div>
             </div>
             <div class="dashboard-hero-stats">
+                <div><span>{{ _('Profit on items') }}</span><strong class="{{ 'text-success' if item_profit >= 0 else 'text-danger' }}">{{ currency_symbol }}{{ "%.2f"|format(item_profit) }}</strong></div>
+                <div><span>{{ _('General expenses') }}</span><strong><a href="{{ url_for('expenses', period='all') }}" class="text-reset">{{ currency_symbol }}{{ "%.2f"|format(total_expenses) }}</a></strong></div>
                 <div><span>{{ _('Last 30 days profit') }}</span><strong class="{{ 'text-success' if last_month_profit >= 0 else 'text-danger' }}">{{ currency_symbol }}{{ "%.2f"|format(last_month_profit) }}</strong></div>
                 <div><span>{{ _('Net revenue') }}</span><strong>{{ currency_symbol }}{{ "%.2f"|format(total_revenue) }}</strong></div>
                 <div><span>{{ _('Total invested') }}</span><strong>{{ currency_symbol }}{{ "%.2f"|format(total_spend) }}</strong></div>
-                <div><span>{{ _('Recorded sales') }}</span><strong>{{ sales_count }}</strong></div>
-                <div><span>{{ _('Sell-through rate') }}</span><strong>{{ sell_through_rate }}%</strong></div>
             </div>
         </section>
     </div>
@@ -39,6 +39,8 @@
             </div>
             <div class="quick-stat"><span>{{ _('Available inventory') }}</span><strong>{{ available_units }} <small>/ {{ total_units }} {{ _('unit') if total_units == 1 else _('units') }}</small></strong></div>
             <div class="quick-stat"><span>{{ _('Active listings') }}</span><strong>{{ active_listing_count }} <small>/ {{ listing_count }} {{ _('total') }}</small></strong></div>
+            <div class="quick-stat"><span>{{ _('Recorded sales') }}</span><strong>{{ sales_count }}</strong></div>
+            <div class="quick-stat"><span>{{ _('Sell-through rate') }}</span><strong>{{ sell_through_rate }}%</strong></div>
             <div class="quick-stat"><span>{{ _('Average sale') }}</span><strong>{{ currency_symbol }}{{ "%.2f"|format(average_sale_value) }}</strong></div>
             <div class="quick-stat"><span>{{ _('Purchases') }}</span><strong>{{ purchase_count }}</strong></div>
             <div class="quick-stat"><span>{{ _('Write-off losses') }}</span><strong class="{{ 'text-danger' if write_off_loss > 0 }}">{{ currency_symbol }}{{ "%.2f"|format(write_off_loss) }} <small>/ {{ write_off_units }} {{ _('unit') if write_off_units == 1 else _('units') }}</small></strong></div>
@@ -122,9 +124,9 @@
 </div>
 {% endmacro %}
 
-{{ chart_panel('profit', _('Monthly profit'), _('Bundles without item prices count once they have covered their cost'), _('Profit per month')) }}
+{{ chart_panel('profit', _('Monthly profit'), _('After general expenses. Bundles without item prices count once they have covered their cost'), _('Profit per month')) }}
 {{ chart_panel('revenue', _('Monthly net revenue'), _('Includes bundle sales'), _('Net revenue per month')) }}
-{{ chart_panel('spend', _('Monthly spending'), _('Purchase price and shipping'), _('Money spent on purchases per month')) }}
+{{ chart_panel('spend', _('Monthly spending'), _('Purchases (price and shipping) and general expenses'), _('Money spent on purchases and expenses per month')) }}
 
 <div class="row g-4 mb-4">
     <div class="col-12">
@@ -214,16 +216,21 @@
     // Red only when the month made a loss (or refunds and fees outweighed its sales)
     const signedColor = (positive, value) => value >= 0 ? color(positive) : color("--neg");
 
-    // Single items and bundles stack in each chart, bundles in a lighter shade on top
-    function stackedChart(canvasId) {
+    // Single items and bundles stack in each chart, bundles in a lighter shade on top.
+    // Charts with expenses get a third series for them.
+    function stackedChart(canvasId, withExpenses = false) {
+        const datasets = [
+            { label: {{ _('Single items')|tojson }}, data: [], borderRadius: 2 },
+            { label: {{ _('Bundle items')|tojson }}, data: [], borderRadius: 2 },
+        ];
+        if (withExpenses) {
+            datasets.push({ label: {{ _('General expenses')|tojson }}, data: [], borderRadius: 2 });
+        }
         return new Chart(document.getElementById(canvasId), {
             type: "bar",
             data: {
                 labels: [],
-                datasets: [
-                    { label: {{ _('Single items')|tojson }}, data: [], borderRadius: 2 },
-                    { label: {{ _('Bundle items')|tojson }}, data: [], borderRadius: 2 },
-                ]
+                datasets
             },
             options: {
                 maintainAspectRatio: false,
@@ -249,9 +256,10 @@
     // The soft colours are opaque on purpose: tooltips draw swatches on white,
     // so a transparent colour would look different there than in the legend.
     const charts = {
+        // Expenses go below zero, so the tooltip's total is the month's profit after them
         profit: {
-            chart: stackedChart("profitChart"),
-            single: "profit", bundle: "bundle_profit",
+            chart: stackedChart("profitChart", true),
+            single: "profit", bundle: "bundle_profit", expenseSign: -1,
             singleColor: value => signedColor("--pos", value),
             bundleColor: value => signedColor("--pos-soft", value),
         },
@@ -262,8 +270,8 @@
             bundleColor: value => signedColor("--accent-soft", value),
         },
         spend: {
-            chart: stackedChart("spendChart"),
-            single: "spend", bundle: "bundle_spend",
+            chart: stackedChart("spendChart", true),
+            single: "spend", bundle: "bundle_spend", expenseSign: 1,
             singleColor: () => color("--spend"),
             bundleColor: () => color("--spend-soft"),
         },
@@ -272,13 +280,18 @@
     charts.spend.chart.data.datasets[1].label = {{ _('Bundles')|tojson }};
 
     function showChartData(name, data) {
-        const { chart, single, bundle, singleColor, bundleColor } = charts[name];
-        const [singleSet, bundleSet] = chart.data.datasets;
+        const { chart, single, bundle, singleColor, bundleColor, expenseSign } = charts[name];
+        const [singleSet, bundleSet, expenseSet] = chart.data.datasets;
         chart.data.labels = data.labels;
         singleSet.data = data[single];
         singleSet.backgroundColor = data[single].map(singleColor);
         bundleSet.data = data[bundle];
         bundleSet.backgroundColor = data[bundle].map(bundleColor);
+        if (expenseSet) {
+            // "value ? ... : 0" so an empty month isn't shown as -0
+            expenseSet.data = data.expenses.map(value => value ? expenseSign * value : 0);
+            expenseSet.backgroundColor = color("--expense");
+        }
         chart.update();
     }
 

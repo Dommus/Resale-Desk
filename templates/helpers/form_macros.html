@@ -16,3 +16,32 @@
     {% for value in values %}<option value="{{ value }}">{% endfor %}
 </datalist>
 {% endmacro %}
+
+{# The expense form's fields, shared by the add form and the edit page.
+   Import it "with context", since it uses today and currency_symbol. #}
+{% macro expense_fields(form, prefix='expense') %}
+<div class="row g-2">
+    <div class="col-12">
+        <label class="form-label" for="{{ prefix }}Description">{{ _('Description') }}</label>
+        <input type="text" class="form-control" name="description" id="{{ prefix }}Description" maxlength="128" required
+               value="{{ form.get('description') or '' }}" placeholder="{{ _('e.g. Mailer bags, packing tape') }}">
+    </div>
+    <div class="col-6">
+        <label class="form-label" for="{{ prefix }}Amount">{{ _('Amount ({symbol})', symbol=currency_symbol) }}</label>
+        <input type="number" step="0.01" min="0.01" inputmode="decimal" class="form-control" name="amount" id="{{ prefix }}Amount" required
+               value="{{ form.get('amount') or '' }}" placeholder="0.00">
+    </div>
+    <div class="col-6">
+        <label class="form-label" for="{{ prefix }}Date">{{ _('Date') }}</label>
+        <input type="date" class="form-control" name="date" id="{{ prefix }}Date" value="{{ form.get('date') or today }}">
+    </div>
+    <div class="col-12">
+        <label class="form-label" for="{{ prefix }}Category">{{ _('Category (optional)') }}</label>
+        {{ suggestion_input('category', form.get('category'), option_id='expense-category-options', id=prefix ~ 'Category') }}
+    </div>
+    <div class="col-12">
+        <label class="form-label" for="{{ prefix }}Notes">{{ _('Notes (optional)') }}</label>
+        <textarea class="form-control" name="notes" id="{{ prefix }}Notes" rows="2">{{ form.get('notes') or '' }}</textarea>
+    </div>
+</div>
+{% endmacro %}

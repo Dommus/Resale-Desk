@@ -1,0 +1,37 @@
+{% extends "layout.html" %}
+{% from "helpers/form_macros.html" import expense_fields, suggestion_datalist with context %}
+{% block title %}{{ _('Edit expense') }}{% endblock %}
+{% block content %}
+
+<div class="mb-3">
+    <a href="{{ url_for('expenses', **filters) }}" class="small text-decoration-none"><i class="bi bi-arrow-left" aria-hidden="true"></i> {{ _('Expenses') }}</a>
+    <h3 class="mb-0 mt-1">{{ _('Edit expense') }}</h3>
+</div>
+
+<div class="row">
+    <div class="col-lg-6">
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <form method="post" action="{{ url_for('edit_expense', expense_id=expense.id, **filters) }}" id="edit-expense-form">
+                    {{ expense_fields(form) }}
+                </form>
+                <div class="d-flex flex-wrap gap-2 mt-3">
+                    <button type="submit" form="edit-expense-form" class="btn btn-primary">{{ _('Save changes') }}</button>
+                    <a href="{{ url_for('expenses', copy=expense.id, **filters) }}#add" class="btn btn-outline-secondary"><i class="bi bi-copy" aria-hidden="true"></i> {{ _('Copy as new') }}</a>
+                    <form method="post" action="{{ url_for('delete_expense', expense_id=expense.id, **filters) }}" class="ms-auto"
+                          onsubmit='return confirm({{ _("Delete this expense?")|tojson }});'>
+                        <button type="submit" class="btn btn-outline-danger"><i class="bi bi-trash" aria-hidden="true"></i> {{ _('Delete') }}</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{{ suggestion_datalist('expense-category-options', expense_categories) }}
+
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/suggestions.js') }}"></script>
+{% endblock %}

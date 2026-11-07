@@ -64,7 +64,6 @@ PT = {
     "Purchases": "Compras",
     "Shelves": "Prateleiras",
     "Search inventory or listing ID": "Pesquisar inventário ou ID do anúncio",
-    "New purchase": "Nova compra",
     "New Purchase": "Nova Compra",
     "Single": "Individual",
     "Bundle": "Lote",
@@ -175,8 +174,8 @@ PT = {
     # Dashboard
     "Business overview": "Visão geral do negócio",
     "Realized profit": "Lucro realizado",
-    "Net result after purchase costs, sale fees, refunds and write-offs.":
-        "Resultado líquido após custos de compra, taxas de venda, reembolsos e abates.",
+    "Net result after purchase costs, sale fees, refunds, write-offs and general expenses.":
+        "Resultado líquido após custos de compra, taxas de venda, reembolsos, abates e despesas gerais.",
     "Last 30 days profit": "Lucro dos últimos 30 dias",
     "Net revenue": "Receita líquida",
     "Total invested": "Total investido",
@@ -204,10 +203,11 @@ PT = {
     "Monthly net revenue": "Receita líquida mensal",
     "Includes bundle sales": "Inclui vendas de lotes",
     "Monthly spending": "Gastos mensais",
-    "Purchase price and shipping": "Preço de compra e portes",
-    "Money spent on purchases per month": "Dinheiro gasto em compras por mês",
+    "Purchases (price and shipping) and general expenses": "Compras (preço e portes) e despesas gerais",
+    "Money spent on purchases and expenses per month": "Dinheiro gasto em compras e despesas por mês",
     "Bundles": "Lotes",
-    "Bundles without item prices count once they have covered their cost": "Os lotes sem preços por artigo contam depois de cobrirem o seu custo",
+    "After general expenses. Bundles without item prices count once they have covered their cost":
+        "Após as despesas gerais. Os lotes sem preços por artigo contam depois de cobrirem o seu custo",
     "Net revenue per month": "Receita líquida por mês",
     "Single items": "Artigos individuais",
     "Bundle items": "Artigos de lotes",
@@ -458,8 +458,8 @@ PT = {
     "Language is saved in this browser.": "O idioma é guardado neste navegador.",
     "Save preferences": "Guardar preferências",
     "Danger zone": "Zona de perigo",
-    "This will permanently delete all your purchases, inventory, and shelves. Your account is kept.":
-        "Isto vai eliminar permanentemente todas as suas compras, inventário e prateleiras. A sua conta é mantida.",
+    "This will permanently delete all your purchases, inventory, shelves and expenses. Your account is kept.":
+        "Isto vai eliminar permanentemente todas as suas compras, inventário, prateleiras e despesas. A sua conta é mantida.",
     "Are you sure you want to delete all your data? This cannot be undone.":
         "Tem a certeza de que pretende eliminar todos os seus dados? Esta ação não pode ser anulada.",
     "Delete my data": "Eliminar os meus dados",
@@ -572,6 +572,56 @@ PT = {
     "Choose a CSV file to import.": "Escolha um ficheiro CSV para importar.",
     "The CSV could not be imported.": "Não foi possível importar o CSV.",
 
+    # Expenses
+    "Expenses": "Despesas",
+    "Expense": "Despesa",
+    "Packaging, tape, fees": "Embalagens, fita-cola, taxas",
+    "Profit on items": "Lucro dos artigos",
+    "General expenses": "Despesas gerais",
+    "Running costs that belong to no single item, like packaging, tape or subscriptions. They come off your total profit on the dashboard.":
+        "Custos do dia a dia que não pertencem a nenhum artigo, como embalagens, fita-cola ou subscrições. São descontados do lucro total no painel.",
+    "Add an expense": "Adicionar uma despesa",
+    "Copy of an earlier expense": "Cópia de uma despesa anterior",
+    "Add expense": "Adicionar despesa",
+    "Edit expense": "Editar despesa",
+    "Save changes": "Guardar alterações",
+    "Copy as new": "Copiar como nova",
+    "Copy": "Copiar",
+    "Edit": "Editar",
+    "Amount": "Montante",
+    "Amount ({symbol})": "Montante ({symbol})",
+    "Category (optional)": "Categoria (opcional)",
+    "Notes (optional)": "Notas (opcional)",
+    "e.g. Mailer bags, packing tape": "ex.: sacos de envio, fita-cola",
+    "Period": "Período",
+    "All time": "Sempre",
+    "{year} (whole year)": "{year} (ano inteiro)",
+    "Total": "Total",
+    "No category": "Sem categoria",
+    "No expenses in this period.": "Não há despesas neste período.",
+    "Delete this expense?": "Eliminar esta despesa?",
+    "Expense added.": "Despesa adicionada.",
+    "Expense updated.": "Despesa atualizada.",
+    "Expense deleted.": "Despesa eliminada.",
+    "Please describe the expense.": "Descreva a despesa.",
+    "The description can be at most {length} characters.": "A descrição pode ter no máximo {length} caracteres.",
+    "The category can be at most {length} characters.": "A categoria pode ter no máximo {length} caracteres.",
+    "The amount must be a number above 0.": "O montante tem de ser um número acima de 0.",
+    "Expenses CSV": "CSV de despesas",
+    "A separate file from the inventory CSV, with the columns Date, Description, Category, Amount and Notes. Importing adds every row, so importing the same file twice adds the expenses twice.":
+        "Um ficheiro separado do CSV do inventário, com as colunas Date, Description, Category, Amount e Notes. A importação adiciona todas as linhas, por isso importar o mesmo ficheiro duas vezes adiciona as despesas duas vezes.",
+    "Export expenses": "Exportar despesas",
+    "Import expenses": "Importar despesas",
+    "Expenses CSV file": "Ficheiro CSV de despesas",
+    "Imported {count} expense(s).": "Importada(s) {count} despesa(s).",
+    # Default expense categories (saved in the language they were picked in)
+    "Packaging": "Embalagens",
+    "Fees & subscriptions": "Taxas e subscrições",
+    "Storage": "Armazenamento",
+    "Travel": "Deslocações",
+    "Cleaning & repairs": "Limpeza e reparações",
+    "Other": "Outros",
+
     # CSV import errors
     "Row {row}: extra values found after the CSV headers.": "Linha {row}: foram encontrados valores extra após os cabeçalhos do CSV.",
     "Row {row}: invalid or missing Bundle Cost.": "Linha {row}: Bundle Cost inválido ou em falta.",
@@ -589,4 +639,10 @@ PT = {
     "Row {row}: '{name}' has multiple bundle costs, so this item row is ambiguous.":
         "Linha {row}: '{name}' tem vários custos de lote, por isso esta linha de artigo é ambígua.",
     "Row {row}: Sales platform is required for a Listing.": "Linha {row}: Sales platform é obrigatório para um anúncio.",
+    "The CSV is missing the column(s): {columns}.": "O CSV não tem a(s) coluna(s): {columns}.",
+    "Row {row}: invalid or missing Date.": "Linha {row}: Date inválida ou em falta.",
+    "Row {row}: Description is missing or longer than {length} characters.":
+        "Linha {row}: Description está em falta ou tem mais de {length} caracteres.",
+    "Row {row}: Category is longer than {length} characters.": "Linha {row}: Category tem mais de {length} caracteres.",
+    "Row {row}: Amount must be a number above 0.": "Linha {row}: Amount tem de ser um número acima de 0.",
 }
